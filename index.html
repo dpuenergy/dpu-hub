@@ -635,9 +635,15 @@ var inviteToken   = hashParams['invite_token']   || null;
 var recoveryToken = hashParams['recovery_token'] || null;
 var specialToken  = inviteToken || recoveryToken;
 
+function b64d(s) {
+  s = s.replace(/-/g, '+').replace(/_/g, '/');
+  while (s.length % 4) s += '=';
+  return atob(s);
+}
+
 function showUser(session) {
   try {
-    var payload = JSON.parse(atob(session.access_token.split('.')[1]));
+    var payload = JSON.parse(b64d(session.access_token.split('.')[1]));
     var email = payload.email || '';
     document.getElementById('header-email').textContent = email;
   } catch(e) {}
@@ -779,23 +785,25 @@ document.getElementById('tool-search').addEventListener('input', function () {
   });
 });
 
-// Append auth token + user email to all external tool links
+// Přidej auth token do všech externích odkazů při kliknutí
 var EXT_SELECTORS = 'a[href*="streamlit.app"], a[href*="hf.space"], a[href*="vercel.app"], a[href*="github.io"]';
 document.querySelectorAll(EXT_SELECTORS).forEach(function (link) {
   link.addEventListener('click', function (e) {
     try {
       var sess = JSON.parse(localStorage.getItem('dpu_user') || 'null');
       if (sess && sess.access_token) {
-        var pl = JSON.parse(atob(sess.access_token.split('.')[1]));
+        var pl = JSON.parse(b64d(sess.access_token.split('.')[1]));
         var email = pl.email || '';
         if (email) {
+          e.preventDefault();
           var url = new URL(this.href);
-          url.searchParams.set('access_token', btoa(email + ':DPU2025int'));
+          var ts = Math.floor(Date.now() / 60000); // minuty od epochy
+          url.searchParams.set('access_token', btoa(email + ':DPU2025int:' + ts));
           url.searchParams.set('dpu_user', email);
-          this.href = url.toString();
+          window.open(url.toString(), '_blank');
         }
       }
-    } catch (e) {}
+    } catch (err) {}
   });
 });
 </script>
