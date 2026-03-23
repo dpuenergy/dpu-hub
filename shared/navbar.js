@@ -2,6 +2,15 @@
   var script = document.currentScript;
   var toolName = (script && script.getAttribute('data-tool')) || document.title;
 
+  var userEmail = '';
+  try {
+    var sess = JSON.parse(localStorage.getItem('dpu_user') || 'null');
+    if (sess && sess.access_token) {
+      var payload = JSON.parse(atob(sess.access_token.split('.')[1]));
+      userEmail = payload.email || '';
+    }
+  } catch (e) {}
+
   var css = document.createElement('style');
   css.textContent = [
     '#dpu-nav{',
@@ -26,9 +35,17 @@
       'font-weight:800;font-size:11px;letter-spacing:-.5px;flex-shrink:0;',
     '}',
     '#dpu-nav .dpu-name{font-weight:600;letter-spacing:-.2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}',
+    '#dpu-nav .dpu-user{',
+      'margin-left:auto;font-size:12px;opacity:.60;',
+      'white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:220px;',
+    '}',
     '#dpu-nav-sp{height:48px;}'
   ].join('');
   document.head.appendChild(css);
+
+  var userHtml = userEmail
+    ? '<span class="dpu-user">' + userEmail + '</span>'
+    : '';
 
   var bar = document.createElement('div');
   bar.id = 'dpu-nav';
@@ -36,7 +53,8 @@
     '<a href="/" class="dpu-back">&#8592; Hub</a>' +
     '<span class="dpu-sep">|</span>' +
     '<div class="dpu-mark">DE</div>' +
-    '<span class="dpu-name">' + toolName + '</span>';
+    '<span class="dpu-name">' + toolName + '</span>' +
+    userHtml;
 
   var sp = document.createElement('div');
   sp.id = 'dpu-nav-sp';
