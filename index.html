@@ -4,6 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 <title>Energy Hub | DPU Energy</title>
+<script src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
 <style>
 :root {
   --brand:    #1b3280;
@@ -279,6 +280,16 @@ footer strong { color: rgba(255,255,255,.85); }
 </head>
 <body>
 
+<!-- Auth overlay -->
+<div id="auth-overlay" style="position:fixed;inset:0;background:linear-gradient(135deg,#1b3280 0%,#1e4db7 100%);display:flex;align-items:center;justify-content:center;z-index:9999;padding:24px">
+  <div style="background:#fff;border-radius:20px;padding:44px 36px;max-width:380px;width:100%;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.3)">
+    <div style="width:56px;height:56px;background:#2e8cff;border-radius:14px;display:flex;align-items:center;justify-content:center;margin:0 auto 20px;font-weight:800;font-size:20px;color:#fff">DE</div>
+    <h2 style="margin:0 0 8px;color:#0d1b3e;font-size:22px;font-weight:800">Energy Hub DPU</h2>
+    <p style="color:#5a6a8a;margin:0 0 28px;font-size:14px;line-height:1.6">Interni nastroje — prihlaste se pro pristup</p>
+    <div data-netlify-identity-button style="margin:0 auto"></div>
+  </div>
+</div>
+
 <header>
   <div class="header-inner">
     <div class="logo-mark">DE</div>
@@ -428,5 +439,15 @@ footer strong { color: rgba(255,255,255,.85); }
   <strong>DPU Energy</strong> &nbsp;|&nbsp; Interni nastroje &nbsp;|&nbsp; Neautorizovany pristup je zakazan
 </footer>
 
+
+<script>
+netlifyIdentity.on('init', function(user) {
+  if (user) document.getElementById('auth-overlay').style.display = 'none';
+});
+netlifyIdentity.on('login', function() {
+  document.getElementById('auth-overlay').style.display = 'none';
+  netlifyIdentity.close();
+});
+</script>
 </body>
 </html>
