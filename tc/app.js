@@ -1,0 +1,517 @@
+const API_BASE = "https://dpuenergy-dpu-tc.hf.space";
+
+// Fetched climate temps (from Open-Meteo). null = use dataset_id from dropdown.
+let currentTemps = null;
+let currentClimateLabel = null;
+
+// ── API helpers ───────────────────────────────────────────────────────────────
+
+async function apiGet(path) {
+  const r = await fetch(`${API_BASE}${path}`);
+  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  return await r.json();
+}
+
+async function apiPost(path, body) {
+  const r = await fetch(`${API_BASE}${path}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!r.ok) {
+    const txt = await r.text().catch(() => "");
+    throw new Error(`HTTP ${r.status}: ${txt}`);
+  }
+  return await r.json();
+}
+
+// ── Formatters ────────────────────────────────────────────────────────────────
+
+function fmtMwh(x) { return (x == null || isNaN(x)) ? "—" : `${x.toFixed(1)} MWh/rok`; }
+function fmtKw(x)  { return (x == null || isNaN(x)) ? "—" : `${x.toFixed(1)} kW`; }
+function fmtCop(x) { return (x == null || isNaN(x)) ? "—" : x.toFixed(2); }
+function fmtKcz(x) { return (x == null || isNaN(x)) ? "—" : `${Math.round(x).toLocaleString("cs-CZ")} Kč/rok`; }
+function fmtMinMax(min, max) {
+  if (min == null || max == null || isNaN(min) || isNaN(max)) return "—";
+  return `${min.toFixed(1)} / ${max.toFixed(1)} °C`;
+}
+
+// ── Chart helpers ─────────────────────────────────────────────────────────────
+
+let charts = {};
+
+function destroyChart(id) {
+  if (charts[id]) { charts[id].destroy(); delete charts[id]; }
+}
+
+function makeLineChart(canvasId, labels, data, label) {
+  destroyChart(canvasId);
+  charts[canvasId] = new Chart(document.getElementById(canvasId), {
+    type: "line",
+    data: { labels, datasets: [{ label, data, pointRadius: 0, borderWidth: 1 }] },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: true },
+        decimation: { enabled: true, algorithm: "min-max" },
+      },
+      scales: { x: { display: false } },
+    },
+  });
+}
+
+function makeBarChart(canvasId, labels, data, label) {
+  destroyChart(canvasId);
+  charts[canvasId] = new Chart(document.getElementById(canvasId), {
+    type: "bar",
+    data: { labels, datasets: [{ label, data }] },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: true } } },
+  });
+}
+
+function makeDualAxisDuration(canvasId, x, y1, y2) {
+  destroyChart(canvasId);
+  charts[canvasId] = new Chart(document.getElementById(canvasId), {
+    data: {
+      labels: x,
+      datasets: [
+        { type: "line", label: "Výkon (kW) – křivka trvání", data: y1, yAxisID: "y",  pointRadius: 0, borderWidth: 1 },
+        { type: "line", label: "COP (–)",                    data: y2, yAxisID: "y1", pointRadius: 0, borderWidth: 1 },
+      ],
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: true },
+        decimation: { enabled: true, algorithm: "min-max" },
+      },
+      scales: {
+        x:  { display: false, title: { display: true, text: "hodiny seřazené od největšího výkonu" } },
+        y:  { position: "left",  title: { display: true, text: "kW" } },
+        y1: { position: "right", grid: { drawOnChartArea: false }, title: { display: true, text: "COP" } },
+      },
+    },
+  });
+}
+
+// ── Climate (Open-Meteo) ──────────────────────────────────────────────────────
+
+function populateYearSelect() {
+  const sel = document.getElementById("climate_year");
+  if (!sel) return;
+  const lastFull = new Date().getFullYear() - 1;
+  for (let y = lastFull; y >= 2010; y--) {
+    const opt = document.createElement("option");
+    opt.value = y;
+    opt.textContent = y;
+    if (y === lastFull) opt.selected = true;
+    sel.appendChild(opt);
+  }
+}
+
+function applyPreset() {
+  const val = document.getElementById("city_preset")?.value;
+  if (!val) return;
+  const [lat, lon] = val.split(",").map(Number);
+  const latEl = document.getElementById("climate_lat");
+  const lonEl = document.getElementById("climate_lon");
+  if (latEl) latEl.value = lat;
+  if (lonEl) lonEl.value = lon;
+}
+
+async function fetchClimate() {
+  const btn = document.getElementById("btnFetchClimate");
+  const statusEl = document.getElementById("climateStatus");
+  btn.disabled = true;
+  btn.textContent = "Načítám…";
+  try {
+    const lat  = parseFloat(document.getElementById("climate_lat").value);
+    const lon  = parseFloat(document.getElementById("climate_lon").value);
+    const year = parseInt(document.getElementById("climate_year").value);
+    const presetSel = document.getElementById("city_preset");
+    const cityName = (presetSel?.selectedIndex > 0)
+      ? presetSel.options[presetSel.selectedIndex].text
+      : `${lat.toFixed(4)}, ${lon.toFixed(4)}`;
+
+    const res = await apiGet(`/api/fetch-climate?lat=${lat}&lon=${lon}&year=${year}`);
+    currentTemps = res.temps_c;
+    currentClimateLabel = `${cityName} ${year} (${res.count} h, T min ${res.t_min}°C / max ${res.t_max}°C)`;
+    if (statusEl) statusEl.textContent = `✓ Načteno: ${currentClimateLabel}`;
+    // Rerun simulation with the new data
+    await simulate();
+  } catch (e) {
+    alert("Chyba při načítání klimadat:\n" + (e?.message || e));
+    console.error(e);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "Načíst z Open-Meteo";
+  }
+}
+
+// ── Inputs ────────────────────────────────────────────────────────────────────
+
+function getInputs() {
+  const inp = {
+    dataset_id: document.getElementById("dataset").value,
+
+    ut_gj:  parseFloat(document.getElementById("ut_gj").value  || "0"),
+    tuv_gj: parseFloat(document.getElementById("tuv_gj").value || "0"),
+
+    hp_power_kw:   parseFloat(document.getElementById("hp_power_kw").value   || "0"),
+    hp_cutoff_c:   parseFloat(document.getElementById("hp_cutoff_c").value   || "-15"),
+    cop_nominal:   parseFloat(document.getElementById("cop_nominal")?.value   || "3.2"),
+    hw_slope:      parseFloat(document.getElementById("hw_slope")?.value      || "-1.25"),
+    hw_intercept:  parseFloat(document.getElementById("hw_intercept")?.value  || "42.5"),
+    hw_min_c:      parseFloat(document.getElementById("hw_min_c")?.value      || "45"),
+    t_base_c:      parseFloat(document.getElementById("t_base_c")?.value      || "20"),
+    t_heat_on_c:   parseFloat(document.getElementById("t_heat_on_c")?.value   || "14"),
+
+    customer_type:        document.getElementById("customer_type")?.value        || "household",
+    electricity_tariff:   document.getElementById("electricity_tariff")?.value   || "",
+    supplier_key:         document.getElementById("supplier_key")?.value         || "cez",
+    price_kcz_per_mwh:    parseFloat(document.getElementById("price_kcz_per_mwh").value || "2500"),
+
+    bivalence_type:              document.getElementById("bivalence_type")?.value              || "gas_boiler",
+    bivalence_efficiency:        parseFloat(document.getElementById("bivalence_efficiency").value        || "0.92"),
+    gas_price_kcz_per_m3:        parseFloat(document.getElementById("gas_price_kcz_per_m3").value        || "25"),
+    gas_kwh_per_m3:              parseFloat(document.getElementById("gas_kwh_per_m3").value              || "10.5"),
+    bivalence_price_kcz_per_kwh: parseFloat(document.getElementById("bivalence_price_kcz_per_kwh").value || "4.0"),
+
+    base_source_type:         document.getElementById("base_source_type")?.value         || "gas_boiler",
+    base_efficiency:          parseFloat(document.getElementById("base_efficiency").value          || "0.90"),
+    base_gas_price_kcz_per_m3: parseFloat(document.getElementById("base_gas_price_kcz_per_m3").value || "25"),
+    base_gas_kwh_per_m3:       parseFloat(document.getElementById("base_gas_kwh_per_m3").value       || "10.5"),
+    base_price_kcz_per_kwh:    parseFloat(document.getElementById("base_price_kcz_per_kwh").value    || "4.0"),
+
+    include_depreciation: document.getElementById("include_depr").checked,
+    investment_kcz:       parseFloat(document.getElementById("investment_kcz").value || "0"),
+    depr_years:           parseFloat(document.getElementById("depr_years").value     || "15"),
+  };
+
+  // Pass fetched climate temps directly – backend skips dataset_id lookup when present
+  if (currentTemps && currentTemps.length >= 100) {
+    inp.temps_c = currentTemps;
+  }
+
+  return inp;
+}
+
+// ── KPIs ──────────────────────────────────────────────────────────────────────
+
+function updateKpis(summary) {
+  document.getElementById("kpi_el").textContent   = fmtMwh(summary.electricity_mwh);
+  const bivalStr = summary.bivalent_point_c != null
+    ? `${summary.bivalent_point_c.toFixed(1)} °C`
+    : "—";
+  document.getElementById("kpi_cop").textContent = `SCOP: ${fmtCop(summary.avg_cop)} | bival. bod: ${bivalStr}`;
+
+  document.getElementById("kpi_hp_heat").textContent = fmtMwh(summary.heat_from_hp_mwh);
+  document.getElementById("kpi_biv").textContent      = `bivalence: ${fmtMwh(summary.bivalence_mwh)}`;
+
+  document.getElementById("kpi_peak").textContent  = fmtKw(summary.heat_need_peak_kw);
+  document.getElementById("kpi_peak2").textContent = `TČ max / bivalence max: ${fmtKw(summary.hp_power_peak_kw)} / ${fmtKw(summary.bivalence_peak_kw)}`;
+
+  document.getElementById("kpi_tout").textContent  = "—";
+  document.getElementById("kpi_tout2").textContent = `min / max: ${fmtMinMax(summary.t_out_min_c, summary.t_out_max_c)}`;
+
+  document.getElementById("kpi_cost").textContent =
+    `Elektřina (${summary.electricity_tariff || "tarif"} / ${summary.supplier_key || "dodavatel"}): ${fmtKcz(summary.electricity_cost_kcz)}`;
+  document.getElementById("kpi_cost2").textContent =
+    `Bivalence: ${fmtKcz(summary.bivalence_cost_kcz)} | Odpisy: ${fmtKcz(summary.depr_cost_kcz)} | Celkem: ${fmtKcz(summary.total_cost_kcz)} | Před: ${fmtKcz(summary.baseline_cost_kcz)} | Úspora: ${fmtKcz(summary.savings_kcz)}`;
+}
+
+// ── Charts ────────────────────────────────────────────────────────────────────
+
+function buildCharts(result) {
+  const s       = result.series;
+  const summary = result.summary;
+  const labels  = s.t_out_c.map((_, i) => i);
+
+  makeLineChart("chTout", labels, s.t_out_c, "T venku (°C)");
+
+  destroyChart("chPower");
+  charts["chPower"] = new Chart(document.getElementById("chPower"), {
+    data: {
+      labels,
+      datasets: [
+        { type: "line", label: "Potřeba tepla (kW)", data: s.heat_need_kw, pointRadius: 0, borderWidth: 1 },
+        { type: "line", label: "Výkon TČ (kW)",      data: s.hp_heat_kw,  pointRadius: 0, borderWidth: 1 },
+        { type: "line", label: "Bivalence (kW)",      data: s.bivalence_kw, pointRadius: 0, borderWidth: 1 },
+      ],
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: true }, decimation: { enabled: true, algorithm: "min-max" } },
+      scales: { x: { display: false } },
+    },
+  });
+
+  makeBarChart("chHeatSplit",
+    ["TČ", "Bivalence"],
+    [summary.heat_from_hp_mwh, summary.bivalence_mwh],
+    "Vyrobené teplo (MWh/rok)"
+  );
+
+  // Duration curve: sort hours by descending heat need
+  const idx     = s.heat_need_kw.map((v, i) => ({ v, i })).sort((a, b) => b.v - a.v).map(o => o.i);
+  const dur_kw  = idx.map(i => s.heat_need_kw[i]);
+  const dur_cop = idx.map(i => s.cop[i] || null);
+  makeDualAxisDuration("chDurationCop", labels, dur_kw, dur_cop);
+
+  // Heating curve scatter (sampled every 12 hours for clarity)
+  const pts = [];
+  for (let i = 0; i < s.t_out_c.length; i += 12) {
+    pts.push({ x: s.t_out_c[i], y: s.t_water_c[i] });
+  }
+  destroyChart("chHeatingCurve");
+  charts["chHeatingCurve"] = new Chart(document.getElementById("chHeatingCurve"), {
+    type: "scatter",
+    data: { datasets: [{ label: "T voda (°C)", data: pts, pointRadius: 2 }] },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      scales: {
+        x: { title: { display: true, text: "T venku (°C)" } },
+        y: { title: { display: true, text: "T výstupní vody (°C)" } },
+      },
+    },
+  });
+}
+
+// ── Main actions ──────────────────────────────────────────────────────────────
+
+async function loadDatasets() {
+  const ds  = await apiGet("/api/datasets");
+  const sel = document.getElementById("dataset");
+  sel.innerHTML = "";
+  for (const d of ds) {
+    const opt = document.createElement("option");
+    opt.value   = d.id;
+    opt.textContent = d.name;
+    sel.appendChild(opt);
+  }
+}
+
+async function simulate() {
+  const btn = document.getElementById("btnSim");
+  btn.disabled  = true;
+  btn.textContent = "Počítám…";
+  try {
+    const res = await apiPost("/api/simulate", getInputs());
+    updateKpis(res.summary);
+    buildCharts(res);
+  } catch (e) {
+    alert("Chyba simulace:\n" + (e?.message || e));
+    console.error(e);
+  } finally {
+    btn.disabled  = false;
+    btn.textContent = "Simulovat";
+  }
+}
+
+async function optimize() {
+  const btn = document.getElementById("btnOpt");
+  btn.disabled  = true;
+  btn.textContent = "Počítám…";
+  try {
+    const inp = getInputs();
+    inp.min_kw          = parseFloat(document.getElementById("opt_min").value          || "20");
+    inp.max_kw          = parseFloat(document.getElementById("opt_max").value          || "300");
+    inp.step_kw         = parseFloat(document.getElementById("opt_step").value         || "5");
+    inp.invest_base_kcz  = parseFloat(document.getElementById("invest_base_kcz")?.value  || "0");
+    inp.invest_per_kw_kcz = parseFloat(document.getElementById("invest_per_kw_kcz")?.value || "0");
+
+    const res = await apiPost("/api/optimize", inp);
+
+    // Build optimize chart (cost curve + optional investment curve)
+    const hasInvest = res.investment_kcz?.some(v => v > 0);
+    const datasets = [
+      {
+        label: "Celkové roční náklady (Kč/rok)",
+        data: res.total_cost_kcz,
+        pointRadius: 0, borderWidth: 2, yAxisID: "y",
+      },
+    ];
+    if (hasInvest) {
+      datasets.push({
+        label: "Celková investice (Kč)",
+        data: res.investment_kcz,
+        pointRadius: 0, borderWidth: 1, borderDash: [6, 3], yAxisID: "y1",
+      });
+    }
+
+    destroyChart("chOpt");
+    charts["chOpt"] = new Chart(document.getElementById("chOpt"), {
+      type: "line",
+      data: { labels: res.hp_power_kw, datasets },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: true } },
+        scales: {
+          x:  { title: { display: true, text: "Výkon TČ (kW)" } },
+          y:  { position: "left",  title: { display: true, text: "Roční náklady (Kč/rok)" } },
+          ...(hasInvest ? {
+            y1: { position: "right", grid: { drawOnChartArea: false }, title: { display: true, text: "Investice (Kč)" } },
+          } : {}),
+        },
+      },
+    });
+
+    if (res.best) {
+      document.getElementById("hp_power_kw").value = res.best.hp_power_kw;
+      const investInfo = res.best.investment_kcz > 0
+        ? ` | Investice: ${Math.round(res.best.investment_kcz).toLocaleString("cs-CZ")} Kč`
+        : "";
+      console.info(`Optimum: ${res.best.hp_power_kw} kW, náklady ${Math.round(res.best.cost_kcz).toLocaleString("cs-CZ")} Kč/rok${investInfo}`);
+    }
+  } catch (e) {
+    alert("Chyba optimalizace:\n" + (e?.message || e));
+    console.error(e);
+  } finally {
+    btn.disabled  = false;
+    btn.textContent = "Spočítat optimum";
+  }
+}
+
+async function exportCurve() {
+  try {
+    const r = await fetch(`${API_BASE}/api/export/curve`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(getInputs()),
+    });
+    if (!r.ok) throw new Error(`HTTP ${r.status}: ${await r.text()}`);
+    const blob = await r.blob();
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement("a");
+    a.href     = url;
+    a.download = "Krivka_export.xlsx";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  } catch (e) {
+    alert("Chyba exportu:\n" + (e?.message || e));
+    console.error(e);
+  }
+}
+
+// ── Custom price section ──────────────────────────────────────────────────────
+
+async function onSupplierChange() {
+  const supplier = document.getElementById("supplier_key")?.value || "cez_2026";
+  const isCustom = supplier === "custom";
+  const infoEl   = document.getElementById("supplierPriceInfo");
+  const formEl   = document.getElementById("customPriceForm");
+
+  if (formEl) formEl.style.display = isCustom ? "" : "none";
+
+  if (isCustom) {
+    if (infoEl) infoEl.innerHTML = "";
+    updateCustomPrice();
+    return;
+  }
+
+  if (infoEl) infoEl.innerHTML = "<span style='color:#64748b; font-style:italic;'>Načítám ceník…</span>";
+  try {
+    const data = await apiGet(`/api/electricity-prices?supplier=${encodeURIComponent(supplier)}`);
+    const tariffKey = (document.getElementById("electricity_tariff")?.value || "D56d").trim();
+    const t = data.tariffs[tariffKey] || Object.values(data.tariffs)[0];
+    if (!t) { infoEl.innerHTML = "<span style='color:#dc2626;'>Tarif nenalezen</span>"; return; }
+    const dist = data.distribution;
+    const sys  = data.system_total_czk_per_mwh;
+    const vtTotal  = t.VT + dist.VT + sys;
+    const ntTotal  = t.NT + dist.NT + sys;
+    const vtShare  = data.vt_share;
+    const avg      = vtShare * vtTotal + (1 - vtShare) * ntTotal;
+
+    infoEl.innerHTML = `
+      <div style="font-weight:700; margin-bottom:6px; color:#0369a1;">${data.label}</div>
+      <table style="width:100%; border-collapse:collapse;">
+        <thead><tr style="color:#475569;">
+          <th style="text-align:left; padding:2px 4px; font-weight:600;">Složka (Kč/MWh bez DPH)</th>
+          <th style="text-align:right; padding:2px 4px;">VT</th>
+          <th style="text-align:right; padding:2px 4px;">NT</th>
+        </tr></thead>
+        <tbody>
+          <tr><td style="padding:2px 4px;">Energie – dodavatel (${tariffKey})</td><td style="text-align:right;">${t.VT.toFixed(0)}</td><td style="text-align:right;">${t.NT.toFixed(0)}</td></tr>
+          <tr><td style="padding:2px 4px;">Distribuce</td><td style="text-align:right;">${dist.VT.toFixed(0)}</td><td style="text-align:right;">${dist.NT.toFixed(0)}</td></tr>
+          <tr><td style="padding:2px 4px;">Systémové služby + daň</td><td style="text-align:right;">${sys.toFixed(0)}</td><td style="text-align:right;">${sys.toFixed(0)}</td></tr>
+          <tr style="font-weight:700; border-top:1px solid #93c5fd;">
+            <td style="padding:2px 4px;">Celkem</td>
+            <td style="text-align:right;">${vtTotal.toFixed(0)}</td>
+            <td style="text-align:right;">${ntTotal.toFixed(0)}</td>
+          </tr>
+        </tbody>
+      </table>
+      <div style="margin-top:6px;">Podíl VT: ${(vtShare*100).toFixed(0)} % → průměr ≈ <strong>${Math.round(avg).toLocaleString("cs-CZ")} Kč/MWh</strong></div>
+      <div class="hint" style="margin-top:2px;">Paušál dle jističe se promítne v přesném výpočtu. Ceny jsou orientační – ověř platný ceník.</div>
+    `;
+    const priceEl = document.getElementById("price_kcz_per_mwh");
+    if (priceEl) priceEl.value = Math.round(avg);
+  } catch (e) {
+    if (infoEl) infoEl.innerHTML = `<span style="color:#b45309;">⚠ Ceník nelze načíst – backend offline? (${e.message})</span>`;
+  }
+}
+
+function updateCustomPrice() {
+  const vt       = parseFloat(document.getElementById("custom_vt_kcz")?.value       || 0);
+  const nt       = parseFloat(document.getElementById("custom_nt_kcz")?.value       || 0);
+  const vtShareP = parseFloat(document.getElementById("custom_vt_share_pct")?.value || 5);
+  const vtShare  = Math.max(0, Math.min(100, vtShareP)) / 100;
+  const avg      = vtShare * vt + (1 - vtShare) * nt;
+  const avgEl    = document.getElementById("customPriceAvg");
+  const priceEl  = document.getElementById("price_kcz_per_mwh");
+  if (avgEl)   avgEl.textContent  = `Průměr: ${Math.round(avg).toLocaleString("cs-CZ")} Kč/MWh`;
+  if (priceEl) priceEl.value = Math.round(avg);
+}
+
+// ── Tariff sync ───────────────────────────────────────────────────────────────
+
+function syncTariff() {
+  const ct = document.getElementById("customer_type")?.value || "household";
+  const t  = document.getElementById("electricity_tariff");
+  const s  = document.getElementById("supplier_key");
+  if (!t) return;
+
+  const cur     = (t.value || "").trim();
+  const desired = (ct === "business") ? "C56d" : "D56d";
+  if (cur === "" || cur === "D56d" || cur === "D57d" || cur === "C56d") {
+    t.value = desired;
+  }
+
+  if (s) {
+    const householdSuppliers = ["cez_2026", "egd_2026", "pre_2026"];
+    if (ct === "business" && householdSuppliers.includes(s.value)) {
+      // Nemáme firemní ceník 2026 – přepni na vlastní zadání
+      s.value = "custom";
+    } else if (ct === "household" && s.value === "custom" && cur === "C56d") {
+      s.value = "cez_2026";
+    }
+  }
+  onSupplierChange();
+}
+
+// ── Wiring ────────────────────────────────────────────────────────────────────
+
+document.getElementById("btnSim")?.addEventListener("click", simulate);
+document.getElementById("btnOpt")?.addEventListener("click", optimize);
+document.getElementById("btnExport")?.addEventListener("click", exportCurve);
+document.getElementById("customer_type")?.addEventListener("change", () => { syncTariff(); simulate(); });
+document.getElementById("supplier_key")?.addEventListener("change", async () => { await onSupplierChange(); simulate(); });
+document.getElementById("electricity_tariff")?.addEventListener("change", () => { onSupplierChange(); });
+document.getElementById("city_preset")?.addEventListener("change", applyPreset);
+document.getElementById("btnFetchClimate")?.addEventListener("click", fetchClimate);
+
+// Custom price recalculation on any input change
+["custom_vt_kcz", "custom_nt_kcz", "custom_vt_share_pct"].forEach(id => {
+  document.getElementById(id)?.addEventListener("input", updateCustomPrice);
+});
+
+populateYearSelect();
+syncTariff();
+
+(async function init() {
+  await loadDatasets();
+  await onSupplierChange();
+  await simulate();
+})();
