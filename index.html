@@ -441,6 +441,9 @@ footer strong { color: rgba(255,255,255,.85); }
 
 
 <script>
+netlifyIdentity.init({
+  APIUrl: 'https://calm-cocada-79e019.netlify.app/.netlify/identity'
+});
 netlifyIdentity.on('init', function(user) {
   if (user) document.getElementById('auth-overlay').style.display = 'none';
 });
