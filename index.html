@@ -68,6 +68,28 @@ header {
   opacity: .65;
   margin-left: 2px;
 }
+.header-user {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.header-email {
+  font-size: 13px;
+  opacity: .75;
+}
+.btn-logout {
+  font-size: 12px;
+  font-weight: 600;
+  padding: 5px 12px;
+  border-radius: 6px;
+  border: 1px solid rgba(255,255,255,.35);
+  background: transparent;
+  color: #fff;
+  cursor: pointer;
+  transition: background .15s;
+}
+.btn-logout:hover { background: rgba(255,255,255,.15); }
 
 /* HERO */
 .hero {
@@ -308,6 +330,10 @@ footer strong { color: rgba(255,255,255,.85); }
       <div class="header-title">Energy Hub</div>
       <div class="header-sub">DPU Energy — interní nastroje</div>
     </div>
+    <div class="header-user">
+      <span class="header-email" id="header-email"></span>
+      <button class="btn-logout" onclick="logout()">Odhlasit</button>
+    </div>
   </div>
 </header>
 
@@ -463,12 +489,26 @@ var inviteToken   = hashParams['invite_token']   || null;
 var recoveryToken = hashParams['recovery_token'] || null;
 var specialToken  = inviteToken || recoveryToken;
 
+function showUser(session) {
+  try {
+    var payload = JSON.parse(atob(session.access_token.split('.')[1]));
+    var email = payload.email || '';
+    document.getElementById('header-email').textContent = email;
+  } catch(e) {}
+}
+
+function logout() {
+  localStorage.removeItem('dpu_user');
+  location.reload();
+}
+
 // Hide overlay if already logged in
 if (!specialToken) {
   try {
     var stored = JSON.parse(localStorage.getItem('dpu_user') || 'null');
     if (stored && stored.expires_at > Date.now()) {
       document.getElementById('auth-overlay').style.display = 'none';
+      showUser(stored);
     }
   } catch(e) {}
 }
@@ -532,7 +572,9 @@ document.getElementById('login-form').addEventListener('submit', async function(
       if (!updateRes.ok) throw new Error('update');
 
       session.expires_at = Date.now() + (session.expires_in || 3600) * 1000;
+      session.expires_at = Date.now() + (session.expires_in || 3600) * 1000;
       localStorage.setItem('dpu_user', JSON.stringify(session));
+      showUser(session);
       history.replaceState(null, '', '/');
       document.getElementById('auth-overlay').style.display = 'none';
     } catch(e) {
@@ -557,6 +599,7 @@ document.getElementById('login-form').addEventListener('submit', async function(
       var data = await res.json();
       data.expires_at = Date.now() + data.expires_in * 1000;
       localStorage.setItem('dpu_user', JSON.stringify(data));
+      showUser(data);
       document.getElementById('auth-overlay').style.display = 'none';
     } else {
       err.textContent = 'Nespravny email nebo heslo.';
