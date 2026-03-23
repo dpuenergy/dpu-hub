@@ -4,7 +4,6 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 <title>Energy Hub | DPU Energy</title>
-<script src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
 <style>
 :root {
   --brand:    #1b3280;
@@ -285,8 +284,18 @@ footer strong { color: rgba(255,255,255,.85); }
   <div style="background:#fff;border-radius:20px;padding:44px 36px;max-width:380px;width:100%;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.3)">
     <div style="width:56px;height:56px;background:#2e8cff;border-radius:14px;display:flex;align-items:center;justify-content:center;margin:0 auto 20px;font-weight:800;font-size:20px;color:#fff">DE</div>
     <h2 style="margin:0 0 8px;color:#0d1b3e;font-size:22px;font-weight:800">Energy Hub DPU</h2>
-    <p style="color:#5a6a8a;margin:0 0 28px;font-size:14px;line-height:1.6">Interni nastroje — prihlaste se pro pristup</p>
-    <button onclick="netlifyIdentity.open('login')" style="width:100%;padding:13px;background:#1b3280;color:#fff;border:none;border-radius:8px;font-size:15px;font-weight:600;cursor:pointer">Prihlasit se</button>
+    <p style="color:#5a6a8a;margin:0 0 24px;font-size:14px;line-height:1.6">Interni nastroje — prihlaste se pro pristup</p>
+    <form id="login-form" style="display:flex;flex-direction:column;gap:12px">
+      <input id="login-email" type="email" placeholder="Email" required
+        style="padding:11px 14px;border:1.5px solid #d0d7e8;border-radius:8px;font-size:14px;outline:none">
+      <input id="login-password" type="password" placeholder="Heslo" required
+        style="padding:11px 14px;border:1.5px solid #d0d7e8;border-radius:8px;font-size:14px;outline:none">
+      <button type="submit"
+        style="padding:13px;background:#1b3280;color:#fff;border:none;border-radius:8px;font-size:15px;font-weight:600;cursor:pointer">
+        Prihlasit se
+      </button>
+      <p id="login-error" style="color:#e11d48;font-size:13px;margin:0;display:none">Nespravny email nebo heslo.</p>
+    </form>
   </div>
 </div>
 
@@ -441,15 +450,49 @@ footer strong { color: rgba(255,255,255,.85); }
 
 
 <script>
-netlifyIdentity.init({
-  APIUrl: 'https://calm-cocada-79e019.netlify.app/.netlify/identity'
-});
-netlifyIdentity.on('init', function(user) {
-  if (user) document.getElementById('auth-overlay').style.display = 'none';
-});
-netlifyIdentity.on('login', function() {
-  document.getElementById('auth-overlay').style.display = 'none';
-  netlifyIdentity.close();
+const IDENTITY_URL = 'https://calm-cocada-79e019.netlify.app/.netlify/identity';
+
+// Hide overlay if already logged in
+try {
+  var stored = JSON.parse(localStorage.getItem('dpu_user') || 'null');
+  if (stored && stored.expires_at > Date.now()) {
+    document.getElementById('auth-overlay').style.display = 'none';
+  }
+} catch(e) {}
+
+document.getElementById('login-form').addEventListener('submit', async function(e) {
+  e.preventDefault();
+  var btn = this.querySelector('button[type=submit]');
+  var err = document.getElementById('login-error');
+  btn.textContent = 'Prihlasuji...';
+  btn.disabled = true;
+  err.style.display = 'none';
+
+  var email    = document.getElementById('login-email').value;
+  var password = document.getElementById('login-password').value;
+
+  try {
+    var res = await fetch(IDENTITY_URL + '/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: 'grant_type=password&username=' + encodeURIComponent(email) + '&password=' + encodeURIComponent(password)
+    });
+    if (res.ok) {
+      var data = await res.json();
+      data.expires_at = Date.now() + data.expires_in * 1000;
+      localStorage.setItem('dpu_user', JSON.stringify(data));
+      document.getElementById('auth-overlay').style.display = 'none';
+    } else {
+      err.style.display = 'block';
+      btn.textContent = 'Prihlasit se';
+      btn.disabled = false;
+    }
+  } catch(e) {
+    err.textContent = 'Chyba pripojeni.';
+    err.style.display = 'block';
+    btn.textContent = 'Prihlasit se';
+    btn.disabled = false;
+  }
 });
 </script>
 </body>
