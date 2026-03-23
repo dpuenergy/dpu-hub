@@ -7,7 +7,7 @@
 <script>
 // Quick auth check — redirect to hub login if not authenticated
 try {
-  if (!JSON.parse(localStorage.getItem('gotrue.user') || 'null')) {
+  if (!JSON.parse(localStorage.getItem('dpu_user') || 'null')) {
     window.location.href = '/';
   }
 } catch(e) { window.location.href = '/'; }
