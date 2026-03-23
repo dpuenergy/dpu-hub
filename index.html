@@ -284,12 +284,14 @@ footer strong { color: rgba(255,255,255,.85); }
   <div style="background:#fff;border-radius:20px;padding:44px 36px;max-width:380px;width:100%;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.3)">
     <div style="width:56px;height:56px;background:#2e8cff;border-radius:14px;display:flex;align-items:center;justify-content:center;margin:0 auto 20px;font-weight:800;font-size:20px;color:#fff">DE</div>
     <h2 style="margin:0 0 8px;color:#0d1b3e;font-size:22px;font-weight:800">Energy Hub DPU</h2>
-    <p style="color:#5a6a8a;margin:0 0 24px;font-size:14px;line-height:1.6">Interni nastroje — prihlaste se pro pristup</p>
+    <p id="auth-subtitle" style="color:#5a6a8a;margin:0 0 24px;font-size:14px;line-height:1.6">Interni nastroje — prihlaste se pro pristup</p>
     <form id="login-form" style="display:flex;flex-direction:column;gap:12px">
       <input id="login-email" type="email" placeholder="Email" required
         style="padding:11px 14px;border:1.5px solid #d0d7e8;border-radius:8px;font-size:14px;outline:none">
       <input id="login-password" type="password" placeholder="Heslo" required
         style="padding:11px 14px;border:1.5px solid #d0d7e8;border-radius:8px;font-size:14px;outline:none">
+      <input id="login-password2" type="password" placeholder="Heslo znovu" required
+        style="padding:11px 14px;border:1.5px solid #d0d7e8;border-radius:8px;font-size:14px;outline:none;display:none">
       <button type="submit"
         style="padding:13px;background:#1b3280;color:#fff;border:none;border-radius:8px;font-size:15px;font-weight:600;cursor:pointer">
         Prihlasit se
@@ -452,25 +454,92 @@ footer strong { color: rgba(255,255,255,.85); }
 <script>
 const IDENTITY_URL = 'https://calm-cocada-79e019.netlify.app/.netlify/identity';
 
+// Parse token from URL hash (invite or recovery link)
+var hashParams = {};
+window.location.hash.replace(/^#/, '').split('&').forEach(function(p) {
+  var kv = p.split('='); hashParams[kv[0]] = kv[1];
+});
+var inviteToken   = hashParams['invite_token']   || null;
+var recoveryToken = hashParams['recovery_token'] || null;
+var specialToken  = inviteToken || recoveryToken;
+
 // Hide overlay if already logged in
-try {
-  var stored = JSON.parse(localStorage.getItem('dpu_user') || 'null');
-  if (stored && stored.expires_at > Date.now()) {
-    document.getElementById('auth-overlay').style.display = 'none';
-  }
-} catch(e) {}
+if (!specialToken) {
+  try {
+    var stored = JSON.parse(localStorage.getItem('dpu_user') || 'null');
+    if (stored && stored.expires_at > Date.now()) {
+      document.getElementById('auth-overlay').style.display = 'none';
+    }
+  } catch(e) {}
+}
+
+// Adjust form for invite / recovery flows
+if (specialToken) {
+  document.getElementById('auth-subtitle').textContent = inviteToken
+    ? 'Nastavte sve heslo pro pristup do Energy Hubu'
+    : 'Zadejte nove heslo';
+  document.getElementById('login-email').style.display = 'none';
+  document.getElementById('login-email').required = false;
+  document.getElementById('login-password2').style.display = 'block';
+  document.querySelector('#login-form button').textContent = 'Nastavit heslo';
+}
 
 document.getElementById('login-form').addEventListener('submit', async function(e) {
   e.preventDefault();
   var btn = this.querySelector('button[type=submit]');
   var err = document.getElementById('login-error');
-  btn.textContent = 'Prihlasuji...';
   btn.disabled = true;
   err.style.display = 'none';
 
-  var email    = document.getElementById('login-email').value;
-  var password = document.getElementById('login-password').value;
+  var password  = document.getElementById('login-password').value;
+  var password2 = document.getElementById('login-password2').value;
 
+  // Invite / recovery: set new password
+  if (specialToken) {
+    if (password !== password2) {
+      err.textContent = 'Hesla se neshoduji.';
+      err.style.display = 'block';
+      btn.disabled = false;
+      return;
+    }
+    btn.textContent = 'Ukladam...';
+    try {
+      // Exchange token for session
+      var tokenRes = await fetch(IDENTITY_URL + '/token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: 'grant_type=' + (inviteToken ? 'invite_token' : 'recovery_token') + '&token=' + specialToken
+      });
+      if (!tokenRes.ok) throw new Error();
+      var tokenData = await tokenRes.json();
+
+      // Update password
+      var updateRes = await fetch(IDENTITY_URL + '/user', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + tokenData.access_token
+        },
+        body: JSON.stringify({ password: password })
+      });
+      if (!updateRes.ok) throw new Error();
+
+      tokenData.expires_at = Date.now() + tokenData.expires_in * 1000;
+      localStorage.setItem('dpu_user', JSON.stringify(tokenData));
+      history.replaceState(null, '', '/');
+      document.getElementById('auth-overlay').style.display = 'none';
+    } catch(e) {
+      err.textContent = 'Chyba — zkuste znovu nebo pozadejte novou pozvankу.';
+      err.style.display = 'block';
+      btn.textContent = 'Nastavit heslo';
+      btn.disabled = false;
+    }
+    return;
+  }
+
+  // Normal login
+  btn.textContent = 'Prihlasuji...';
+  var email = document.getElementById('login-email').value;
   try {
     var res = await fetch(IDENTITY_URL + '/token', {
       method: 'POST',
@@ -483,6 +552,7 @@ document.getElementById('login-form').addEventListener('submit', async function(
       localStorage.setItem('dpu_user', JSON.stringify(data));
       document.getElementById('auth-overlay').style.display = 'none';
     } else {
+      err.textContent = 'Nespravny email nebo heslo.';
       err.style.display = 'block';
       btn.textContent = 'Prihlasit se';
       btn.disabled = false;
