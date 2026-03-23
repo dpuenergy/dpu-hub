@@ -779,10 +779,10 @@ document.getElementById('tool-search').addEventListener('input', function () {
   });
 });
 
-// Append logged-in user email to external tool links (Streamlit / HF Spaces)
-// so those apps can display who is logged in
-document.querySelectorAll('a[href*="streamlit.app"], a[href*="hf.space"], a[href*="vercel.app"]').forEach(function (link) {
-  link.addEventListener('click', function () {
+// Append auth token + user email to all external tool links
+var EXT_SELECTORS = 'a[href*="streamlit.app"], a[href*="hf.space"], a[href*="vercel.app"], a[href*="github.io"]';
+document.querySelectorAll(EXT_SELECTORS).forEach(function (link) {
+  link.addEventListener('click', function (e) {
     try {
       var sess = JSON.parse(localStorage.getItem('dpu_user') || 'null');
       if (sess && sess.access_token) {
@@ -790,6 +790,7 @@ document.querySelectorAll('a[href*="streamlit.app"], a[href*="hf.space"], a[href
         var email = pl.email || '';
         if (email) {
           var url = new URL(this.href);
+          url.searchParams.set('access_token', btoa(email + ':DPU2025int'));
           url.searchParams.set('dpu_user', email);
           this.href = url.toString();
         }
