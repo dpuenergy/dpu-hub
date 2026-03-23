@@ -1,0 +1,512 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>ChatGPT prompty | Energy Hub DPU</title>
+<style>
+:root {
+  --brand:  #1b3280;
+  --accent: #2e8cff;
+  --bg:     #f0f3f9;
+  --card:   #ffffff;
+  --text:   #0d1b3e;
+  --muted:  #5a6a8a;
+  --border: rgba(27,50,128,.12);
+  --code-bg:#f4f6fb;
+  --r:      12px;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+}
+
+/* NAV */
+nav {
+  background: var(--brand);
+  padding: 0 24px;
+  height: 52px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+nav a {
+  color: rgba(255,255,255,.65);
+  text-decoration: none;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+nav a:first-child { color: #fff; font-weight: 600; }
+nav .sep { color: rgba(255,255,255,.3); }
+
+/* HERO */
+.hero {
+  background: linear-gradient(135deg, var(--brand) 0%, #1e4db7 100%);
+  color: #fff;
+  padding: 36px 24px 32px;
+}
+.hero-inner { max-width: 860px; margin: 0 auto; }
+.hero h1 { font-size: clamp(20px,3.5vw,28px); font-weight: 800; margin-bottom: 8px; }
+.hero p  { font-size: 14px; opacity: .78; line-height: 1.6; max-width: 520px; }
+
+/* MAIN */
+main {
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 36px 24px 64px;
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+
+/* PROMPT CARD */
+.prompt-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  overflow: hidden;
+  box-shadow: 0 2px 10px rgba(27,50,128,.08);
+}
+
+details { width: 100%; }
+
+summary {
+  padding: 20px 24px;
+  cursor: pointer;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  user-select: none;
+}
+summary::-webkit-details-marker { display: none; }
+summary:hover { background: #f7f9ff; }
+
+.summary-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  flex-shrink: 0;
+}
+
+.summary-text { flex: 1; }
+.summary-title { font-size: 15px; font-weight: 700; line-height: 1.3; }
+.summary-sub   { font-size: 12px; color: var(--muted); margin-top: 2px; }
+
+.chevron {
+  font-size: 12px;
+  color: var(--muted);
+  transition: transform .2s;
+  flex-shrink: 0;
+}
+details[open] .chevron { transform: rotate(90deg); }
+
+/* BODY */
+.prompt-body {
+  border-top: 1px solid var(--border);
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* WORKFLOW */
+.workflow h3 {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .8px;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 12px;
+}
+.workflow ol {
+  padding-left: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.workflow li { font-size: 13.5px; line-height: 1.6; color: var(--text); }
+.workflow p  { font-size: 13.5px; line-height: 1.6; color: var(--text); margin-bottom: 8px; }
+
+/* PROMPT BLOCK */
+.prompt-block { position: relative; }
+.prompt-block h3 {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .8px;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 10px;
+}
+.prompt-text {
+  background: var(--code-bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px 18px;
+  font-size: 13px;
+  line-height: 1.7;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: var(--text);
+  font-family: system-ui, sans-serif;
+  max-height: 420px;
+  overflow-y: auto;
+}
+
+.copy-btn {
+  position: absolute;
+  top: 32px;
+  right: 8px;
+  background: var(--brand);
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 5px 12px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background .15s, opacity .15s;
+}
+.copy-btn:hover  { background: #122560; }
+.copy-btn.copied { background: #1e7e34; }
+
+/* TABLE */
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th, td { padding: 8px 12px; border: 1px solid var(--border); text-align: left; line-height: 1.5; }
+th { background: var(--code-bg); font-weight: 600; color: var(--muted); font-size: 12px; }
+
+/* TIP */
+.tip {
+  background: #fffbeb;
+  border-left: 3px solid #f59e0b;
+  padding: 10px 14px;
+  border-radius: 0 6px 6px 0;
+  font-size: 13px;
+  line-height: 1.6;
+  color: #78350f;
+}
+
+/* DIVIDER */
+hr { border: none; border-top: 1px solid var(--border); }
+
+footer {
+  text-align: center;
+  padding: 20px;
+  font-size: 12px;
+  color: var(--muted);
+}
+footer a { color: var(--accent); text-decoration: none; }
+
+@media (max-width: 600px) {
+  main { padding: 20px 12px 48px; }
+  .prompt-body { padding: 16px; }
+  summary { padding: 16px; }
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <a href="/">&#8592; Energy Hub</a>
+  <span class="sep">/</span>
+  <a href="/prompty/">ChatGPT prompty</a>
+</nav>
+
+<div class="hero">
+  <div class="hero-inner">
+    <h1>ChatGPT prompty — Virtualni energetik</h1>
+    <p>Knihovna promptovych sablon pro zpracovani energetickych podkladu. Kliknuti na prompt ho rozbali — text lze zkopirovat primo do ChatGPT.</p>
+  </div>
+</div>
+
+<main>
+
+  <!-- 1. FAKTURISTA -->
+  <div class="prompt-card">
+    <details>
+      <summary>
+        <div class="summary-icon" style="background:#e8f0fe">&#128203;</div>
+        <div class="summary-text">
+          <div class="summary-title">Fakturista</div>
+          <div class="summary-sub">Systematicke zpracovani energetickych faktur do tabulky</div>
+        </div>
+        <span class="chevron">&#9654;</span>
+      </summary>
+      <div class="prompt-body">
+
+        <div class="workflow">
+          <h3>Workflow</h3>
+          <ol>
+            <li><strong>OCR prevod</strong> — Otevri fakturu v PDF-XChange Editoru. Pres <em>Konverze &rarr; OCR</em> prevede sken na text. Dlouhe soubory (nad 8 stran) rozdel na bloky po max. 8 stranach.</li>
+            <li><strong>Postupne vkladani do ChatGPT</strong> — Vloz prompt nize, pak pridavej bloky jeden po druhem. Vzdy oznac cislo bloku (napr. &bdquo;cast 2 z 5&ldquo;).</li>
+            <li><strong>Vystup</strong> — Po poslednim bloku pozadej ChatGPT o &bdquo;vyslednou konsolidovanou tabulku za vsechny casti, vhodnou pro export do Excelu&ldquo;.</li>
+          </ol>
+        </div>
+
+        <hr/>
+
+        <div class="prompt-block">
+          <h3>Prompt — zkopiruj do ChatGPT</h3>
+          <button class="copy-btn" onclick="copyPrompt(this)">Kopirovat</button>
+          <pre class="prompt-text">Nasledujici faktury jsou naskenovane a prosly OCR v programu PDF-XChange Editor.
+
+Vzhledem k jejich delce je rozdeluji na vice casti (kazda cast je samostatny blok textu z OCR, casti na sebe navazuji).
+
+Prosim, zpracovavej udaje z jednotlivych bloku postupne a tabulku vygeneruj az po nahrani vsech casti (kazdou cast ti oznacim jako "cast X z Y"). Po posledni casti mi napiste "Vse nacteno, zde je tabulka za cely soubor" a vyplnte celou prehlednou tabulku, ve ktere bude:
+
+- Komodita (teplo, zemni plyn, elektrina, voda)
+- Odborne misto (nazev/adresa/EAN/EIC/cislo OM)
+- Obdobi (mesic, rok)
+- Spotreba celkem [kWh, m3, GJ, m3 vody]
+- Spotreba ve VT a NT (pokud je na fakture)
+- Komoditni slozka ceny [Kc]
+- Distribucni slozka ceny [Kc]
+- Dalsi poplatky a dane [Kc]
+- Celkova cena [Kc]
+
+Pokud faktura neobsahuje nektere polozky, pole nech prazdne, pripadne me upozorni.
+
+Vystup generuj do tabulky (Markdown, pro snadne zkopirovani do Excelu).
+
+Vstupni data budu vkladat po castech, zacni nacitat prvni blok.</pre>
+        </div>
+
+      </div>
+    </details>
+  </div>
+
+  <!-- 2. KONSTRUKCNI ANALYTIK -->
+  <div class="prompt-card">
+    <details>
+      <summary>
+        <div class="summary-icon" style="background:#e6f4ea">&#127968;</div>
+        <div class="summary-text">
+          <div class="summary-title">Konstrukcni analytik</div>
+          <div class="summary-sub">Vypis ochlazovanych konstrukci z PENB nebo projektove dokumentace</div>
+        </div>
+        <span class="chevron">&#9654;</span>
+      </summary>
+      <div class="prompt-body">
+
+        <div class="workflow">
+          <h3>Workflow</h3>
+          <ol>
+            <li><strong>OCR prevod</strong> — Otevri PENB v PDF-XChange Editoru. Pres OCR prevede sken na text. Dlouhe soubory (nad 8 stran) rozdel na bloky po max. 8 stranach, uloz jako &bdquo;PENB_cast1.txt&ldquo; atd.</li>
+            <li><strong>Postupne vkladani</strong> — Vloz prompt nize, pak pridavej bloky jeden po druhem.</li>
+            <li><strong>Vystup</strong> — Pozadej o &bdquo;vyslednou konsolidovanou tabulku za vsechny casti&ldquo;.</li>
+          </ol>
+        </div>
+
+        <hr/>
+
+        <div class="prompt-block">
+          <h3>Prompt — zkopiruj do ChatGPT</h3>
+          <button class="copy-btn" onclick="copyPrompt(this)">Kopirovat</button>
+          <pre class="prompt-text">Pomahej mi s vypisem ochlazovanych konstrukci objektu na zaklade prukazu energeticke narocnosti (PENB) nebo projektove dokumentace.
+
+Kazdou konstrukci vypln do tabulky s temito udaji:
+- Typ konstrukce (napr. obvodova stena, strecha, podlaha, okno, dvere)
+- Popis/umisteni (napr. severni fasada, strop pod nevytapenou pudou, atd.)
+- Plocha [m2]
+- Soucинitel prostupu tepla U [W/m2K]
+- Skladba konstrukce (vrstvy, tloustky, materialy, pokud jsou znamy)
+- Pokud nektere udaje chybi, oznac je "neni uvedeno" nebo "nutno dopocitat" a napис doporuceni, kde je zjistit/dopocitat (napr. z vykresu, z ploch pudorysu apod.).
+
+Pracuj i s mene strukturovanym textem (vypisy, poznamky, casti tabulek z OCR).
+
+Vystup generuj vzdy v tabulce v Markdown formatu, pro snadne zkopirovani do Excelu.
+
+Pokud je text prilis dlouhy, muzes mi navrhnout rozdeleni na vice bloku.
+
+Vstupni podklady vkladam nize, zacni zpracovavat prvni cast.</pre>
+        </div>
+
+      </div>
+    </details>
+  </div>
+
+  <!-- 3. REVIZNI REPORTER -->
+  <div class="prompt-card">
+    <details>
+      <summary>
+        <div class="summary-icon" style="background:#fff3e0">&#128221;</div>
+        <div class="summary-text">
+          <div class="summary-title">Revizni reporter</div>
+          <div class="summary-sub">Systematicke vytezovani revijnich zprav do tabulky</div>
+        </div>
+        <span class="chevron">&#9654;</span>
+      </summary>
+      <div class="prompt-body">
+
+        <div class="workflow">
+          <h3>Workflow</h3>
+          <ol>
+            <li>Vloz prompt a pak pridavej bloky textu z OCR (max. cca 8&ndash;10 stran nebo 5&ndash;8 tisic znaku v jednom bloku).</li>
+            <li>Vzdy oznac cislo bloku, napr. &bdquo;cast 3 z 6&ldquo;.</li>
+            <li>Po poslednim bloku ChatGPT vygeneruje souhrnnou tabulku.</li>
+          </ol>
+        </div>
+
+        <hr/>
+
+        <div class="prompt-block">
+          <h3>Prompt — zkopiruj do ChatGPT</h3>
+          <button class="copy-btn" onclick="copyPrompt(this)">Kopirovat</button>
+          <pre class="prompt-text">Pomahej mi systematicky vypsat a tridit udaje z reviznich zprav zarizeni (elektro, plyn, tlak apod.) za zadane obdobi.
+
+Zadam ti OCR vystup nebo textovou cast revizni zpravy (klidne ve vice blocich).
+Pokud je zprava dlouha, budu ti vkladat podklady po castech (max. cca 8-10 stran nebo 5-8 tisic znaku v jednom bloku). Vyckvej na pokyn, kdy zpracovat tabulku za cely soubor.
+
+Vzdy mi v prehledne tabulce vyplн tyto udaje pro kazde revidovane zarizeni/cast:
+- Objekt / adresa
+- Cislo revizni zpravy
+- Datum revize
+- Typ revize (pravidelna, vychozi...)
+- Nazev zarizeni / obvodu
+- Typ / oznaceni (napr. jistic, vyrobce, kabelaz...)
+- Umisteni / mistnost
+- Technicke parametry (napeti, proud, vykon, prikon...)
+- Poznamka (pokud nektery udaj chybi, napис "neni uvedeno")
+
+Pokud nektere udaje ve zprave chybi, nech pole prazdne nebo me upozorni.
+
+Vystup generuj do tabulky v Markdown (pro snadne zkopirovani do Excelu).
+
+Vstupni data vkladam nize, zacni zpracovavat prvni cast.</pre>
+        </div>
+
+      </div>
+    </details>
+  </div>
+
+  <!-- 4. VYCITANI KONSTRUKCI Z PDF -->
+  <div class="prompt-card">
+    <details>
+      <summary>
+        <div class="summary-icon" style="background:#f3e8fd">&#128196;</div>
+        <div class="summary-text">
+          <div class="summary-title">Vycitani ochlazovanych konstrukci z PDF skenu</div>
+          <div class="summary-sub">Navod pro mereni a evidenci konstrukci v PDF-XChange Editoru</div>
+        </div>
+        <span class="chevron">&#9654;</span>
+      </summary>
+      <div class="prompt-body">
+
+        <div class="workflow">
+          <h3>Postup krok za krokem</h3>
+          <ol>
+            <li>
+              <strong>OCR a posouzeni kvality skenu</strong> — Otevri PDF v PDF-XChange Editoru.
+              Zvol <em>Document &rarr; OCR Pages&hellip;</em>, vyber rozsah stranek, nastav jazyk (cestina), spust OCR.
+              Over ktere casti jsou dobre rozpoznane a kde jsou problemy.
+              <div class="tip" style="margin-top:8px">Tip: Pokud je OCR spatne, zkus zvysit DPI pri prevodu nebo prepsat PDF do vyssiho rozliseni.</div>
+            </li>
+            <li>
+              <strong>Rozdeleni budovy na zony</strong> — Identifikuj zony podle pudorysu, provoznich casti nebo PENB (napr. ucebni pavilon, telocvicna, kuchyne/jidelna).
+              Poznamenej si cisla a nazvy zon i stranky, na kterych je najdes.
+            </li>
+            <li>
+              <strong>Nastaveni meritka</strong> — Aktivuj <em>Tools &rarr; Measure &rarr; Distance Tool</em>.
+              Klikni na dve zname vzdalenosti, pravym tlacitkem zvol <em>Calibrate Measurement Tool</em> a zadej skutecnou delku (napr. 5,00 m).
+            </li>
+            <li>
+              <strong>Mereni delek a ploch</strong> —
+              Delky sten: Distance Tool.
+              Plochy: <em>Area Tool</em> (<em>Tools &rarr; Measure &rarr; Area Tool</em>) — obkresli polygonem celou konstrukci.
+            </li>
+            <li>
+              <strong>Zapis skladeb</strong> — Najdi v dokumentaci vypisy skladeb nebo legendy vrstev. Po OCR lze skladby kopirovat primo do tabulky. Pokud chybi, poznamenej "nutno doplnit".
+            </li>
+          </ol>
+        </div>
+
+        <hr/>
+
+        <h3 style="font-size:12px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--muted);margin-bottom:12px">Vzor vystupni tabulky</h3>
+        <div style="overflow-x:auto">
+          <table>
+            <thead>
+              <tr>
+                <th>Zona</th>
+                <th>Konstrukce</th>
+                <th>Popis</th>
+                <th>Plocha [m2]</th>
+                <th>Skladba</th>
+                <th>Stav</th>
+                <th>Poznamka</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Ucebni pavilon</td>
+                <td>Obvodova stena</td>
+                <td>Severni fasada</td>
+                <td>98,5</td>
+                <td>cihla 450 mm + EPS 120 mm</td>
+                <td>zatepleno</td>
+                <td>vymena oken 2020</td>
+              </tr>
+              <tr>
+                <td>Telocvicna</td>
+                <td>Strecha sikma</td>
+                <td>Kompletni plocha</td>
+                <td>410,6</td>
+                <td>tramova, zatepl. MW 180 mm</td>
+                <td>puvodni</td>
+                <td>doporucit zatepleni</td>
+              </tr>
+              <tr>
+                <td>Kuchyne+jidelna</td>
+                <td>Okna plasticka</td>
+                <td>Vychodni fasada</td>
+                <td>38,7</td>
+                <td>plastovy ram, izolacni dvojsklo</td>
+                <td>vymeneno</td>
+                <td>orientace J+S</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="tip">
+          <strong>Nejcastejsi problemy:</strong>
+          Chybejici koты &rarr; pouzij meritko + znama mereni.
+          Nejasna skladba &rarr; typicke konstrukce pro dane obdobi, nebo konzultuj s projektantem.
+          Neuplne hodnoty U &rarr; dopocitej ze skladby nebo pouzij tabulkove hodnoty z normy CSN 730540-2.
+        </div>
+
+      </div>
+    </details>
+  </div>
+
+</main>
+
+<footer>
+  <a href="/">&#8592; Energy Hub</a> &nbsp;&mdash;&nbsp; DPU Energy — interni nastroje
+</footer>
+
+<script>
+function copyPrompt(btn) {
+  const pre = btn.closest('.prompt-block').querySelector('.prompt-text');
+  navigator.clipboard.writeText(pre.textContent.trim()).then(() => {
+    btn.textContent = 'Zkopirováno!';
+    btn.classList.add('copied');
+    setTimeout(() => {
+      btn.textContent = 'Kopirovat';
+      btn.classList.remove('copied');
+    }, 2000);
+  });
+}
+</script>
+
+</body>
+</html>

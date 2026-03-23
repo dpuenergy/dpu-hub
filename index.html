@@ -1,0 +1,432 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Energy Hub | DPU Energy</title>
+<style>
+:root {
+  --brand:    #1b3280;
+  --brand-dk: #122560;
+  --accent:   #2e8cff;
+  --bg:       #f0f3f9;
+  --card:     #ffffff;
+  --text:     #0d1b3e;
+  --muted:    #5a6a8a;
+  --border:   rgba(27,50,128,.12);
+  --r:        14px;
+  --shadow:   0 2px 12px rgba(27,50,128,.10);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+}
+
+/* HEADER */
+header {
+  background: var(--brand);
+  color: #fff;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  box-shadow: 0 2px 16px rgba(0,0,0,.25);
+}
+.header-inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 24px;
+  height: 60px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.logo-mark {
+  width: 32px;
+  height: 32px;
+  background: var(--accent);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 14px;
+  letter-spacing: -.5px;
+  flex-shrink: 0;
+}
+.header-title {
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -.2px;
+}
+.header-sub {
+  font-size: 13px;
+  opacity: .65;
+  margin-left: 2px;
+}
+
+/* HERO */
+.hero {
+  background: linear-gradient(135deg, var(--brand) 0%, #1e4db7 100%);
+  color: #fff;
+  padding: 48px 24px 40px;
+}
+.hero-inner {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+.hero h1 {
+  font-size: clamp(22px, 4vw, 32px);
+  font-weight: 800;
+  letter-spacing: -.5px;
+  margin-bottom: 10px;
+}
+.hero p {
+  font-size: 15px;
+  opacity: .80;
+  max-width: 520px;
+  line-height: 1.6;
+}
+
+/* MAIN */
+main {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 40px 24px 64px;
+}
+
+/* SECTION LABEL */
+.section-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 18px;
+}
+
+/* GRID */
+.tool-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 20px;
+  margin-bottom: 48px;
+}
+
+/* CARD */
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: 24px;
+  box-shadow: var(--shadow);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  transition: transform .15s, box-shadow .15s;
+}
+.card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 24px rgba(27,50,128,.15);
+}
+.card.disabled {
+  opacity: .65;
+}
+.card.disabled:hover {
+  transform: none;
+  box-shadow: var(--shadow);
+}
+
+.card-top {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+}
+.card-icon {
+  width: 46px;
+  height: 46px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  flex-shrink: 0;
+}
+.card-icon.blue   { background: #e8f0fe; }
+.card-icon.green  { background: #e6f4ea; }
+.card-icon.orange { background: #fff3e0; }
+.card-icon.purple { background: #f3e8fd; }
+.card-icon.teal   { background: #e0f5f5; }
+.card-icon.rose   { background: #fde8ef; }
+
+.card-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1.3;
+  margin-bottom: 3px;
+}
+.card-desc {
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+/* STATUS BADGE */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 9px;
+  border-radius: 20px;
+  width: fit-content;
+}
+.badge::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  display: block;
+}
+.badge.online {
+  background: #e6f4ea;
+  color: #1e7e34;
+}
+.badge.online::before { background: #28a745; }
+
+.badge.soon {
+  background: #fff3cd;
+  color: #856404;
+}
+.badge.soon::before { background: #ffc107; }
+
+/* TAGS */
+.tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.tag {
+  font-size: 11px;
+  font-weight: 500;
+  padding: 2px 8px;
+  background: #edf0f7;
+  color: var(--muted);
+  border-radius: 6px;
+}
+
+/* BUTTON */
+.btn {
+  margin-top: auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px 18px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: background .15s, opacity .15s;
+  border: none;
+  cursor: pointer;
+}
+.btn-primary {
+  background: var(--brand);
+  color: #fff;
+}
+.btn-primary:hover { background: var(--brand-dk); }
+
+.btn-disabled {
+  background: #e5e9f2;
+  color: #a0aabf;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* ARROW */
+.btn-primary::after { content: ' →'; }
+
+/* SEPARATOR */
+.sep {
+  height: 1px;
+  background: var(--border);
+  margin: 8px 0 32px;
+}
+
+/* FOOTER */
+footer {
+  background: var(--brand-dk);
+  color: rgba(255,255,255,.55);
+  text-align: center;
+  padding: 20px 24px;
+  font-size: 12px;
+}
+footer strong { color: rgba(255,255,255,.85); }
+
+@media (max-width: 600px) {
+  .hero { padding: 32px 16px 28px; }
+  main  { padding: 28px 16px 48px; }
+  .tool-grid { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-inner">
+    <div class="logo-mark">DE</div>
+    <div>
+      <div class="header-title">Energy Hub</div>
+      <div class="header-sub">DPU Energy — interní nastroje</div>
+    </div>
+  </div>
+</header>
+
+<div class="hero">
+  <div class="hero-inner">
+    <h1>Energy Hub by DPU</h1>
+    <p>Centralni rozcestnik internich nastroju pro energeticke studie a analyzy. Kazdy nastroj je nezavisly — aktualizace jednoho neovlivni ostatni.</p>
+  </div>
+</div>
+
+<main>
+
+  <div class="section-label">Nastroje — Faze 1 (online)</div>
+  <div class="tool-grid">
+
+    <div class="card">
+      <div class="card-top">
+        <div class="card-icon blue">&#9889;</div>
+        <div>
+          <div class="card-title">Dimenzovani FVE a BESS</div>
+          <div class="badge online">Online</div>
+        </div>
+      </div>
+      <div class="card-desc">
+        Kalkulator pro dimenzovani fotovoltaickych systemu a baterovych ulozist. Vychazi ze spotrebniho profilu a cen energie.
+      </div>
+      <div class="tags">
+        <span class="tag">FVE</span>
+        <span class="tag">Baterie</span>
+        <span class="tag">Dimenzovani</span>
+      </div>
+      <a href="/fve-bess/" class="btn btn-primary">Otevrit nastroj</a>
+    </div>
+
+    <div class="card">
+      <div class="card-top">
+        <div class="card-icon green">&#128200;</div>
+        <div>
+          <div class="card-title">Kalkulator distribucnich sazeb</div>
+          <div class="badge online">Online</div>
+        </div>
+      </div>
+      <div class="card-desc">
+        Porovnani distribucnich sazeb elektricke energie. Pomaha zvolit optimalni sazbu pro dany odberny profil.
+      </div>
+      <div class="tags">
+        <span class="tag">Elektrina</span>
+        <span class="tag">Distribuce</span>
+        <span class="tag">Sazby</span>
+      </div>
+      <a href="/sazby/" class="btn btn-primary">Otevrit nastroj</a>
+    </div>
+
+    <div class="card">
+      <div class="card-top">
+        <div class="card-icon purple">&#129302;</div>
+        <div>
+          <div class="card-title">ChatGPT prompty</div>
+          <div class="badge online">Online</div>
+        </div>
+      </div>
+      <div class="card-desc">
+        Dokumentace promptovych sablon pro Virtualniho energetika — zpracovani faktur, revizni zpravy, analyza PENB a konstrukci.
+      </div>
+      <div class="tags">
+        <span class="tag">AI</span>
+        <span class="tag">ChatGPT</span>
+        <span class="tag">Dokumentace</span>
+      </div>
+      <a href="/prompty/" class="btn btn-primary">Otevrit dokumentaci</a>
+    </div>
+
+  </div>
+
+  <div class="section-label">Nastroje — Faze 2 (v priprave)</div>
+  <div class="tool-grid">
+
+    <div class="card disabled">
+      <div class="card-top">
+        <div class="card-icon orange">&#127777;&#65039;</div>
+        <div>
+          <div class="card-title">Dimenzovani tepelnych cerpadel</div>
+          <div class="badge soon">Brzy</div>
+        </div>
+      </div>
+      <div class="card-desc">
+        Hodinova simulace a dimenzovani TČ. Grafy nakladu vs. vykon, rozdeleni tepla TČ vs. bivalence, topna krivka.
+      </div>
+      <div class="tags">
+        <span class="tag">Tepelna cerpadla</span>
+        <span class="tag">Simulace</span>
+        <span class="tag">HVAC</span>
+      </div>
+      <span class="btn btn-disabled">Brzy k dispozici</span>
+    </div>
+
+    <div class="card disabled">
+      <div class="card-top">
+        <div class="card-icon teal">&#128202;</div>
+        <div>
+          <div class="card-title">Profily spotreby</div>
+          <div class="badge soon">Brzy</div>
+        </div>
+      </div>
+      <div class="card-desc">
+        Generovani hodinovych spotrebnich profilu pomoci AI na zaklade popisu objektu. Vystup kompatibilni s FVE a TČ nastroji.
+      </div>
+      <div class="tags">
+        <span class="tag">AI</span>
+        <span class="tag">Profily</span>
+        <span class="tag">Spotreba</span>
+      </div>
+      <span class="btn btn-disabled">Brzy k dispozici</span>
+    </div>
+
+    <div class="card disabled">
+      <div class="card-top">
+        <div class="card-icon rose">&#128168;</div>
+        <div>
+          <div class="card-title">Wind Ideal</div>
+          <div class="badge soon">Brzy</div>
+        </div>
+      </div>
+      <div class="card-desc">
+        Analyza veterneho potencialu z ERA5 dat. Idealni parametricka vykonova krivka pro zadany bod na mape.
+      </div>
+      <div class="tags">
+        <span class="tag">Vitr</span>
+        <span class="tag">ERA5</span>
+        <span class="tag">OZE</span>
+      </div>
+      <span class="btn btn-disabled">Brzy k dispozici</span>
+    </div>
+
+  </div>
+
+</main>
+
+<footer>
+  <strong>DPU Energy</strong> &nbsp;|&nbsp; Interni nastroje &nbsp;|&nbsp; Neautorizovany pristup je zakazan
+</footer>
+
+</body>
+</html>
