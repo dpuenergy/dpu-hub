@@ -1,13 +1,19 @@
 (function () {
   var script = document.currentScript;
   var toolName = (script && script.getAttribute('data-tool')) || document.title;
+  var hubUrl = (script && script.getAttribute('data-hub')) || 'https://calm-cocada-79e019.netlify.app/';
 
   var userEmail = '';
   try {
-    var sess = JSON.parse(localStorage.getItem('dpu_user') || 'null');
-    if (sess && sess.access_token) {
-      var payload = JSON.parse(atob(sess.access_token.split('.')[1]));
-      userEmail = payload.email || '';
+    // 1) Try URL param (for cross-origin tools like Vercel/HF)
+    userEmail = new URLSearchParams(window.location.search).get('dpu_user') || '';
+    // 2) Fall back to hub localStorage JWT
+    if (!userEmail) {
+      var sess = JSON.parse(localStorage.getItem('dpu_user') || 'null');
+      if (sess && sess.access_token) {
+        var payload = JSON.parse(atob(sess.access_token.split('.')[1]));
+        userEmail = payload.email || '';
+      }
     }
   } catch (e) {}
 
@@ -50,7 +56,7 @@
   var bar = document.createElement('div');
   bar.id = 'dpu-nav';
   bar.innerHTML =
-    '<a href="/" class="dpu-back">&#8592; Hub</a>' +
+    '<a href="' + hubUrl + '" class="dpu-back">&#8592; Hub</a>' +
     '<span class="dpu-sep">|</span>' +
     '<div class="dpu-mark">DE</div>' +
     '<span class="dpu-name">' + toolName + '</span>' +
