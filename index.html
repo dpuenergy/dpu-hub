@@ -275,6 +275,48 @@ main {
 /* ARROW */
 .btn-primary::after { content: ' →'; }
 
+/* SEARCH */
+.search-wrap {
+  background: #fff;
+  border-bottom: 1px solid var(--border);
+  padding: 14px 24px;
+}
+.search-wrap input {
+  display: block;
+  width: 100%;
+  max-width: 460px;
+  margin: 0 auto;
+  padding: 10px 16px 10px 38px;
+  border: 1.5px solid var(--border);
+  border-radius: 8px;
+  font-size: 14px;
+  color: var(--text);
+  background: var(--bg) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%235a6a8a' stroke-width='2'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cpath d='m21 21-4.35-4.35'/%3E%3C/svg%3E") no-repeat 12px center;
+  outline: none;
+  transition: border-color .15s;
+}
+.search-wrap input:focus { border-color: var(--accent); }
+
+/* SECTION HEADING */
+.section-heading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--brand);
+  margin: 36px 0 18px;
+}
+.section-heading::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+.section-heading:first-child { margin-top: 0; }
+
 /* SEPARATOR */
 .sep {
   height: 1px;
@@ -344,10 +386,14 @@ footer strong { color: rgba(255,255,255,.85); }
   </div>
 </div>
 
+<div class="search-wrap">
+  <input type="search" id="tool-search" placeholder="Hledat nástroj…" autocomplete="off">
+</div>
+
 <main>
 
-  <div class="section-label">Nástroje — online</div>
-  <div class="tool-grid">
+  <div class="section-heading">Simulace &amp; dimenzování</div>
+  <div class="tool-grid" data-section>
 
     <div class="card">
       <div class="card-top">
@@ -366,63 +412,6 @@ footer strong { color: rgba(255,255,255,.85); }
         <span class="tag">Dimenzování</span>
       </div>
       <a href="/fve-bess/" target="_blank" class="btn btn-primary">Otevřít nástroj</a>
-    </div>
-
-    <div class="card">
-      <div class="card-top">
-        <div class="card-icon green">&#128200;</div>
-        <div>
-          <div class="card-title">Kalkulátor distribučních sazeb</div>
-          <div class="badge online">Online</div>
-        </div>
-      </div>
-      <div class="card-desc">
-        Porovnání distribučních sazeb elektrické energie. Pomáhá zvolit optimální sazbu pro daný odběrný profil.
-      </div>
-      <div class="tags">
-        <span class="tag">Elektřina</span>
-        <span class="tag">Distribuce</span>
-        <span class="tag">Sazby</span>
-      </div>
-      <a href="/sazby/" target="_blank" class="btn btn-primary">Otevřít nástroj</a>
-    </div>
-
-    <div class="card">
-      <div class="card-top">
-        <div class="card-icon purple">&#129302;</div>
-        <div>
-          <div class="card-title">ChatGPT prompty</div>
-          <div class="badge online">Online</div>
-        </div>
-      </div>
-      <div class="card-desc">
-        Dokumentace promptových šablon pro Virtuálního energetika — zpracování faktur, revizní zprávy, analýza PENB a konstrukcí.
-      </div>
-      <div class="tags">
-        <span class="tag">AI</span>
-        <span class="tag">ChatGPT</span>
-        <span class="tag">Dokumentace</span>
-      </div>
-      <a href="/prompty/" target="_blank" class="btn btn-primary">Otevřít dokumentaci</a>
-    </div>
-
-    <div class="card">
-      <div class="card-top">
-        <div class="card-icon teal">&#128202;</div>
-        <div>
-          <div class="card-title">Profily spotřeby</div>
-          <div class="badge online">Online</div>
-        </div>
-      </div>
-      <div class="card-desc">
-        Generování hodinových spotřebních profilů pomocí AI na základě popisu objektu. Výstup kompatibilní s FVE a TČ nástroji.
-      </div>
-      <div class="tags">
-        <span class="tag">AI</span>
-        <span class="tag">Profily</span>
-        <span class="tag">Spotřeba</span>
-      </div>
-      <a href="https://profily-13vt-5btc9taff-dpuenergys-projects.vercel.app/" target="_blank" class="btn btn-primary">Otevřít nástroj</a>
     </div>
 
     <div class="card">
@@ -484,6 +473,92 @@ footer strong { color: rgba(255,255,255,.85); }
 
     <div class="card">
       <div class="card-top">
+        <div class="card-icon teal">&#128202;</div>
+        <div>
+          <div class="card-title">Profily spotřeby</div>
+          <div class="badge online">Online</div>
+        </div>
+      </div>
+      <div class="card-desc">
+        Generování hodinových spotřebních profilů pomocí AI na základě popisu objektu. Výstup kompatibilní s FVE a TČ nástroji.
+      </div>
+      <div class="tags">
+        <span class="tag">AI</span>
+        <span class="tag">Profily</span>
+        <span class="tag">Spotřeba</span>
+      </div>
+      <a href="https://profily-13vt-5btc9taff-dpuenergys-projects.vercel.app/" target="_blank" class="btn btn-primary">Otevřít nástroj</a>
+    </div>
+
+  </div>
+
+  <div class="section-heading">Kalkulátory &amp; analýzy</div>
+  <div class="tool-grid" data-section>
+
+    <div class="card">
+      <div class="card-top">
+        <div class="card-icon green">&#128200;</div>
+        <div>
+          <div class="card-title">Kalkulátor distribučních sazeb</div>
+          <div class="badge online">Online</div>
+        </div>
+      </div>
+      <div class="card-desc">
+        Porovnání distribučních sazeb elektrické energie. Pomáhá zvolit optimální sazbu pro daný odběrný profil.
+      </div>
+      <div class="tags">
+        <span class="tag">Elektřina</span>
+        <span class="tag">Distribuce</span>
+        <span class="tag">Sazby</span>
+      </div>
+      <a href="/sazby/" target="_blank" class="btn btn-primary">Otevřít nástroj</a>
+    </div>
+
+    <div class="card">
+      <div class="card-top">
+        <div class="card-icon teal">&#128161;</div>
+        <div>
+          <div class="card-title">Kalkulace náhrad osvětlení</div>
+          <div class="badge online">Online</div>
+        </div>
+      </div>
+      <div class="card-desc">
+        Kalkulace investičních nákladů a provozních úspor při náhradě osvětlení dle ČSN EN 12464-1. Export do PDF a Excel.
+      </div>
+      <div class="tags">
+        <span class="tag">Osvětlení</span>
+        <span class="tag">Investice</span>
+        <span class="tag">Úspory</span>
+      </div>
+      <a href="/kalkulace-nahrad/" target="_blank" class="btn btn-primary">Otevřít nástroj</a>
+    </div>
+
+  </div>
+
+  <div class="section-heading">Dokumentace &amp; podklady</div>
+  <div class="tool-grid" data-section>
+
+    <div class="card">
+      <div class="card-top">
+        <div class="card-icon purple">&#129302;</div>
+        <div>
+          <div class="card-title">ChatGPT prompty</div>
+          <div class="badge online">Online</div>
+        </div>
+      </div>
+      <div class="card-desc">
+        Dokumentace promptových šablon pro Virtuálního energetika — zpracování faktur, revizní zprávy, analýza PENB a konstrukcí.
+      </div>
+      <div class="tags">
+        <span class="tag">AI</span>
+        <span class="tag">ChatGPT</span>
+        <span class="tag">Dokumentace</span>
+      </div>
+      <a href="/prompty/" target="_blank" class="btn btn-primary">Otevřít dokumentaci</a>
+    </div>
+
+    <div class="card">
+      <div class="card-top">
         <div class="card-icon purple">&#128203;</div>
         <div>
           <div class="card-title">Generátor podkladů</div>
@@ -518,25 +593,6 @@ footer strong { color: rgba(255,255,255,.85); }
         <span class="tag">Vzdělávání</span>
       </div>
       <a href="/manual-ai.pdf" target="_blank" class="btn btn-primary">Otevřít manuál</a>
-    </div>
-
-    <div class="card">
-      <div class="card-top">
-        <div class="card-icon teal">&#128161;</div>
-        <div>
-          <div class="card-title">Kalkulace náhrad osvětlení</div>
-          <div class="badge online">Online</div>
-        </div>
-      </div>
-      <div class="card-desc">
-        Kalkulace investičních nákladů a provozních úspor při náhradě osvětlení dle ČSN EN 12464-1. Export do PDF a Excel.
-      </div>
-      <div class="tags">
-        <span class="tag">Osvětlení</span>
-        <span class="tag">Investice</span>
-        <span class="tag">Úspory</span>
-      </div>
-      <a href="/kalkulace-nahrad/" target="_blank" class="btn btn-primary">Otevřít nástroj</a>
     </div>
 
     <div class="card">
@@ -703,6 +759,24 @@ document.getElementById('login-form').addEventListener('submit', async function(
     btn.textContent = 'Přihlásit se';
     btn.disabled = false;
   }
+});
+
+// Search / filter
+document.getElementById('tool-search').addEventListener('input', function () {
+  var q = this.value.trim().toLowerCase();
+  document.querySelectorAll('.card').forEach(function (card) {
+    card.style.display = (!q || card.textContent.toLowerCase().includes(q)) ? '' : 'none';
+  });
+  document.querySelectorAll('.tool-grid[data-section]').forEach(function (grid) {
+    var hasVisible = Array.prototype.some.call(grid.querySelectorAll('.card'), function (c) {
+      return c.style.display !== 'none';
+    });
+    grid.style.display = hasVisible ? '' : 'none';
+    var heading = grid.previousElementSibling;
+    if (heading && heading.classList.contains('section-heading')) {
+      heading.style.display = hasVisible ? '' : 'none';
+    }
+  });
 });
 </script>
 </body>
