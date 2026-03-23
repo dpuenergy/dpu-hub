@@ -504,32 +504,51 @@ document.getElementById('login-form').addEventListener('submit', async function(
     }
     btn.textContent = 'Ukladam...';
     try {
-      // Exchange token for session
-      var tokenRes = await fetch(IDENTITY_URL + '/token', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: 'grant_type=' + (inviteToken ? 'invite_token' : 'recovery_token') + '&token=' + specialToken
-      });
-      if (!tokenRes.ok) throw new Error();
-      var tokenData = await tokenRes.json();
-
-      // Update password
+      // Use token directly as Bearer to set password
       var updateRes = await fetch(IDENTITY_URL + '/user', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': 'Bearer ' + tokenData.access_token
+          'Authorization': 'Bearer ' + specialToken
         },
         body: JSON.stringify({ password: password })
       });
-      if (!updateRes.ok) throw new Error();
 
-      tokenData.expires_at = Date.now() + tokenData.expires_in * 1000;
-      localStorage.setItem('dpu_user', JSON.stringify(tokenData));
+      if (!updateRes.ok) {
+        // Fallback: exchange token first, then set password
+        var tokenRes = await fetch(IDENTITY_URL + '/token', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: 'grant_type=' + (inviteToken ? 'invite_token' : 'recovery_token')
+              + '&token=' + specialToken
+              + '&password=' + encodeURIComponent(password)
+        });
+        if (!tokenRes.ok) throw new Error();
+        var tokenData = await tokenRes.json();
+        tokenData.expires_at = Date.now() + tokenData.expires_in * 1000;
+        localStorage.setItem('dpu_user', JSON.stringify(tokenData));
+        history.replaceState(null, '', '/');
+        document.getElementById('auth-overlay').style.display = 'none';
+        return;
+      }
+
+      var userData = await updateRes.json();
+      // Now login with the new password to get a session
+      var loginRes = await fetch(IDENTITY_URL + '/token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: 'grant_type=password&username=' + encodeURIComponent(userData.email)
+            + '&password=' + encodeURIComponent(password)
+      });
+      if (loginRes.ok) {
+        var loginData = await loginRes.json();
+        loginData.expires_at = Date.now() + loginData.expires_in * 1000;
+        localStorage.setItem('dpu_user', JSON.stringify(loginData));
+      }
       history.replaceState(null, '', '/');
       document.getElementById('auth-overlay').style.display = 'none';
     } catch(e) {
-      err.textContent = 'Chyba — zkuste znovu nebo pozadejte novou pozvankу.';
+      err.textContent = 'Chyba — odkaz mohl expirovat. Pozadejte novy email pres Netlify.';
       err.style.display = 'block';
       btn.textContent = 'Nastavit heslo';
       btn.disabled = false;
