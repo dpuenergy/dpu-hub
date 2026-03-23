@@ -1,0 +1,1068 @@
+<!doctype html>
+<html lang="cs">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>DPU Wind Ideal (lokální)</title>
+
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+    <style>
+
+      :root{
+        --brand:#1b3280;
+        --brand2:#0ea5e9;
+
+        --bg:#f7f9ff;
+        --card:#ffffff;
+        --text:#0b1432;
+        --muted:#4b5c95;
+        --line:rgba(27,50,128,.16);
+        --shadow:none;
+        --r:18px;
+
+        --accent: var(--brand2);
+        --warn:#f59e0b;
+        --bad:#e11d48;
+      }
+      *{
+        box-sizing:border-box;
+        font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;
+      }
+      body{
+        margin:0;
+        background:var(--bg);
+        color:var(--text);
+      }
+      header{
+        position:sticky; top:0; z-index:50;
+        padding:14px 18px;
+        backdrop-filter:saturate(1.2) blur(10px);
+        background:rgba(255,255,255,.96);
+        border-bottom:1px solid var(--line);
+        display:flex;
+        gap:10px;
+        align-items:baseline;
+        justify-content:space-between;
+      }
+      header h1{
+        margin:0;
+        font-size:18px;
+        letter-spacing:.2px;
+        color:var(--text);
+      }
+      header .sub{
+        color:var(--muted);
+        font-size:13px;
+      }
+
+      main{
+        display:grid;
+        grid-template-columns:420px 1fr;
+        gap:12px;
+        padding:12px;
+      }
+
+      .panel,.card{
+        background:var(--card);
+        border:1px solid var(--line);
+        border-radius:var(--r);
+        box-shadow:none;
+      }
+      .panel{padding:12px;}
+      .row{margin-bottom:10px;}
+      label{
+        display:block;
+        font-size:12px;
+        color:var(--muted);
+        margin-bottom:6px;
+        font-weight:400;
+      }
+
+      input,select,button{
+        width:100%;
+        padding:10px 10px;
+        border-radius:16px;
+        border:1px solid rgba(27,50,128,.18);
+        background:rgba(255,255,255,.92);
+        color:var(--text);
+        outline:none;
+      }
+      input:focus,select:focus{
+        border-color:rgba(27,50,128,.60);
+      }
+      input:disabled,select:disabled{
+        background:rgba(235,239,255,.45) !important;
+        border-color:rgba(27,50,128,.10) !important;
+        color:rgba(75,92,149,.70) !important;
+      }
+      input[type="file"]{
+        border-radius:16px;
+        border:1px dashed rgba(27,50,128,.22);
+        background:rgba(255,255,255,.75);
+      }
+      input[type="file"]::file-selector-button{
+        color:var(--text);
+        background:#fff;
+        border:1px solid rgba(12,25,48,.18);
+        border-radius:10px;
+        padding:8px 10px;
+        margin-right:10px;
+        cursor:pointer;
+      }
+      input[type="file"]::file-selector-button:hover{
+        background:rgba(12,25,48,.04);
+      }
+
+      button{
+        cursor:pointer;
+        background:var(--brand);
+        border-color:rgba(27,50,128,.28);
+        color:#fff;
+        font-weight:700;
+      }
+      button:hover{filter:brightness(1.03);}
+      button:active{transform:translateY(1px);}
+
+      .small{font-size:12px;color:var(--muted);}
+      .mono{
+        font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono",monospace;
+      }
+
+      #map{
+        height:520px;
+        border-radius:16px;
+        overflow:hidden;
+        border:1px solid var(--line);
+        background:#fff;
+      }
+
+      .grid{
+        display:grid;
+        grid-template-columns:1fr 1fr;
+        gap:10px;
+        margin-top:12px;
+      }
+      .kpi{
+        background:rgba(27,50,128,.04);
+        border:1px solid rgba(27,50,128,.14);
+        border-radius:16px;
+        padding:10px 10px;
+      }
+      .kpi .k{font-size:12px;color:var(--muted);}
+      .kpi .v{font-size:16px;font-weight:800;margin-top:4px;color:var(--text);}
+
+      .charts{
+        display:grid;
+        grid-template-columns:1fr;
+        gap:10px;
+        margin-top:12px;
+      }
+      .card{padding:12px;}
+      .card h2{
+        margin:0 0 10px 0;
+        font-size:14px;
+        color:var(--brand);
+        font-weight:800;
+        letter-spacing:.1px;
+      }
+
+      .status{
+        margin-top:10px;
+        padding:10px;
+        border-radius:16px;
+        border:1px dashed rgba(27,50,128,.22);
+        color:var(--muted);
+        font-size:12px;
+        line-height:1.35;
+        background:rgba(255,255,255,.92);
+      }
+      .status.warn{
+        border-color:rgba(245,158,11,.45);
+        color:#7a4d00;
+        background:rgba(245,158,11,.08);
+      }
+      .status.bad{
+        border-color:rgba(225,29,72,.40);
+        color:#7a0b27;
+        background:rgba(225,29,72,.08);
+      }
+
+      canvas{
+        width:100% !important;
+        height:320px !important;
+        border-radius:16px;
+        border:1px solid var(--line);
+        background:#fff;
+      }
+
+      @media (max-width:1080px){
+        main{grid-template-columns:1fr;}
+        #map{height:420px;}
+      }
+
+      .ufaGrid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+      .ufaGrid h3{margin:0 0 8px 0;font-size:14px;opacity:.9;color:var(--brand);font-weight:800}
+      @media (max-width:1100px){.ufaGrid{grid-template-columns:1fr}}
+
+    
+      .checks{display:flex;gap:14px;flex-wrap:wrap;}
+      .checkline{display:flex;align-items:center;gap:8px;white-space:nowrap;}
+      .checkline input{margin:0; width:16px; height:16px;}
+
+    </style>
+  </head>
+
+  <body>
+    <header>
+      <div>
+        <h1>DPU Wind Ideal</h1>
+        <div class="sub">
+          Mapový výběr bodu + návrh ideální turbíny + bilance se spotřebou
+          (volitelně)
+        </div>
+      </div>
+      <div class="sub mono">localhost</div>
+    </header>
+
+    <main>
+      <div class="panel">
+        <div class="row">
+          <label>Souřadnice (klikni do mapy)</label>
+          <input id="coords" value="50.0755, 14.4378" />
+          <div class="small">lat, lon</div>
+        </div>
+
+        <div class="row">
+          <label>Výchozí rok</label>
+          <input id="year" type="number" value="2024" />
+        </div>
+<div class="row">
+          <label>Výška stožáru [m]</label>
+          <input id="mast" type="number" value="20" min="5" step="1" />
+        </div>
+        <div class="row">
+          <label>Vypínací rychlost větru (bezpečnostní odstavení) [m/s]</label>
+          <input id="vCo" type="number" value="25" min="0" max="60" step="0.1" />
+          <div class="small">Při rychlosti ≥ této hodnoty se výkon v modelu nastaví na 0 kW. (Když necháš prázdné, pošle se default.)</div>
+        </div>
+
+
+        <div class="row">
+          <label>Terén (profilový exponent)</label>
+          <select id="terrain">
+            <option value="open">otevřený terén (α 0,12)</option>
+            <option value="mixed" selected>smíšený terén (α 0,16)</option>
+            <option value="rough">hrubý / zastavěný terén (α 0,20)</option>
+          </select>
+        </div>
+<div class="row">
+          <label>Korekce místních podmínek větru</label>
+          <select id="windFactor">
+            <option value="0.85">Závětří / členitý terén (−15 %)</option>
+            <option value="0.95">Spíš horší podmínky (−5 %)</option>
+            <option value="1.00" selected>Bez korekce (0 %)</option>
+            <option value="1.05">Spíš lepší podmínky (+5 %)</option>
+            <option value="1.15">Návětrná hrana / otevřené (+15 %)</option>
+          </select>
+          <div class="small">
+            Jednoduchý multiplikátor rychlosti větru před výpočtem. Nejde o
+            mikrositing.
+          </div>
+        </div>
+
+        <div class="row">
+          <label>Ztráty v rozvodech [%]</label>
+          <input
+            id="cableLoss"
+            type="number"
+            value="2.0"
+            min="0"
+            max="50"
+            step="0.1"
+          />
+          <div class="small">
+            Ztráty mezi turbínou a střídačem / místem připojení.
+          </div>
+        </div>
+
+        <div class="row">
+          <label>Účinnost střídače [%]</label>
+          <input
+            id="invEff"
+            type="number"
+            value="0.96"
+            min="0.5"
+            max="1.0"
+            step="0.01"
+          />
+          <div class="small">Např. 0.95–0.99.</div>
+        </div>
+
+        <div class="row">
+          <label>Instalovaný výkon turbíny (ručně)</label>
+          <div style="display: flex; gap: 8px; align-items: center">
+            <input id="pCapUse" type="checkbox" />
+            <div class="small" style="flex: 1">
+              Použít ruční špičkový výkon pro simulaci
+            </div>
+          </div>
+          <div
+            style="
+              display: flex;
+              gap: 8px;
+              align-items: center;
+              margin-top: 6px;
+            "
+          >
+            <input
+              id="pCapSlider"
+              type="range"
+              min="0.5"
+              max="30"
+              step="0.5"
+              value="10"
+              style="flex: 1"
+              disabled
+            />
+            <input
+              id="pCapManual"
+              type="number"
+              min="0.5"
+              step="0.5"
+              value="10"
+              style="width: 120px"
+              disabled
+            />
+          </div>
+          <div class="small">
+            Ideál se počítá vždy. Ruční výkon jen přepočítá hodinový profil a
+            bilanci.
+          </div>
+        </div>
+
+        <div class="row">
+          <label>Kalibrace větru podle ÚFA (doporučeno)</label>
+          <div style="display: flex; gap: 8px; align-items: center">
+            <input id="ufaCal" type="checkbox" checked />
+            <div class="small" style="flex: 1">
+              Upraví rozdělení rychlosti větru ERA5 tak, aby odpovídalo mapě ÚFA
+              (Weibull A/k na 10 m).
+            </div>
+          </div>
+        </div>
+
+        <div class="row">
+          <label>Hodinový profil spotřeby [kW] (CSV)</label>
+          <input id="loadFile" type="file" accept=".csv,text/csv" />
+          <div class="small">
+            Může mít hlavičku i více sloupců. Beru první číslo na každém řádku.
+            8760 nebo 8784 hodnot.
+          </div>
+        
+<div class="row">
+          <label>Režim optimalizace</label>
+          <select id="mode">
+            <option value="MAX_ENERGY" selected>Maximalizace roční výroby</option>
+            <option value="MAX_ENERGY_WITH_PEAK_CAP">
+              Maximalizace ročního využití
+            </option>
+          </select>
+        </div>
+
+        <div class="row" id="peakRow" style="display: none">
+          <label>Limit špičkového výkonu (kW)</label>
+          <input id="peak" type="number" value="10" min="0.5" step="0.5" />
+        </div>
+
+        
+</div>
+
+        <div class="row">
+          <button id="run">Spočítat</button>
+          <div class="small">Výpočet jde spustit i bez nahrané spotřeby.</div>
+        </div>
+
+        <div id="status" class="status">Klikni do mapy a dej „Spočítat“.</div>
+        
+
+      </div>
+
+      <div>
+        <div id="map" class="card"></div>
+
+        <div id="kpis" class="kpis"></div>
+        
+                <div class="card" style="margin-top:12px;">
+                  <h2 style="margin:0 0 6px 0;">Statistika větru (ÚFA AV ČR)</h2>
+                  <div class="small" style="margin-bottom:10px;">
+                    Grafy jsou odvozené z dat ÚFA (10 m) pro zadané souřadnice. Slouží jako orientační kontrola směrovosti a rozdělení rychlostí.
+                  </div>
+                  <div class="ufaGrid">
+                    <div class="card" style="padding:10px;"><h3>Rozdělení směrů větru (%)</h3><canvas id="ufaRoseFreq"></canvas></div>
+                    <div class="card" style="padding:10px;"><h3>Průměrná rychlost větru (m/s)</h3><canvas id="ufaRoseMean"></canvas></div>
+                    <div class="card" style="padding:10px;"><h3>Roční výroba energie (kWh)</h3><canvas id="ufaRoseAep"></canvas></div>
+                    <div class="card" style="padding:10px;"><h3>Hustota pravděpodobnosti rychlosti větru</h3><canvas id="ufaPdf"></canvas></div>
+                  </div>
+                </div>
+        
+
+        <div class="charts">
+          <div class="card">
+            <h2>Výkonová křivka turbíny</h2>
+            <canvas id="curve"></canvas>
+          </div>
+
+          <div class="card">
+            <h2>Hodinový průběh (celý rok)</h2>
+
+            <div class="row" style="margin-top:0;">
+              <label>Zobrazení hodinového profilu</label>
+              <select id="seriesMode">
+                <option value="hourly" selected>Celý rok (hodinově)</option>
+                <option value="daily_sum">Denní suma (kWh/den)</option>
+                <option value="daily_avg">Denní průměr (kW)</option>
+                <option value="nth_3">Každá 3. hodina</option>
+                <option value="nth_6">Každá 6. hodina</option>
+                <option value="nth_12">Každá 12. hodina</option>
+                <option value="nth_24">Každá 24. hodina</option>
+              </select>
+            </div>
+
+            <div class="row" style="margin-top:8px;">
+              <label>Roky v grafu</label>
+              <div class="checks">
+                <label class="checkline"><input id="y2023" type="checkbox" checked />2023</label>
+                <label class="checkline"><input id="y2024" type="checkbox" checked />2024</label>
+                <label class="checkline"><input id="y2025" type="checkbox" checked />2025</label>
+              </div>
+            </div>
+
+            <canvas id="hourly"></canvas>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <script>
+
+      const API = "https://dpuenergy-dpu-wind-ideal.hf.space";
+
+      const statusEl = document.getElementById("status");
+      const kpisEl = document.getElementById("kpis");
+
+      function setStatus(html, cls = "") {
+        statusEl.className = "status " + (cls || "");
+        statusEl.innerHTML = html;
+      }
+
+      function fmt(n, digits = 0) {
+        if (n === null || n === undefined || Number.isNaN(n)) return "—";
+        return Number(n).toLocaleString("cs-CZ", {
+          minimumFractionDigits: digits,
+          maximumFractionDigits: digits,
+        });
+      }
+
+      // -------------------------
+      // CSV spotřeba
+      // -------------------------
+      function firstNumberInLine(line) {
+        if (!line) return NaN;
+        const m = String(line)
+          .replace(/\u00A0/g, " ")
+          .match(/[-+]?\d+(?:[ \t]\d{3})*(?:[.,]\d+)?/);
+        if (!m) return NaN;
+        let s = m[0].replace(/[ \t]/g, "");
+        s = s.replace(",", ".");
+        const n = parseFloat(s);
+        return Number.isFinite(n) ? n : NaN;
+      }
+
+      function parseLoadCSV(text) {
+        const lines = String(text).split(/\r?\n/);
+        const out = [];
+        for (const ln of lines) {
+          const v = firstNumberInLine(ln);
+          if (Number.isFinite(v)) out.push(v);
+        }
+        return out;
+      }
+
+      function readFileAsText(file) {
+        return new Promise((resolve, reject) => {
+          const r = new FileReader();
+          r.onload = () => resolve(String(r.result || ""));
+          r.onerror = () => reject(r.error || new Error("Nelze přečíst soubor"));
+          r.readAsText(file);
+        });
+      }
+
+      function computeBalance(genKw, loadKw) {
+        const n = Math.min(genKw.length, loadKw.length);
+        let eGen = 0, eLoad = 0, eSelf = 0, eExp = 0;
+        for (let i = 0; i < n; i++) {
+          const g = Number(genKw[i]) || 0;
+          const l = Number(loadKw[i]) || 0;
+          eGen += g;
+          eLoad += l;
+          const self = Math.min(g, l);
+          eSelf += self;
+          eExp += g - self;
+        }
+        const coverage = eLoad > 0 ? eSelf / eLoad : 0;
+        const selfUse = eGen > 0 ? eSelf / eGen : 0;
+        return { eGen, eLoad, eSelf, eExp, coverage, selfUse, n };
+      }
+
+      // -------------------------
+      // Transformace časových řad (graf)
+      // -------------------------
+      function buildHourlyXY(arrKw) {
+        return arrKw.map((v, i) => ({ x: i + 1, y: Number(v) || 0 }));
+      }
+
+      function buildNthXY(arrKw, n) {
+        const out = [];
+        for (let i = 0; i < arrKw.length; i += n) {
+          out.push({ x: i + 1, y: Number(arrKw[i]) || 0 });
+        }
+        return out;
+      }
+
+      function buildDaily(arrKw, mode) {
+        const n = arrKw.length;
+        const days = Math.floor(n / 24);
+        const out = [];
+        for (let d = 0; d < days; d++) {
+          let s = 0;
+          for (let h = 0; h < 24; h++) s += Number(arrKw[d * 24 + h]) || 0;
+          const y = mode === "avg" ? s / 24 : s;
+          out.push({ x: d + 1, y });
+        }
+        return out;
+      }
+
+      function transformSeries(arrKw, seriesMode) {
+        if (!Array.isArray(arrKw) || arrKw.length === 0)
+          return { xy: [], xLabel: "Hodina", yLabel: "Výkon [kW]" };
+
+        if (seriesMode === "hourly") {
+          return { xy: buildHourlyXY(arrKw), xLabel: "Hodina v roce", yLabel: "Výkon [kW]" };
+        }
+        if (seriesMode === "daily_sum") {
+          return { xy: buildDaily(arrKw, "sum"), xLabel: "Den v roce", yLabel: "Denní energie [kWh/den]" };
+        }
+        if (seriesMode === "daily_avg") {
+          return { xy: buildDaily(arrKw, "avg"), xLabel: "Den v roce", yLabel: "Denní průměrný výkon [kW]" };
+        }
+        if (seriesMode.startsWith("nth_")) {
+          const n = Number(seriesMode.split("_")[1]) || 6;
+          return { xy: buildNthXY(arrKw, n), xLabel: "Hodina v roce", yLabel: "Výkon [kW]" };
+        }
+        return { xy: buildHourlyXY(arrKw), xLabel: "Hodina v roce", yLabel: "Výkon [kW]" };
+      }
+
+      // -------------------------
+      // Mapa
+      // -------------------------
+      const map = L.map("map").setView([50.0755, 14.4378], 7);
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        maxZoom: 19,
+        attribution: "&copy; OpenStreetMap",
+      }).addTo(map);
+
+      let marker = L.marker([50.0755, 14.4378]).addTo(map);
+
+      function setCoords(lat, lon) {
+        document.getElementById("coords").value = `${lat.toFixed(5)}, ${lon.toFixed(5)}`;
+        marker.setLatLng([lat, lon]);
+      }
+
+      map.on("click", (e) => setCoords(e.latlng.lat, e.latlng.lng));
+
+      // -------------------------
+      // Grafy
+      // -------------------------
+      let curveChart = null;
+      let hourlyChart = null;
+
+      // Stav
+      let loadProfileKw = null;
+      let lastGenKwByYear = {}; // {2023: [...], 2024: [...], 2025: [...]}
+      let lastWindMsByYear = {}; // {2023: [...], 2024: [...], 2025: [...]}
+      let lastLastResponseByYear = {}; // celý response pro KPI (primárně pro vybraný rok)
+      const fixedCompareYears = [2023, 2024, 2025];
+
+      // UI drobnosti
+      const modeEl = document.getElementById("mode");
+      const peakRow = document.getElementById("peakRow");
+      modeEl.addEventListener("change", () => {
+        peakRow.style.display = modeEl.value === "MAX_ENERGY_WITH_PEAK_CAP" ? "block" : "none";
+      });
+
+      // ruční výkon turbíny (slider/number)
+      const pCapUseEl = document.getElementById("pCapUse");
+      const pCapSliderEl = document.getElementById("pCapSlider");
+      const pCapManualEl = document.getElementById("pCapManual");
+
+      function setPCapEnabled(on) {
+        pCapSliderEl.disabled = !on;
+        pCapManualEl.disabled = !on;
+      }
+      setPCapEnabled(false);
+
+      pCapUseEl.addEventListener("change", () => setPCapEnabled(pCapUseEl.checked));
+      pCapSliderEl.addEventListener("input", () => { pCapManualEl.value = pCapSliderEl.value; });
+      pCapManualEl.addEventListener("input", () => { pCapSliderEl.value = pCapManualEl.value; });
+
+      // upload spotřeby
+      document.getElementById("loadFile").addEventListener("change", async () => {
+        const f = document.getElementById("loadFile").files?.[0];
+        if (!f) {
+          loadProfileKw = null;
+          renderHourlyChart();
+          // statistika větru (ÚFA)
+          const [lat, lon] = document.getElementById("coords").value.split(",").map((s) => Number(String(s).trim()));
+          if (Number.isFinite(lat) && Number.isFinite(lon)) renderUfaCharts(lat, lon);
+
+          return;
+        }
+        try {
+          const txt = await readFileAsText(f);
+          const vals = parseLoadCSV(txt).map(Number);
+          loadProfileKw = vals;
+          const n = vals.length;
+          renderHourlyChart();
+          // statistika větru (ÚFA)
+          const [lat, lon] = document.getElementById("coords").value.split(",").map((s) => Number(String(s).trim()));
+          if (Number.isFinite(lat) && Number.isFinite(lon)) renderUfaCharts(lat, lon);
+
+
+          if (n !== 8760 && n !== 8784) {
+            setStatus(
+              `Pozor: profil spotřeby má ${n} hodnot. Očekávám 8760 nebo 8784. Výpočet jde pustit i bez spotřeby.`,
+              "warn",
+            );
+          } else {
+            setStatus(`Profil spotřeby nahrán: ${n} hodin.`, "");
+          }
+        } catch (e) {
+          loadProfileKw = null;
+          setStatus("Profil spotřeby se nepodařilo načíst.", "warn");
+        }
+      });
+
+      document.getElementById("seriesMode").addEventListener("change", () => renderHourlyChart());
+
+      ["y2023","y2024","y2025"].forEach((id) => {
+        const el = document.getElementById(id);
+        if (el) el.addEventListener("change", () => renderHourlyChart());
+      });
+
+
+      function readCoords() {
+        const [latStr, lonStr] = document.getElementById("coords").value.split(",").map((s) => s.trim());
+        const lat = Number(latStr);
+        const lon = Number(lonStr);
+        return { lat, lon };
+      }
+
+      function buildPayloadForYear(y) {
+        const { lat, lon } = readCoords();
+        const mode = document.getElementById("mode").value;
+
+        return {
+          lat,
+          lon,
+          year: y,
+          mast_height_m: Number(document.getElementById("mast").value),
+          terrain: document.getElementById("terrain").value,
+          method: "bilinear",
+          mode,
+          peak_cap_kw: mode === "MAX_ENERGY_WITH_PEAK_CAP" ? Number(document.getElementById("peak").value) : null,
+          include_hourly_power: true,
+          wind_speed_factor: Number(document.getElementById("windFactor").value),
+          manual_p_cap_kw: document.getElementById("pCapUse").checked ? Number(document.getElementById("pCapManual").value) : null,
+          v_co: Number(document.getElementById("vCo").value),
+
+          // ÚFA kalibrace
+          use_ufa_calibration: document.getElementById("ufaCal").checked,
+          ufa_rotor_m: 5.0,
+          ufa_emax_w: 5000.0,
+          ufa_force: false,
+
+          losses: {
+            availability: 0.95,
+            electrical: 0.05,
+            cable_loss_pct: Number(document.getElementById("cableLoss").value),
+            inverter_eff: Number(document.getElementById("invEff").value) / 100.0,
+          },
+        };
+      }
+
+      async function fetchIdeal(payload) {
+        const res = await fetch(`${API}/ideal`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        if (!res.ok) {
+          const txt = await res.text();
+          throw new Error(`Backend ${res.status}: ${txt}`);
+        }
+        return await res.json();
+      }
+
+      function renderCurve(data) {
+        const curve = data.power_curve_points || [];
+        const curveXY = curve
+          .map((d) => ({ x: Number(d.v_ms), y: Number(d.p_kw) }))
+          .filter((pt) => Number.isFinite(pt.x) && Number.isFinite(pt.y));
+
+        const pMaxRaw = curveXY.length ? Math.max(...curveXY.map((pt) => pt.y)) : 0;
+        const pMax = pMaxRaw > 0 ? pMaxRaw : 1;
+
+        if (curveChart) curveChart.destroy();
+        curveChart = new Chart(document.getElementById("curve"), {
+          type: "line",
+          data: {
+            datasets: [
+              {
+                label: "Výkonová křivka turbíny P(v) [kW]",
+                data: curveXY,
+                pointRadius: 0,
+                borderWidth: 3,
+                tension: 0.15,
+                spanGaps: true,
+              },
+            ],
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+              x: { type: "linear", title: { display: true, text: "Rychlost větru [m/s]" } },
+              y: { beginAtZero: true, suggestedMax: pMax * 1.05, title: { display: true, text: "Výkon [kW]" } },
+            },
+          },
+        });
+      }
+
+      function renderKPIs(data, yearLabel) {
+        const ip = data.ideal_params || {};
+        const sp = data.sim_params || {};
+        const s = data.summary || {};
+        const ws = data.wind_stats || {};
+        const grid = data.grid || {};
+
+        const kpis = [
+          ["Rok", String(yearLabel)],
+          ["Roční výroba elektřiny [kWh]", fmt(s.E_year_kWh, 0)],
+          ["Maximální dosažený výkon [kW]", fmt(s.Pmax_kW, 2)],
+          ["Využití instalovaného výkonu (kapacitní faktor) [-]", fmt(s.capacity_factor_est, 3)],
+          ["Navržený špičkový výkon turbíny (ideál) [kW]", fmt(ip.p_cap_kw, 2)],
+          ["Použitý špičkový výkon pro simulaci [kW]", fmt(sp.p_cap_kw, 2)],
+          ["Rozběhová rychlost větru [m/s]", fmt(ip.v_ci, 2)],
+          ["Jmenovitá rychlost větru [m/s]", fmt(ip.v_r, 2)],
+          ["Tvar náběhu výkonu k [-]", fmt(ip.k, 2)],
+          ["Průměrná rychlost větru ve výšce stožáru [m/s]", fmt(ws.ws_hub_mean_ms, 2)],
+          ["Medián rychlosti větru (P50) ve výšce stožáru [m/s]", fmt(ws.ws_hub_p50_ms, 2)],
+          ["Horní percentil rychlosti větru (P90) ve výšce stožáru [m/s]", fmt(ws.ws_hub_p90_ms, 2)],
+          ["Rozlišení dat (grid) ~ [km]", `${fmt(grid.cell_km_lat, 1)}×${fmt(grid.cell_km_lon, 1)}`],
+        ];
+
+        // bilance se spotřebou (pokud je nahraná)
+        if (Array.isArray(loadProfileKw) && loadProfileKw.length > 0 && Array.isArray(data.hourly_power_kw)) {
+          const bal = computeBalance(data.hourly_power_kw, loadProfileKw);
+          kpis.push(["Roční spotřeba [kWh]", fmt(bal.eLoad, 0)]);
+          kpis.push(["Vlastní spotřeba [kWh]", fmt(bal.eSelf, 0)]);
+          kpis.push(["Přetoky [kWh]", fmt(bal.eExp, 0)]);
+          kpis.push(["Pokrytí spotřeby vlastní výrobou [%]", fmt(bal.coverage * 100, 1)]);
+          kpis.push(["Využití vyrobené elektřiny [%]", fmt(bal.selfUse * 100, 1)]);
+        }
+
+        kpisEl.innerHTML = kpis
+          .map(([k, v]) => `<div class="kpi"><div class="k">${k}</div><div class="v">${v}</div></div>`)
+          .join("");
+      }
+
+      
+      let ufaRoseFreqChart = null;
+      let ufaRoseMeanChart = null;
+      let ufaRoseAepChart = null;
+      let ufaPdfChart = null;
+
+      async function fetchUfa(lat, lon) {
+        const rotor = 5;
+        const emax = 5000;
+        const url = `${API}/api/ufa-klima10?lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lon)}&rotor=${rotor}&emax=${emax}`;
+        const r = await fetch(url);
+        if (!r.ok) throw new Error(await r.text());
+        return await r.json();
+      }
+
+      function destroyUfaCharts() {
+        [ufaRoseFreqChart, ufaRoseMeanChart, ufaRoseAepChart, ufaPdfChart].forEach((c) => c && c.destroy());
+        ufaRoseFreqChart = ufaRoseMeanChart = ufaRoseAepChart = ufaPdfChart = null;
+      }
+
+      function weibullPdf(v, A, k) {
+        const x = Math.max(v, 0);
+        const a = Math.max(A, 1e-6);
+        const kk = Math.max(k, 1e-3);
+        const z = (x / a) ** kk;
+        return (kk / a) * ((x / a) ** (kk - 1)) * Math.exp(-z);
+      }
+
+      async function renderUfaCharts(lat, lon) {
+        try {
+          const ufa = await fetchUfa(lat, lon);
+          if (!ufa || !Array.isArray(ufa.sectors) || ufa.sectors.length !== 12) return;
+
+          const sectors = [...ufa.sectors].sort((a,b) => a.dir_deg - b.dir_deg);
+          const labels = sectors.map(s => String(s.dir_deg));
+          const freqAll = sectors.map(s => Number(s.freq_all_pct));
+          const meanV = sectors.map(s => Number(s.v_mean_ms));
+          const aep = sectors.map(s => Number(s.aep_kwh));
+
+          destroyUfaCharts();
+
+          const ctxF = document.getElementById("ufaRoseFreq");
+          const ctxM = document.getElementById("ufaRoseMean");
+          const ctxA = document.getElementById("ufaRoseAep");
+          const ctxP = document.getElementById("ufaPdf");
+
+          if (ctxF) {
+            ufaRoseFreqChart = new Chart(ctxF, {
+              type: "radar",
+              data: { labels, datasets: [{ label: "Frekvence (%)", data: freqAll, pointRadius: 0, borderWidth: 2 }] },
+              options: { responsive: true, maintainAspectRatio: false, scales: { r: { beginAtZero: true } } }
+            });
+          }
+
+          if (ctxM) {
+            ufaRoseMeanChart = new Chart(ctxM, {
+              type: "radar",
+              data: { labels, datasets: [{ label: "v̄ (m/s)", data: meanV, pointRadius: 0, borderWidth: 2 }] },
+              options: { responsive: true, maintainAspectRatio: false, scales: { r: { beginAtZero: true } } }
+            });
+          }
+
+          if (ctxA) {
+            ufaRoseAepChart = new Chart(ctxA, {
+              type: "radar",
+              data: { labels, datasets: [{ label: "AEP (kWh/rok)", data: aep, pointRadius: 0, borderWidth: 2 }] },
+              options: { responsive: true, maintainAspectRatio: false, scales: { r: { beginAtZero: true } } }
+            });
+          }
+
+          if (ctxP && ufa.totals) {
+            const A = Number(ufa.totals.weibull_A_ms);
+            const k = Number(ufa.totals.weibull_k);
+            const xs = [];
+            const ys = [];
+            const vMax = 20;
+            const step = 0.1;
+            for (let v = 0; v <= vMax + 1e-9; v += step) {
+              xs.push(v);
+              ys.push(weibullPdf(v, A, k));
+            }
+            ufaPdfChart = new Chart(ctxP, {
+              type: "line",
+              data: { labels: xs, datasets: [{ label: "PDF", data: ys, pointRadius: 0, borderWidth: 2, tension: 0.1 }] },
+              options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                  x: { title: { display: true, text: "m/s" } },
+                  y: { beginAtZero: true, title: { display: true, text: "" } }
+                }
+              }
+            });
+          }
+        } catch (e) {
+          // tichá degradace (grafy nejsou kritické)
+          console.warn("UFA charts failed:", e);
+        }
+      }
+
+function renderHourlyChart() {
+        const seriesMode = document.getElementById("seriesMode").value;
+
+        const years = fixedCompareYears;
+        const selectedYears = years.filter((y) => {
+          const cb = document.getElementById(`y${y}`);
+          return cb ? cb.checked : true;
+        });
+        const availableYears = selectedYears.filter((y) => Array.isArray(lastGenKwByYear[y]) && lastGenKwByYear[y].length > 0);
+
+        if (availableYears.length === 0) return;
+
+        // serie pro každý rok
+        const series = [];
+        for (const y of availableYears) {
+          const gen = lastGenKwByYear[y].map(Number);
+          const t = transformSeries(gen, seriesMode);
+          series.push({ year: y, ...t });
+        }
+
+        // spotřeba (pokud existuje) – zarovnáme délku na první dostupný rok
+        let loadT = null;
+        if (Array.isArray(loadProfileKw) && loadProfileKw.length > 0) {
+          const gen0 = lastGenKwByYear[availableYears[0]].map(Number);
+          const n = Math.min(gen0.length, loadProfileKw.length);
+          loadT = transformSeries(loadProfileKw.slice(0, n).map(Number), seriesMode);
+        }
+
+        // Y max napříč vším
+        let yMaxRaw = 0;
+        for (const s of series) {
+          if (s.xy.length) yMaxRaw = Math.max(yMaxRaw, Math.max(...s.xy.map((p) => p.y)));
+        }
+        if (loadT && loadT.xy.length) yMaxRaw = Math.max(yMaxRaw, Math.max(...loadT.xy.map((p) => p.y)));
+        const yMax = yMaxRaw > 0 ? yMaxRaw : 1;
+
+        const datasets = series.map((s) => ({
+          label: `Výroba turbíny – ${s.year}`,
+          data: s.xy,
+          pointRadius: 0,
+          borderWidth: 2,
+          tension: 0.1,
+          spanGaps: true,
+        }));
+
+        if (loadT) {
+          datasets.push({
+            label: "Spotřeba",
+            data: loadT.xy,
+            pointRadius: 0,
+            borderWidth: 2,
+            tension: 0.1,
+            spanGaps: true,
+          });
+        }
+
+        // rychlost větru (m/s) – přerušovaně, pro zobrazené roky
+        for (const y of availableYears) {
+          if (Array.isArray(lastWindMsByYear[y]) && lastWindMsByYear[y].length > 0) {
+            const gen0 = lastGenKwByYear[y].map(Number);
+            const n = Math.min(gen0.length, lastWindMsByYear[y].length);
+            const windT = transformSeries(lastWindMsByYear[y].slice(0, n).map(Number), seriesMode);
+            datasets.push({
+              label: `Rychlost větru – ${y}`,
+              data: windT.xy,
+              yAxisID: "y2",
+              pointRadius: 0,
+              borderWidth: 1,
+              borderDash: [6, 4],
+              tension: 0.1,
+              spanGaps: true,
+            });
+          }
+        }
+if (hourlyChart) hourlyChart.destroy();
+        hourlyChart = new Chart(document.getElementById("hourly"), {
+          type: "line",
+          data: { datasets },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+              x: { type: "linear", title: { display: true, text: series[0].xLabel }, max: (seriesMode === "hourly" || seriesMode.startsWith("nth_")) ? 8784 : 366 },
+              y: { beginAtZero: true, suggestedMax: yMax * 1.05, title: { display: true, text: series[0].yLabel } },
+              y2: { position: "right", beginAtZero: true, grid: { drawOnChartArea: false }, title: { display: true, text: "Rychlost větru (m/s)" } },
+            },
+          },
+        });
+      }
+
+      document.getElementById("run").addEventListener("click", async () => {
+        const years = fixedCompareYears;
+        const mainYear = Number(document.getElementById("year").value);
+
+        setStatus("Počítám…", "");
+
+        try {
+          // stáhni data pro požadované roky
+          const results = await Promise.all(
+            years.map(async (y) => {
+              const payload = buildPayloadForYear(y);
+              const data = await fetchIdeal(payload);
+              return [y, data];
+            }),
+          );
+
+          lastGenKwByYear = {};
+          lastLastResponseByYear = {};
+          for (const [y, data] of results) {
+            lastLastResponseByYear[y] = data;
+            lastGenKwByYear[y] = Array.isArray(data.hourly_power_kw) ? data.hourly_power_kw : [];
+            lastWindMsByYear[y] = Array.isArray(data.hourly_wind_ms) ? data.hourly_wind_ms : [];
+          }
+
+          // bereme "hlavní" rok pro KPI+curve (default 2024)
+          const mainData = lastLastResponseByYear[mainYear] || lastLastResponseByYear[years[0]];
+
+          // status (grid + meteo + ÚFA info)
+          const warn =
+            mainData?.summary?.months_available < 12
+              ? `<b style="color: var(--warn);">Pozor:</b> chybí měsíce: <span class="mono">${mainData.summary.months_list}</span><br/>`
+              : "";
+
+          let ufaLine = "";
+          if (mainData?.ufa_calibration) {
+            const u = mainData.ufa_calibration;
+            if (u.enabled) {
+              ufaLine = `<span class="small">ÚFA kalibrace: <b>zapnuto</b> • A_era ${fmt(u.A_era, 2)} → A_ufa ${fmt(u.A_ufa, 2)} • k_era ${fmt(u.k_era, 2)} → k_ufa ${fmt(u.k_ufa, 2)} • cache: ${u.cached ? "ano" : "ne"}</span><br/>`;
+            } else {
+              ufaLine = `<span class="small" style="color: var(--warn);">ÚFA kalibrace: <b>nepovedla se</b> (${u.error || "bez detailu"})</span><br/>`;
+            }
+          }
+
+          setStatus(`
+            ${warn}
+            Použitý bod: <span class="mono">${fmt(mainData.used_point.lat, 5)}, ${fmt(mainData.used_point.lon, 5)}</span><br/>
+            <span class="small">Dataset: <b>ERA5-Land</b> • grid: ~${fmt(mainData.grid.cell_km_lat, 1)}×${fmt(mainData.grid.cell_km_lon, 1)} km (Δlat ${fmt(mainData.grid.lat_step_deg, 3)}°, Δlon ${fmt(mainData.grid.lon_step_deg, 3)}°) • nejbližší gridpoint: <span class="mono">${fmt(mainData.grid.nearest_grid_lat, 5)}, ${fmt(mainData.grid.nearest_grid_lon, 5)}</span></span><br/>
+            <span class="small">Vítr (10 m): průměr ${fmt(mainData.wind_stats.ws10_mean_ms, 2)} m/s • ve výšce stožáru: průměr ${fmt(mainData.wind_stats.ws_hub_mean_ms, 2)} m/s • P50 ${fmt(mainData.wind_stats.ws_hub_p50_ms, 2)} m/s • P90 ${fmt(mainData.wind_stats.ws_hub_p90_ms, 2)} m/s • korekce ${fmt((mainData.wind_stats.wind_speed_factor - 1) * 100, 0)} %</span><br/>
+            ${ufaLine}
+            alpha: <span class="mono">${fmt(mainData.alpha, 2)}</span>
+          `);
+
+          // po prvním výpočtu přizpůsob max slideru podle ideálu
+          const idealPCap = Number(mainData?.ideal_params?.p_cap_kw);
+          if (Number.isFinite(idealPCap) && idealPCap > 0) {
+            const maxPCap = Math.max(30, Math.round(idealPCap * 2));
+            pCapSliderEl.max = String(maxPCap);
+            if (!pCapUseEl.checked) {
+              pCapSliderEl.value = String(idealPCap);
+              pCapManualEl.value = String(idealPCap);
+            }
+          }
+
+          renderKPIs(mainData, mainYear);
+          renderCurve(mainData);
+          renderHourlyChart();
+          // statistika větru (ÚFA)
+          const [lat, lon] = document.getElementById("coords").value.split(",").map((s) => Number(String(s).trim()));
+          if (Number.isFinite(lat) && Number.isFinite(lon)) renderUfaCharts(lat, lon);
+
+        } catch (e) {
+          setStatus(
+            `Chyba výpočtu:<br/><span class="mono">${String(e?.message || e)}</span>`,
+            "bad",
+          );
+        }
+      });
+
+      setStatus("Klikni do mapy a dej „Spočítat“.", "");
+
+    </script>
+  </body>
+</html>
