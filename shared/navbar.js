@@ -1,7 +1,7 @@
 (function () {
   var HUB = 'https://calm-cocada-79e019.netlify.app';
   var SECRET = 'DPU2025int';
-  var TOKEN_EXPIRY_MIN = 120; // token platný 2 hodiny
+  var TOKEN_EXPIRY_MIN = 480; // token platný 8 hodin (celý pracovní den)
 
   var script = document.currentScript;
   var toolName = (script && script.getAttribute('data-tool')) || document.title;
@@ -27,11 +27,25 @@
   } else if (onHub) {
     // Netlify subpage — ověř session v localStorage
     var sessValid = false;
+    var storedNav = null;
     try {
-      var stored = JSON.parse(localStorage.getItem('dpu_user') || 'null');
-      if (stored && stored.expires_at > Date.now()) sessValid = true;
+      storedNav = JSON.parse(localStorage.getItem('dpu_user') || 'null');
+      if (storedNav && storedNav.expires_at > Date.now()) sessValid = true;
     } catch(e) {}
     if (!sessValid) { window.location.replace(HUB + '/'); return; }
+    // Auto-refresh tokenu pokud expiruje do 15 minut
+    if (storedNav && storedNav.refresh_token && (storedNav.expires_at - Date.now() < 15 * 60 * 1000)) {
+      fetch(HUB + '/.netlify/identity/token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: 'grant_type=refresh_token&refresh_token=' + encodeURIComponent(storedNav.refresh_token)
+      }).then(function(r) { return r.ok ? r.json() : null; })
+        .then(function(data) {
+          if (!data || !data.access_token) return;
+          data.expires_at = Date.now() + data.expires_in * 1000;
+          localStorage.setItem('dpu_user', JSON.stringify(data));
+        }).catch(function(){});
+    }
   } else {
     // Cross-origin nástroj — ověř access_token z URL nebo sessionStorage
     var params = new URLSearchParams(window.location.search);

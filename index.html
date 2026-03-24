@@ -654,16 +654,46 @@ function logout() {
   location.reload();
 }
 
-// Hide overlay if already logged in
+async function refreshSession() {
+  try {
+    var stored = JSON.parse(localStorage.getItem('dpu_user') || 'null');
+    if (!stored || !stored.refresh_token) return false;
+    if (stored.expires_at - Date.now() > 15 * 60 * 1000) return true; // expiruje za >15 min, není třeba
+    var res = await fetch(IDENTITY_URL + '/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: 'grant_type=refresh_token&refresh_token=' + encodeURIComponent(stored.refresh_token)
+    });
+    if (!res.ok) return false;
+    var data = await res.json();
+    if (!data.access_token) return false;
+    data.expires_at = Date.now() + data.expires_in * 1000;
+    localStorage.setItem('dpu_user', JSON.stringify(data));
+    showUser(data);
+    return true;
+  } catch(e) { return false; }
+}
+
+// Hide overlay if already logged in + spusť auto-refresh
 if (!specialToken) {
   try {
     var stored = JSON.parse(localStorage.getItem('dpu_user') || 'null');
     if (stored && stored.expires_at > Date.now()) {
       document.getElementById('auth-overlay').style.display = 'none';
       showUser(stored);
+      // Refresh hned při načtení, pokud expiruje brzy
+      refreshSession();
     }
   } catch(e) {}
 }
+
+// Obnov token každých 20 minut
+setInterval(refreshSession, 20 * 60 * 1000);
+
+// Obnov token při návratu do okna/tabu
+document.addEventListener('visibilitychange', function() {
+  if (document.visibilityState === 'visible') refreshSession();
+});
 
 // Adjust form for invite / recovery flows
 if (specialToken) {
@@ -789,21 +819,26 @@ document.getElementById('tool-search').addEventListener('input', function () {
 var EXT_SELECTORS = 'a[href*="streamlit.app"], a[href*="hf.space"], a[href*="vercel.app"], a[href*="github.io"]';
 document.querySelectorAll(EXT_SELECTORS).forEach(function (link) {
   link.addEventListener('click', function (e) {
-    try {
-      var sess = JSON.parse(localStorage.getItem('dpu_user') || 'null');
-      if (sess && sess.access_token) {
-        var pl = JSON.parse(b64d(sess.access_token.split('.')[1]));
-        var email = pl.email || '';
-        if (email) {
-          e.preventDefault();
-          var url = new URL(this.href);
-          var ts = Math.floor(Date.now() / 60000); // minuty od epochy
-          url.searchParams.set('access_token', btoa(email + ':DPU2025int:' + ts));
-          url.searchParams.set('dpu_user', email);
-          window.open(url.toString(), '_blank');
+    e.preventDefault();
+    var href = this.href;
+    refreshSession().then(function() {
+      try {
+        var sess = JSON.parse(localStorage.getItem('dpu_user') || 'null');
+        if (sess && sess.access_token) {
+          var pl = JSON.parse(b64d(sess.access_token.split('.')[1]));
+          var email = pl.email || '';
+          if (email) {
+            var url = new URL(href);
+            var ts = Math.floor(Date.now() / 60000);
+            url.searchParams.set('access_token', btoa(email + ':DPU2025int:' + ts));
+            url.searchParams.set('dpu_user', email);
+            window.open(url.toString(), '_blank');
+            return;
+          }
         }
-      }
-    } catch (err) {}
+      } catch (err) {}
+      window.open(href, '_blank');
+    });
   });
 });
 </script>
