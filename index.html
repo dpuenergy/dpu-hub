@@ -339,9 +339,40 @@ footer strong { color: rgba(255,255,255,.85); }
   main  { padding: 28px 16px 48px; }
   .tool-grid { grid-template-columns: 1fr; }
 }
+
+/* ── Dark mode ─────────────────────────────────────────────────────────── */
+body.dark {
+  --bg:     #0f1624;
+  --card:   #1a2235;
+  --text:   #e8edf8;
+  --muted:  #8899bb;
+  --border: rgba(100,140,255,.15);
+  --shadow: 0 2px 12px rgba(0,0,0,.35);
+}
+body.dark .search-wrap { background: #111827; border-color: rgba(100,140,255,.12); }
+body.dark .search-wrap input {
+  background: #1a2235 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%238899bb' stroke-width='2'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cpath d='m21 21-4.35-4.35'/%3E%3C/svg%3E") no-repeat 12px center;
+  color: var(--text);
+  border-color: rgba(100,140,255,.2);
+}
+body.dark .tag  { background: #1e2d4a; }
+body.dark .badge.online { background: #0a2218; color: #4ade80; }
+body.dark .badge.online::before { background: #22c55e; }
+body.dark .badge.soon   { background: #251e00; color: #fbbf24; }
+body.dark .badge.soon::before   { background: #f59e0b; }
+body.dark footer { background: #070d18; }
+body.dark .btn-disabled  { background: #1e2d4a; color: #4a5a7a; }
+body.dark .btn-logout    { border-color: rgba(255,255,255,.25); }
+body.dark .card-icon.blue   { background: #1a2e50; }
+body.dark .card-icon.green  { background: #0f2820; }
+body.dark .card-icon.orange { background: #2a1f00; }
+body.dark .card-icon.purple { background: #1e1040; }
+body.dark .card-icon.teal   { background: #0a2828; }
+body.dark .card-icon.rose   { background: #2a0a18; }
 </style>
 </head>
 <body>
+<script>if(localStorage.getItem('dpu_theme')==='dark')document.body.classList.add('dark');</script>
 
 <!-- Auth overlay -->
 <div id="auth-overlay" style="position:fixed;inset:0;background:linear-gradient(135deg,#1b3280 0%,#1e4db7 100%);display:flex;align-items:center;justify-content:center;z-index:9999;padding:24px">
@@ -374,6 +405,7 @@ footer strong { color: rgba(255,255,255,.85); }
     </div>
     <div class="header-user">
       <span class="header-email" id="header-email"></span>
+      <button class="btn-logout" id="theme-toggle" onclick="toggleTheme()" title="Přepnout tmavý režim">🌙</button>
       <button class="btn-logout" onclick="logout()">Odhlásit</button>
     </div>
   </div>
@@ -673,6 +705,51 @@ function logout() {
   location.reload();
 }
 
+// ── Dark mode ────────────────────────────────────────────────────────────
+function applyTheme(dark) {
+  document.body.classList.toggle('dark', dark);
+  var btn = document.getElementById('theme-toggle');
+  if (btn) btn.textContent = dark ? '☀' : '🌙';
+}
+function toggleTheme() {
+  var dark = !document.body.classList.contains('dark');
+  localStorage.setItem('dpu_theme', dark ? 'dark' : 'light');
+  applyTheme(dark);
+}
+// Nastav správnou ikonu podle uloženého tématu
+applyTheme(localStorage.getItem('dpu_theme') === 'dark');
+
+// ── Naposledy otevřené ───────────────────────────────────────────────────
+function saveRecent(title, href, icon) {
+  var recent = [];
+  try { recent = JSON.parse(localStorage.getItem('dpu_recent') || '[]'); } catch(e) {}
+  recent = recent.filter(function(r) { return r.href !== href; });
+  recent.unshift({ title: title, href: href, icon: icon });
+  localStorage.setItem('dpu_recent', JSON.stringify(recent.slice(0, 3)));
+}
+
+function renderRecent() {
+  if (document.getElementById('recent-section')) return;
+  var recent = [];
+  try { recent = JSON.parse(localStorage.getItem('dpu_recent') || '[]'); } catch(e) {}
+  if (!recent.length) return;
+  var main = document.querySelector('main');
+  var wrap = document.createElement('div');
+  wrap.id = 'recent-section';
+  wrap.innerHTML =
+    '<div class="section-heading">Naposledy otevřené</div>' +
+    '<div class="tool-grid" style="margin-bottom:24px">' +
+    recent.map(function(r) {
+      return '<a href="' + r.href + '" target="_blank" class="card" ' +
+        'style="text-decoration:none;flex-direction:row;align-items:center;gap:14px;padding:16px 20px;min-height:0">' +
+        '<div class="card-icon blue" style="width:36px;height:36px;font-size:18px;flex-shrink:0">' + r.icon + '</div>' +
+        '<span class="card-title" style="margin:0;font-size:14px">' + r.title + '</span>' +
+        '</a>';
+    }).join('') +
+    '</div><div class="sep"></div>';
+  main.insertBefore(wrap, main.firstChild);
+}
+
 async function refreshSession() {
   try {
     var stored = JSON.parse(localStorage.getItem('dpu_user') || 'null');
@@ -700,6 +777,7 @@ if (!specialToken) {
     if (stored && stored.expires_at > Date.now()) {
       document.getElementById('auth-overlay').style.display = 'none';
       showUser(stored);
+      renderRecent();
       // Refresh hned při načtení, pokud expiruje brzy
       refreshSession();
     }
@@ -802,6 +880,7 @@ document.getElementById('login-form').addEventListener('submit', async function(
       localStorage.setItem('dpu_user', JSON.stringify(data));
       showUser(data);
       document.getElementById('auth-overlay').style.display = 'none';
+      renderRecent();
     } else {
       err.textContent = 'Nespravny email nebo heslo.';
       err.style.display = 'block';
@@ -834,30 +913,41 @@ document.getElementById('tool-search').addEventListener('input', function () {
   });
 });
 
-// Přidej auth token do všech externích odkazů při kliknutí
-var EXT_SELECTORS = 'a[href*="streamlit.app"], a[href*="hf.space"], a[href*="vercel.app"], a[href*="github.io"]';
-document.querySelectorAll(EXT_SELECTORS).forEach(function (link) {
-  link.addEventListener('click', function (e) {
-    e.preventDefault();
-    var href = this.href;
-    refreshSession().then(function() {
-      try {
-        var sess = JSON.parse(localStorage.getItem('dpu_user') || 'null');
-        if (sess && sess.access_token) {
-          var pl = JSON.parse(b64d(sess.access_token.split('.')[1]));
-          var email = pl.email || '';
-          if (email) {
-            var url = new URL(href);
-            var ts = Math.floor(Date.now() / 60000);
-            url.searchParams.set('access_token', btoa(email + ':DPU2025int:' + ts));
-            url.searchParams.set('dpu_user', email);
-            window.open(url.toString(), '_blank');
-            return;
-          }
+// Auth token pro externí nástroje + tracking naposledy otevřených (event delegation)
+var EXT_DOMAINS = ['streamlit.app', 'hf.space', 'vercel.app', 'github.io'];
+document.addEventListener('click', function(e) {
+  var link = e.target.closest('a[href]');
+  if (!link) return;
+  var href = link.getAttribute('href') || '';
+
+  // Tracking: uložit do naposledy otevřených (jen karty, ne recent section)
+  var card = link.closest('.card');
+  if (card && !card.closest('#recent-section')) {
+    var title = (card.querySelector('.card-title') || {}).textContent || '';
+    var icon  = (card.querySelector('.card-icon')  || {}).textContent || '🔧';
+    if (title && href) saveRecent(title.trim(), href, icon.trim().slice(0, 2) || '🔧');
+  }
+
+  // Přidej auth token pro externí nástroje
+  if (!EXT_DOMAINS.some(function(d) { return href.indexOf(d) >= 0; })) return;
+  e.preventDefault();
+  refreshSession().then(function() {
+    try {
+      var sess = JSON.parse(localStorage.getItem('dpu_user') || 'null');
+      if (sess && sess.access_token) {
+        var pl = JSON.parse(b64d(sess.access_token.split('.')[1]));
+        var email = pl.email || '';
+        if (email) {
+          var url = new URL(href);
+          var ts = Math.floor(Date.now() / 60000);
+          url.searchParams.set('access_token', btoa(email + ':DPU2025int:' + ts));
+          url.searchParams.set('dpu_user', email);
+          window.open(url.toString(), '_blank');
+          return;
         }
-      } catch (err) {}
-      window.open(href, '_blank');
-    });
+      }
+    } catch(err) {}
+    window.open(href, '_blank');
   });
 });
 </script>
