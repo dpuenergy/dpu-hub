@@ -78,6 +78,7 @@
     /* ── Grid helpers ── */
     .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
     .row3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+    .row2 > *, .row3 > * { min-width: 0; }
     @media (max-width: 480px) { .row2, .row3 { grid-template-columns: 1fr; } }
     .fg { display: grid; gap: 8px; }
 
@@ -129,7 +130,7 @@
     .charts { display: grid; gap: 12px; margin-top: 12px; }
     .ch-wrap { border-radius: 12px; border: 1px solid var(--border); background: var(--card); overflow: hidden; }
     .ch-head { padding: 10px 14px; border-bottom: 1px solid var(--border); font-size: 12px; font-weight: 700; color: var(--brand); }
-    .ch-body { padding: 10px 14px 14px; }
+    .ch-body { padding: 10px 14px 14px; position: relative; }
 
     /* Dark mode */
     body.dark {
@@ -278,9 +279,13 @@
           <div class="section-title">Akumulace</div>
           <div class="row2">
             <div><label>Min. doba chodu TČ (min)</label><input id="acc_t_min" type="number" value="5" step="1" min="1" oninput="calcAccumulation()" /></div>
-            <div><label>Teplotní zdvih zásobníku (°C)</label><input id="acc_dt" type="number" value="5" step="0.5" min="1" oninput="calcAccumulation()" /></div>
+            <div>
+              <label>ΔT zásobníku (°C)</label>
+              <input id="acc_dt" type="number" value="5" step="0.5" min="1" oninput="calcAccumulation()" />
+              <div class="hint">Rozdíl max − min teploty vody v zásobníku (typicky 5–10 °C).</div>
+            </div>
           </div>
-          <div id="acc_result" style="font-size:13px; font-weight:700; color:var(--brand);">—</div>
+          <div id="acc_result" style="font-size:13px; font-weight:700; color:var(--brand); margin-top:4px;">—</div>
 
           <details>
             <summary>Parametry modelu TČ a topné soustavy ▸</summary>
@@ -307,12 +312,40 @@
                 <div><label>Vnitřní teplota (°C)</label><input id="t_base_c" type="number" step="0.5" value="20" /></div>
                 <div><label>Mez topení (°C)</label><input id="t_heat_on_c" type="number" step="0.5" value="14" /></div>
               </div>
-              <div style="font-size:11px; font-weight:600; color:var(--muted);">Topná křivka: T_voda = max(min, sklon × T_venku + intercept)</div>
-              <div class="row3">
-                <div><label>Sklon (°C/°C)</label><input id="hw_slope" type="number" step="0.05" value="-1.25" /></div>
-                <div><label>Intercept (0 °C)</label><input id="hw_intercept" type="number" step="0.5" value="42.5" /></div>
-                <div><label>Min. T vody (°C)</label><input id="hw_min_c" type="number" step="0.5" value="45" /></div>
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+                <div style="font-size:11px; font-weight:600; color:var(--muted);">Topná křivka</div>
+                <select id="hw_preset" style="width:auto; font-size:11px; padding:3px 6px; border-radius:6px;" onchange="applyHwPreset()">
+                  <option value="">Vlastní</option>
+                  <option value="podlaha">Podlahové (40/25 °C)</option>
+                  <option value="nizko">Nízkotepl. radiátory (55/35 °C)</option>
+                  <option value="standard" selected>Standardní radiátory (65/45 °C)</option>
+                  <option value="vysoko">Vysokoteplotní (75/55 °C)</option>
+                </select>
               </div>
+              <div class="row2">
+                <div>
+                  <label>T_venku návrh. (°C)</label>
+                  <input id="hw_t_design" type="number" step="0.5" value="-15" oninput="calcHeatingCurve()" />
+                </div>
+                <div>
+                  <label>T_vody při návrh. teplotě (°C)</label>
+                  <input id="hw_w_design" type="number" step="0.5" value="65" oninput="calcHeatingCurve()" />
+                </div>
+              </div>
+              <div class="row2">
+                <div>
+                  <label>T_venku mez topení (°C)</label>
+                  <input id="hw_t_limit" type="number" step="0.5" value="14" oninput="calcHeatingCurve()" />
+                </div>
+                <div>
+                  <label>Min. T_vody (°C)</label>
+                  <input id="hw_w_limit" type="number" step="0.5" value="45" oninput="calcHeatingCurve()" />
+                </div>
+              </div>
+              <div id="hw_calc_result" class="hint"></div>
+              <input type="hidden" id="hw_slope" value="-1.25" />
+              <input type="hidden" id="hw_intercept" value="42.5" />
+              <input type="hidden" id="hw_min_c" value="45" />
               <details>
                 <summary>Vlastní výkonová tabulka (přepíše vestavěnou) ▸</summary>
                 <div class="fg">
@@ -403,18 +436,21 @@
           <div class="row2">
             <div>
               <label>Typ bivalence</label>
-              <select id="bivalence_type">
+              <select id="bivalence_type" onchange="onBivalenceTypeChange()">
                 <option value="gas_boiler">Plynový kotel</option>
                 <option value="electric_boiler">Elektrokotel</option>
               </select>
             </div>
-            <div><label>Účinnost (η)</label><input id="bivalence_efficiency" type="number" step="0.01" value="0.92" /></div>
+            <div><label>Účinnost (η)</label><input id="bivalence_efficiency" type="number" step="0.01" value="0.92" oninput="calcGasPrice('biv')" /></div>
           </div>
-          <div class="row2">
-            <div><label>Cena plynu (Kč/m³)</label><input id="gas_price_kcz_per_m3" type="number" step="0.1" value="25" /></div>
-            <div><label>Výhřevnost (kWh/m³)</label><input id="gas_kwh_per_m3" type="number" step="0.1" value="10.5" /></div>
+          <div id="biv_gas_fields">
+            <div class="row2">
+              <div><label>Cena plynu (Kč/m³)</label><input id="gas_price_kcz_per_m3" type="number" step="0.1" value="25" oninput="calcGasPrice('biv')" /></div>
+              <div><label>Výhřevnost (kWh/m³)</label><input id="gas_kwh_per_m3" type="number" step="0.1" value="10.5" oninput="calcGasPrice('biv')" /></div>
+            </div>
+            <div id="biv_gas_eff" class="hint"></div>
           </div>
-          <div><label>Cena el. pro elektrokotel (Kč/kWh)</label><input id="bivalence_price_kcz_per_kwh" type="number" step="0.01" value="4.0" /></div>
+          <div id="biv_el_field" style="display:none;"><label>Cena elektřiny pro bivalenci (Kč/kWh)</label><input id="bivalence_price_kcz_per_kwh" type="number" step="0.01" value="4.0" /></div>
 
           <details>
             <summary>Původní zdroj tepla (srovnání „před/po") ▸</summary>
@@ -422,18 +458,21 @@
               <div class="row2">
                 <div>
                   <label>Původní zdroj</label>
-                  <select id="base_source_type">
+                  <select id="base_source_type" onchange="onBaseSourceTypeChange()">
                     <option value="gas_boiler">Plynový kotel</option>
                     <option value="electric_boiler">Elektrokotel</option>
                   </select>
                 </div>
-                <div><label>Účinnost (η)</label><input id="base_efficiency" type="number" step="0.01" value="0.90" /></div>
+                <div><label>Účinnost (η)</label><input id="base_efficiency" type="number" step="0.01" value="0.90" oninput="calcGasPrice('base')" /></div>
               </div>
-              <div class="row2">
-                <div><label>Cena plynu (Kč/m³)</label><input id="base_gas_price_kcz_per_m3" type="number" step="0.1" value="25" /></div>
-                <div><label>Výhřevnost (kWh/m³)</label><input id="base_gas_kwh_per_m3" type="number" step="0.1" value="10.5" /></div>
+              <div id="base_gas_fields">
+                <div class="row2">
+                  <div><label>Cena plynu (Kč/m³)</label><input id="base_gas_price_kcz_per_m3" type="number" step="0.1" value="25" oninput="calcGasPrice('base')" /></div>
+                  <div><label>Výhřevnost (kWh/m³)</label><input id="base_gas_kwh_per_m3" type="number" step="0.1" value="10.5" oninput="calcGasPrice('base')" /></div>
+                </div>
+                <div id="base_gas_eff" class="hint"></div>
               </div>
-              <div><label>Cena elektřiny (Kč/kWh)</label><input id="base_price_kcz_per_kwh" type="number" step="0.01" value="4.0" /></div>
+              <div id="base_el_field" style="display:none;"><label>Cena elektřiny (Kč/kWh)</label><input id="base_price_kcz_per_kwh" type="number" step="0.01" value="4.0" /></div>
             </div>
           </details>
 
@@ -514,6 +553,7 @@
             <div class="hint" id="kpi_cost2" style="margin-top:4px;">—</div>
           </div>
           <div id="npv_result_inline" style="margin-top:8px;"></div>
+          <div id="savings_inline" style="margin-top:6px; font-size:12px; color:var(--muted);"></div>
         </div>
       </div>
 

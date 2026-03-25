@@ -100,25 +100,25 @@ const CONFIG_PRESETS = {
   rd: {
     hp_type: "air_water", hp_power_kw: 12, cop_nominal: 3.5, hp_cutoff_c: -15,
     ut_gj: 60, tuv_gj: 15, t_base_c: 20, t_heat_on_c: 14,
-    hw_slope: -1.25, hw_intercept: 42.5, hw_min_c: 45,
+    hw_t_design: -15, hw_w_design: 55, hw_t_limit: 14, hw_w_limit: 35,
     investment_kcz: 350000, depr_years: 15, hp_modulation: "inverter",
   },
   bytdom: {
     hp_type: "air_water", hp_power_kw: 100, cop_nominal: 3.2, hp_cutoff_c: -15,
     ut_gj: 600, tuv_gj: 120, t_base_c: 20, t_heat_on_c: 14,
-    hw_slope: -1.0, hw_intercept: 45, hw_min_c: 50,
+    hw_t_design: -15, hw_w_design: 65, hw_t_limit: 14, hw_w_limit: 45,
     investment_kcz: 2500000, depr_years: 15, hp_modulation: "inverter",
   },
   komercni: {
     hp_type: "water_water", source_temp_c: 10, hp_power_kw: 200, cop_nominal: 4.5, hp_cutoff_c: -30,
     ut_gj: 1500, tuv_gj: 200, t_base_c: 20, t_heat_on_c: 15,
-    hw_slope: -1.0, hw_intercept: 50, hw_min_c: 55,
+    hw_t_design: -15, hw_w_design: 65, hw_t_limit: 15, hw_w_limit: 50,
     investment_kcz: 6000000, depr_years: 20, hp_modulation: "inverter",
   },
   prumysl: {
     hp_type: "water_water", source_temp_c: 10, hp_power_kw: 500, cop_nominal: 4.2, hp_cutoff_c: -30,
     ut_gj: 4000, tuv_gj: 0, t_base_c: 18, t_heat_on_c: 15,
-    hw_slope: -0.8, hw_intercept: 55, hw_min_c: 60,
+    hw_t_design: -15, hw_w_design: 75, hw_t_limit: 15, hw_w_limit: 55,
     investment_kcz: 15000000, depr_years: 20, hp_modulation: "on_off",
   },
 };
@@ -129,8 +129,8 @@ function applyConfigPreset() {
   const p = CONFIG_PRESETS[key];
 
   const fields = ["hp_power_kw", "cop_nominal", "hp_cutoff_c", "ut_gj", "tuv_gj",
-    "t_base_c", "t_heat_on_c", "hw_slope", "hw_intercept", "hw_min_c",
-    "investment_kcz", "depr_years", "source_temp_c", "hp_modulation"];
+    "t_base_c", "t_heat_on_c", "investment_kcz", "depr_years", "source_temp_c", "hp_modulation",
+    "hw_t_design", "hw_w_design", "hw_t_limit", "hw_w_limit"];
   for (const f of fields) {
     if (p[f] !== undefined) {
       const el = document.getElementById(f);
@@ -141,6 +141,10 @@ function applyConfigPreset() {
     const el = document.getElementById("hp_type");
     if (el) { el.value = p.hp_type; onHpTypeChange(); }
   }
+  // Reset hw_preset selector to "Vlastní" since custom values were set
+  const hwSel = document.getElementById("hw_preset");
+  if (hwSel) hwSel.value = "";
+  calcHeatingCurve();
   onModulationChange();
   calcAccumulation();
   simulate();
@@ -260,8 +264,19 @@ function calcNPV() {
   const elInline = document.getElementById("npv_result_inline");
   if (!el && !elInline) return;
 
-  if (!savings || savings <= 0 || !invest || invest <= 0) {
-    const msg = '<div class="hint">Zadejte investici a spusťte simulaci pro výpočet.</div>';
+  if (!savings || savings <= 0) {
+    const msg = '<div class="hint">Spusťte simulaci pro výpočet úspory.</div>';
+    if (el) el.innerHTML = msg;
+    if (elInline) elInline.innerHTML = msg;
+    return;
+  }
+
+  // Show annual savings even without investment
+  const savEl = document.getElementById("savings_inline");
+  if (savEl) savEl.textContent = `Roční úspora oproti původnímu zdroji: ${Math.round(savings).toLocaleString("cs-CZ")} Kč/rok`;
+
+  if (!invest || invest <= 0) {
+    const msg = `<div class="hint">Roční úspora: <strong>${Math.round(savings).toLocaleString("cs-CZ")} Kč/rok</strong>. Zadejte investici pro NPV / IRR.</div>`;
     if (el) el.innerHTML = msg;
     if (elInline) elInline.innerHTML = "";
     return;
@@ -318,6 +333,87 @@ function calcAccumulation() {
   const vol     = (powerKw * tMin * 60) / (4.182 * dt);
   const rounded = Math.ceil(vol / 50) * 50;
   el.innerHTML  = `${Math.round(vol).toLocaleString("cs-CZ")} l → typická řada zásobníku: <strong>${rounded} l</strong>`;
+}
+
+// ── Heating curve ─────────────────────────────────────────────────────────────
+
+const HEATING_CURVE_PRESETS = {
+  podlaha:  { t1: -15, w1: 40, t2: 20, w2: 25 },
+  nizko:    { t1: -15, w1: 55, t2: 14, w2: 35 },
+  standard: { t1: -15, w1: 65, t2: 14, w2: 45 },
+  vysoko:   { t1: -15, w1: 75, t2: 14, w2: 55 },
+};
+
+function applyHwPreset() {
+  const key = document.getElementById("hw_preset")?.value;
+  if (!key || !HEATING_CURVE_PRESETS[key]) { calcHeatingCurve(); return; }
+  const p = HEATING_CURVE_PRESETS[key];
+  document.getElementById("hw_t_design").value = p.t1;
+  document.getElementById("hw_w_design").value = p.w1;
+  document.getElementById("hw_t_limit").value  = p.t2;
+  document.getElementById("hw_w_limit").value  = p.w2;
+  calcHeatingCurve();
+}
+
+function calcHeatingCurve() {
+  const t1 = parseFloat(document.getElementById("hw_t_design")?.value);
+  const w1 = parseFloat(document.getElementById("hw_w_design")?.value);
+  const t2 = parseFloat(document.getElementById("hw_t_limit")?.value);
+  const w2 = parseFloat(document.getElementById("hw_w_limit")?.value);
+  const resultEl = document.getElementById("hw_calc_result");
+
+  if ([t1, w1, t2, w2].some(isNaN)) { if (resultEl) resultEl.textContent = ""; return; }
+  if (t1 >= t2) {
+    if (resultEl) resultEl.textContent = "⚠ Návrhová T_venku musí být nižší než mez topení.";
+    return;
+  }
+  const slope     = (w1 - w2) / (t1 - t2);
+  const intercept = w1 - slope * t1;
+  const min_c     = w2;
+
+  document.getElementById("hw_slope").value     = slope.toFixed(4);
+  document.getElementById("hw_intercept").value = intercept.toFixed(2);
+  document.getElementById("hw_min_c").value     = min_c.toFixed(1);
+
+  if (resultEl) resultEl.textContent =
+    `→ Sklon: ${slope.toFixed(3)} °C/°C · intercept: ${intercept.toFixed(1)} °C · min T vody: ${min_c} °C`;
+}
+
+// ── Bivalence & baseline source type ──────────────────────────────────────────
+
+function calcGasPrice(which) {
+  const isB = which === "biv";
+  const priceEl = document.getElementById(isB ? "gas_price_kcz_per_m3" : "base_gas_price_kcz_per_m3");
+  const kwhEl   = document.getElementById(isB ? "gas_kwh_per_m3"       : "base_gas_kwh_per_m3");
+  const effEl   = document.getElementById(isB ? "bivalence_efficiency"  : "base_efficiency");
+  const outEl   = document.getElementById(isB ? "biv_gas_eff"           : "base_gas_eff");
+  if (!outEl) return;
+  const price = parseFloat(priceEl?.value || 0);
+  const kwh   = parseFloat(kwhEl?.value   || 10.5);
+  const eff   = parseFloat(effEl?.value   || 0.92);
+  if (!price || !kwh || !eff) { outEl.textContent = ""; return; }
+  const effPrice = price / (kwh * eff);
+  outEl.textContent = `→ Efektivní cena tepla: ${effPrice.toFixed(2)} Kč/kWh`;
+}
+
+function onBivalenceTypeChange() {
+  const type = document.getElementById("bivalence_type")?.value || "gas_boiler";
+  const isGas = type === "gas_boiler";
+  const gasFields = document.getElementById("biv_gas_fields");
+  const elField   = document.getElementById("biv_el_field");
+  if (gasFields) gasFields.style.display = isGas ? "" : "none";
+  if (elField)   elField.style.display   = isGas ? "none" : "";
+  if (isGas) calcGasPrice("biv");
+}
+
+function onBaseSourceTypeChange() {
+  const type = document.getElementById("base_source_type")?.value || "gas_boiler";
+  const isGas = type === "gas_boiler";
+  const gasFields = document.getElementById("base_gas_fields");
+  const elField   = document.getElementById("base_el_field");
+  if (gasFields) gasFields.style.display = isGas ? "" : "none";
+  if (elField)   elField.style.display   = isGas ? "none" : "";
+  if (isGas) calcGasPrice("base");
 }
 
 // ── Climate (Open-Meteo) ──────────────────────────────────────────────────────
@@ -494,6 +590,8 @@ function updateKpis(summary) {
     `Elektřina (${summary.electricity_tariff || "tarif"} / ${summary.supplier_key || "dodavatel"}): ${fmtKcz(summary.electricity_cost_kcz)}`;
   document.getElementById("kpi_cost2").textContent =
     `Bivalence: ${fmtKcz(summary.bivalence_cost_kcz)} | Odpisy: ${fmtKcz(summary.depr_cost_kcz)} | Celkem: ${fmtKcz(summary.total_cost_kcz)} | Před: ${fmtKcz(summary.baseline_cost_kcz)} | Úspora: ${fmtKcz(summary.savings_kcz)}`;
+
+  calcNPV();
 }
 
 // ── Charts ────────────────────────────────────────────────────────────────────
@@ -799,6 +897,9 @@ populateYearSelect();
 syncTariff();
 onHpTypeChange();
 onModulationChange();
+onBivalenceTypeChange();
+onBaseSourceTypeChange();
+calcHeatingCurve();
 
 (async function init() {
   await loadDatasets();
