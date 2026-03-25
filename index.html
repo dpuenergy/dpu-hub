@@ -447,7 +447,21 @@ body.dark .card-icon.rose   { background: #2a0a18; }
         Přihlásit se
       </button>
       <p id="login-error" style="color:#e11d48;font-size:13px;margin:0;display:none">Nesprávný e-mail nebo heslo.</p>
+      <p id="login-recover-msg" style="font-size:13px;margin:0;display:none"></p>
     </form>
+    <div id="recover-link-wrap" style="margin-top:14px;">
+      <a href="#" id="recover-link" onclick="showRecoverForm();return false;" style="font-size:13px;color:#2e8cff;text-decoration:none;">Zapomenuté heslo?</a>
+    </div>
+    <div id="recover-form" style="display:none;margin-top:16px;border-top:1px solid #e8edf5;padding-top:16px;">
+      <p style="font-size:13px;color:#5a6a8a;margin:0 0 10px;">Zadejte svůj email — pošleme odkaz pro reset hesla.</p>
+      <input id="recover-email" type="email" placeholder="Email"
+        style="width:100%;padding:11px 14px;border:1.5px solid #d0d7e8;border-radius:8px;font-size:14px;outline:none;box-sizing:border-box;margin-bottom:8px;" />
+      <button onclick="sendRecovery()"
+        style="width:100%;padding:11px;background:#2e8cff;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;">
+        Odeslat odkaz
+      </button>
+      <p id="recover-msg" style="font-size:13px;margin:8px 0 0;display:none;"></p>
+    </div>
   </div>
 </div>
 
@@ -851,6 +865,32 @@ setInterval(refreshSession, 20 * 60 * 1000);
 document.addEventListener('visibilitychange', function() {
   if (document.visibilityState === 'visible') refreshSession();
 });
+
+function showRecoverForm() {
+  document.getElementById('recover-form').style.display = 'block';
+  document.getElementById('recover-link-wrap').style.display = 'none';
+  var email = document.getElementById('login-email').value;
+  if (email) document.getElementById('recover-email').value = email;
+  document.getElementById('recover-email').focus();
+}
+
+async function sendRecovery() {
+  var email = document.getElementById('recover-email').value.trim();
+  var msg = document.getElementById('recover-msg');
+  if (!email) { msg.style.cssText = 'font-size:13px;margin:8px 0 0;display:block;color:#e11d48;'; msg.textContent = 'Zadejte email.'; return; }
+  try {
+    await fetch('https://calm-cocada-79e019.netlify.app/.netlify/identity/recover', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: email })
+    });
+    msg.style.cssText = 'font-size:13px;margin:8px 0 0;display:block;color:#16a34a;';
+    msg.textContent = 'Hotovo — zkontrolujte email (i spam).';
+  } catch(e) {
+    msg.style.cssText = 'font-size:13px;margin:8px 0 0;display:block;color:#e11d48;';
+    msg.textContent = 'Chyba: ' + e.message;
+  }
+}
 
 // Adjust form for invite / recovery flows
 if (specialToken) {
