@@ -94,6 +94,49 @@ function makeDualAxisDuration(canvasId, x, y1, y2) {
   });
 }
 
+// ── HP type ───────────────────────────────────────────────────────────────────
+
+const HP_TYPE_CONFIG = {
+  air_water:   { label: "A7/W45", cutoff: -15, cop: 3.2, showSource: false },
+  water_water: { label: "W10/W45", cutoff: -30, cop: 4.5, showSource: true,  sourceDefault: 10, sourceHint: "Pro podzemní vodu typicky 8–12 °C (celoroční průměr vrtu)." },
+  ground_water:{ label: "B0/W45",  cutoff: -30, cop: 4.0, showSource: true,  sourceDefault: 2,  sourceHint: "Pro geotermální sondy typicky 0–5 °C (závisí na hloubce a lokalitě)." },
+};
+
+function onHpTypeChange() {
+  const type   = document.getElementById("hp_type")?.value || "air_water";
+  const cfg    = HP_TYPE_CONFIG[type] || HP_TYPE_CONFIG.air_water;
+  const srcRow = document.getElementById("source_temp_row");
+  const srcEl  = document.getElementById("source_temp_c");
+  const hintEl = document.getElementById("source_temp_hint");
+  const lblEl  = document.getElementById("hp_power_label");
+  const cutEl  = document.getElementById("hp_cutoff_c");
+  const copEl  = document.getElementById("cop_nominal");
+
+  if (srcRow) srcRow.style.display = cfg.showSource ? "" : "none";
+  if (hintEl && cfg.sourceHint) hintEl.textContent = cfg.sourceHint;
+  if (srcEl  && cfg.showSource && !srcEl._userEdited) srcEl.value = cfg.sourceDefault;
+  if (lblEl) lblEl.textContent = `Výkon TČ při ${cfg.label} (kW)`;
+  if (cutEl) cutEl.value = cfg.cutoff;
+  if (copEl && !copEl._userEdited) copEl.value = cfg.cop;
+
+  calcAccumulation();
+}
+
+// ── Accumulation tank sizing ──────────────────────────────────────────────────
+
+function calcAccumulation() {
+  const powerKw = parseFloat(document.getElementById("hp_power_kw")?.value || 0);
+  const tMin    = parseFloat(document.getElementById("acc_t_min")?.value   || 5);
+  const dt      = parseFloat(document.getElementById("acc_dt")?.value      || 5);
+  const el      = document.getElementById("acc_result");
+  if (!el) return;
+  if (!powerKw || !tMin || !dt || dt <= 0) { el.textContent = "—"; return; }
+
+  const vol     = (powerKw * tMin * 60) / (4.182 * dt);
+  const rounded = Math.ceil(vol / 50) * 50;
+  el.innerHTML  = `${Math.round(vol).toLocaleString("cs-CZ")} l → typická řada zásobníku: <strong>${rounded} l</strong>`;
+}
+
 // ── Climate (Open-Meteo) ──────────────────────────────────────────────────────
 
 function populateYearSelect() {
@@ -151,8 +194,10 @@ async function fetchClimate() {
 // ── Inputs ────────────────────────────────────────────────────────────────────
 
 function getInputs() {
+  const hpType = document.getElementById("hp_type")?.value || "air_water";
   const inp = {
     dataset_id: document.getElementById("dataset").value,
+    hp_type: hpType,
 
     ut_gj:  parseFloat(document.getElementById("ut_gj").value  || "0"),
     tuv_gj: parseFloat(document.getElementById("tuv_gj").value || "0"),
@@ -187,6 +232,12 @@ function getInputs() {
     investment_kcz:       parseFloat(document.getElementById("investment_kcz").value || "0"),
     depr_years:           parseFloat(document.getElementById("depr_years").value     || "15"),
   };
+
+  // For non-air-source HP types, pass constant source temperature to backend
+  if (hpType !== "air_water") {
+    const srcTemp = parseFloat(document.getElementById("source_temp_c")?.value);
+    if (!isNaN(srcTemp)) inp.source_temp_c = srcTemp;
+  }
 
   // Pass fetched climate temps directly – backend skips dataset_id lookup when present
   if (currentTemps && currentTemps.length >= 100) {
@@ -507,11 +558,20 @@ document.getElementById("btnFetchClimate")?.addEventListener("click", fetchClima
   document.getElementById(id)?.addEventListener("input", updateCustomPrice);
 });
 
+// Mark manually-edited fields so onHpTypeChange doesn't reset them
+["source_temp_c", "cop_nominal"].forEach(id => {
+  document.getElementById(id)?.addEventListener("input", function() {
+    this._userEdited = true;
+  });
+});
+
 populateYearSelect();
 syncTariff();
+onHpTypeChange();
 
 (async function init() {
   await loadDatasets();
   await onSupplierChange();
   await simulate();
+  calcAccumulation();
 })();

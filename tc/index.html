@@ -95,12 +95,27 @@
 
         <div style="display:grid; gap:10px;">
           <div>
+            <label>Typ tepelného čerpadla</label>
+            <select id="hp_type">
+              <option value="air_water">Vzduch-voda</option>
+              <option value="water_water">Voda-voda (podzemní voda)</option>
+              <option value="ground_water">Země-voda (geotermální sondy)</option>
+            </select>
+          </div>
+
+          <div id="source_temp_row" style="display:none;">
+            <label id="source_temp_label">Teplota zdroje (°C)</label>
+            <input id="source_temp_c" type="number" step="0.5" value="10" />
+            <div class="hint" id="source_temp_hint">Pro podzemní vodu typicky 8–12 °C.</div>
+          </div>
+
+          <div>
             <label>Dataset počasí</label>
             <select id="dataset"></select>
           </div>
 
           <details id="climateDetails" style="margin-top:2px;">
-            <summary style="cursor:pointer; font-size:12px; color:#0369a1; font-weight:600;">Načíst hodinová klimadata z Open-Meteo ↗</summary>
+            <summary style="cursor:pointer; font-size:12px; color:var(--accent); font-weight:600;">Načíst hodinová klimadata z Open-Meteo ↗</summary>
             <div style="margin-top:8px; display:grid; gap:8px;">
               <div>
                 <label>Město (přednastav. souřadnice)</label>
@@ -152,17 +167,17 @@
 
           <div class="row">
             <div style="flex:1; min-width:140px;">
-              <label>Výkon TČ při A7/W45 (kW)</label>
-              <input id="hp_power_kw" type="number" step="0.1" value="120" />
+              <label id="hp_power_label">Výkon TČ při A7/W45 (kW)</label>
+              <input id="hp_power_kw" type="number" step="0.1" value="120" oninput="calcAccumulation()" />
             </div>
-            <div style="flex:1; min-width:140px;">
+            <div style="flex:1; min-width:140px;" id="cutoff_row">
               <label>Odstavení TČ (°C)</label>
               <input id="hp_cutoff_c" type="number" step="0.1" value="-15" />
             </div>
           </div>
 
           <details style="margin-top:6px;">
-            <summary style="cursor:pointer; font-size:12px; color:#0369a1; font-weight:600;">Parametry modelu TČ a topné soustavy ▸</summary>
+            <summary style="cursor:pointer; font-size:12px; color:var(--accent); font-weight:600;">Parametry modelu TČ a topné soustavy ▸</summary>
             <div style="margin-top:8px; display:grid; gap:8px;">
               <div class="row">
                 <div style="flex:1; min-width:120px;">
@@ -445,11 +460,34 @@
             <canvas id="chHeatingCurve"></canvas>
           </div>
         </div>
+
+        <div class="card" style="margin-top:12px;">
+          <h3>Doporučená akumulace</h3>
+          <div class="hint" style="margin-bottom:10px;">Minimální objem zásobníkového ohřívače pro udržení plynulého chodu TČ bez krátkých cyklů kompresoru.</div>
+          <div class="row">
+            <div style="flex:1; min-width:120px;">
+              <label>Min. doba chodu TČ (min)</label>
+              <input id="acc_t_min" type="number" value="5" step="1" min="1" oninput="calcAccumulation()" />
+            </div>
+            <div style="flex:1; min-width:120px;">
+              <label>Teplotní zdvih v zásobníku (°C)</label>
+              <input id="acc_dt" type="number" value="5" step="0.5" min="1" oninput="calcAccumulation()" />
+            </div>
+          </div>
+          <div id="acc_result" style="margin-top:12px; font-size:15px; font-weight:600; color:var(--brand);">—</div>
+          <div class="hint" style="margin-top:4px;">V = P_TČ × t_min × 60 / (4,18 × ΔT) [litrů]</div>
+        </div>
       </div>
     </div>
   </main>
 
   <script src="./app.js"></script>
   <script src="/shared/navbar.js" data-tool="Tepelná čerpadla"></script>
+  <script>
+    document.getElementById("hp_type")?.addEventListener("change", function() {
+      onHpTypeChange();
+      simulate();
+    });
+  </script>
 </body>
 </html>
