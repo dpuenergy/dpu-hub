@@ -942,6 +942,10 @@ document.addEventListener('click', function(e) {
           var ts = Math.floor(Date.now() / 60000);
           url.searchParams.set('access_token', btoa(email + ':DPU2025int:' + ts));
           url.searchParams.set('dpu_user', email);
+          if (href.indexOf('streamlit.app') >= 0) {
+            var isDark = localStorage.getItem('dpu_theme') === 'dark';
+            url.searchParams.set('embed_options', isDark ? 'dark_theme' : 'light_theme');
+          }
           window.open(url.toString(), '_blank');
           return;
         }
