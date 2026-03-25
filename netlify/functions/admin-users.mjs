@@ -54,8 +54,13 @@ export async function handler(event) {
 
   // GET — seznam uživatelů
   if (event.httpMethod === 'GET') {
-    const res = await fetch(apiBase + '/users?per_page=100', { headers: netlifyHeaders });
-    const data = await res.json();
+    const url = apiBase + '/users?per_page=100';
+    console.log('GET', url);
+    const res = await fetch(url, { headers: netlifyHeaders });
+    const text = await res.text();
+    console.log('Response', res.status, text.slice(0, 300));
+    let data;
+    try { data = JSON.parse(text); } catch { data = { error: text }; }
     return json(res.status, data);
   }
 
@@ -63,12 +68,17 @@ export async function handler(event) {
   if (event.httpMethod === 'POST') {
     const body = JSON.parse(event.body || '{}');
     if (!body.email) return json(400, { error: 'Chybí email' });
-    const res = await fetch(apiBase + '/users', {
+    const url = apiBase + '/users';
+    console.log('POST', url, body.email);
+    const res = await fetch(url, {
       method: 'POST',
       headers: netlifyHeaders,
       body: JSON.stringify({ email: body.email, send_invite: true }),
     });
-    const data = await res.json();
+    const text = await res.text();
+    console.log('Response', res.status, text.slice(0, 300));
+    let data;
+    try { data = JSON.parse(text); } catch { data = { error: text }; }
     return json(res.status, data);
   }
 

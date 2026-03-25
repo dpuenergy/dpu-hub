@@ -1103,7 +1103,8 @@ async function adminLoadUsers() {
       headers: { 'Authorization': 'Bearer ' + token }
     });
     if (!res.ok) {
-      list.innerHTML = '<div class="user-list-empty">Chyba ' + res.status + ' — ujistěte se, že máte v Netlify roli admin.</div>';
+      var errData = await res.json().catch(function(){ return {}; });
+      list.innerHTML = '<div class="user-list-empty">Chyba ' + res.status + ': ' + (errData.error || errData.msg || JSON.stringify(errData)) + '</div>';
       return;
     }
     var data = await res.json();
