@@ -713,9 +713,11 @@ async function optimize() {
       });
     }
 
-    // Show chart container first so canvas has proper dimensions
-    const wrapEl = document.getElementById("opt_chart_wrap");
-    if (wrapEl) wrapEl.style.display = "";
+    // Swap placeholder → canvas (canvas was always in DOM, so layout is already computed)
+    const placeholder = document.getElementById("opt_placeholder");
+    const canvasWrap  = document.getElementById("opt_canvas_wrap");
+    if (placeholder) placeholder.style.display = "none";
+    if (canvasWrap)  canvasWrap.style.display  = "";
 
     destroyChart("chOpt");
     charts["chOpt"] = new Chart(document.getElementById("chOpt"), {
