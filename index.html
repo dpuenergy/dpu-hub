@@ -90,6 +90,56 @@ header {
   transition: background .15s;
 }
 .btn-logout:hover { background: rgba(255,255,255,.15); }
+.btn-admin {
+  font-size: 12px; font-weight: 600; padding: 5px 12px;
+  border: 1px solid rgba(255,255,255,.35); border-radius: 6px;
+  background: rgba(255,200,50,.2); color: #fff;
+  cursor: pointer; transition: background .15s;
+}
+.btn-admin:hover { background: rgba(255,200,50,.38); }
+
+/* Admin modal */
+#admin-modal {
+  display: none; position: fixed; inset: 0; z-index: 9999;
+  background: rgba(0,0,0,.5); align-items: center; justify-content: center;
+}
+#admin-modal.open { display: flex; }
+.admin-box {
+  background: var(--card); border-radius: 14px; width: 520px; max-width: 95vw;
+  max-height: 85vh; display: flex; flex-direction: column;
+  box-shadow: 0 8px 40px rgba(0,0,0,.3);
+}
+.admin-head {
+  background: var(--brand); color: #fff; padding: 16px 20px;
+  border-radius: 14px 14px 0 0; display: flex; align-items: center; gap: 10px;
+}
+.admin-head h2 { margin: 0; font-size: 15px; flex: 1; }
+.admin-head button { background: none; border: none; color: #fff; font-size: 20px; cursor: pointer; opacity: .7; padding: 0 4px; }
+.admin-head button:hover { opacity: 1; }
+.admin-tabs { display: flex; border-bottom: 1px solid var(--border); background: var(--bg); }
+.admin-tab { padding: 10px 18px; cursor: pointer; font-size: 13px; color: var(--muted); border-bottom: 3px solid transparent; }
+.admin-tab.active { color: var(--brand); border-bottom-color: var(--brand); font-weight: 600; }
+.admin-body { padding: 20px; overflow-y: auto; flex: 1; }
+.admin-panel { display: none; }
+.admin-panel.active { display: block; }
+.admin-field { margin-bottom: 14px; }
+.admin-field label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 5px; font-weight: 600; text-transform: uppercase; letter-spacing: .4px; }
+.admin-field input { width: 100%; padding: 8px 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 14px; background: var(--bg); color: var(--text); outline: none; }
+.admin-field input:focus { border-color: var(--accent); }
+.admin-msg { margin-top: 10px; font-size: 13px; padding: 8px 12px; border-radius: 6px; display: none; }
+.admin-msg.ok  { background: #dcfce7; color: #166534; display: block; }
+.admin-msg.err { background: #fee2e2; color: #991b1b; display: block; }
+.user-list { display: flex; flex-direction: column; gap: 8px; }
+.user-row { display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: var(--bg); border-radius: 8px; border: 1px solid var(--border); font-size: 13px; }
+.user-row .user-email { flex: 1; font-weight: 500; color: var(--text); }
+.user-row .user-status { font-size: 11px; padding: 2px 8px; border-radius: 10px; font-weight: 600; }
+.user-row .user-status.confirmed { background: #dcfce7; color: #166534; }
+.user-row .user-status.pending   { background: #fef3c7; color: #92400e; }
+.user-list-empty { color: var(--muted); font-size: 13px; text-align: center; padding: 20px; }
+body.dark .admin-field input { background: var(--card); }
+body.dark .user-row { background: rgba(100,140,255,.06); }
+body.dark .admin-msg.ok  { background: rgba(20,83,45,.3); color: #4ade80; }
+body.dark .admin-msg.err { background: rgba(153,27,27,.3); color: #fca5a5; }
 
 /* HERO */
 .hero {
@@ -405,6 +455,7 @@ body.dark .card-icon.rose   { background: #2a0a18; }
     </div>
     <div class="header-user">
       <span class="header-email" id="header-email"></span>
+      <button class="btn-admin" id="btn-admin" onclick="openAdmin()" style="display:none" title="Správa uživatelů">&#9881; Admin</button>
       <button class="btn-logout" id="theme-toggle" onclick="toggleTheme()" title="Přepnout tmavý režim">🌙</button>
       <button class="btn-logout" onclick="logout()">Odhlásit</button>
     </div>
@@ -676,6 +727,7 @@ body.dark .card-icon.rose   { background: #2a0a18; }
 
 <script>
 const IDENTITY_URL = 'https://calm-cocada-79e019.netlify.app/.netlify/identity';
+var ADMIN_EMAIL = 'hridel@dpuenergy.cz';
 
 // Parse token from URL hash (invite or recovery link)
 var hashParams = {};
@@ -697,6 +749,9 @@ function showUser(session) {
     var payload = JSON.parse(b64d(session.access_token.split('.')[1]));
     var email = payload.email || '';
     document.getElementById('header-email').textContent = email;
+    if (email === ADMIN_EMAIL) {
+      document.getElementById('btn-admin').style.display = '';
+    }
   } catch(e) {}
 }
 
@@ -954,6 +1009,119 @@ document.addEventListener('click', function(e) {
     window.open(href, '_blank');
   });
 });
+</script>
+
+<!-- ── Admin modal ─────────────────────────────────────────────────────── -->
+<div id="admin-modal" onclick="if(event.target===this)closeAdmin()">
+  <div class="admin-box">
+    <div class="admin-head">
+      <h2>&#9881; Správa uživatelů</h2>
+      <button onclick="closeAdmin()">&#215;</button>
+    </div>
+    <div class="admin-tabs">
+      <div class="admin-tab active" onclick="adminTab('invite')">Pozvat uživatele</div>
+      <div class="admin-tab" onclick="adminTab('users')">Přehled uživatelů</div>
+    </div>
+    <div class="admin-body">
+      <div class="admin-panel active" id="admin-panel-invite">
+        <div class="admin-field">
+          <label>E-mail nového uživatele</label>
+          <input type="email" id="admin-invite-email" placeholder="jmeno@dpuenergy.cz" />
+        </div>
+        <button class="btn btn-primary" onclick="adminInvite()">Odeslat pozvánku</button>
+        <div class="admin-msg" id="admin-invite-msg"></div>
+      </div>
+      <div class="admin-panel" id="admin-panel-users">
+        <div class="user-list" id="admin-user-list">
+          <div class="user-list-empty">Načítání...</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function _getAdminToken() {
+  try {
+    var s = JSON.parse(localStorage.getItem('dpu_user') || 'null');
+    return (s && s.access_token) ? s.access_token : null;
+  } catch(e) { return null; }
+}
+
+function openAdmin() {
+  document.getElementById('admin-modal').classList.add('open');
+  adminTab('invite');
+  adminLoadUsers();
+}
+function closeAdmin() {
+  document.getElementById('admin-modal').classList.remove('open');
+}
+function adminTab(name) {
+  document.querySelectorAll('.admin-tab').forEach(function(t, i) {
+    t.classList.toggle('active', (i === 0 && name === 'invite') || (i === 1 && name === 'users'));
+  });
+  document.getElementById('admin-panel-invite').classList.toggle('active', name === 'invite');
+  document.getElementById('admin-panel-users').classList.toggle('active', name === 'users');
+}
+
+async function adminInvite() {
+  var email = document.getElementById('admin-invite-email').value.trim();
+  var msg = document.getElementById('admin-invite-msg');
+  msg.className = 'admin-msg';
+  if (!email) { msg.className = 'admin-msg err'; msg.textContent = 'Zadejte e-mail.'; return; }
+  var token = _getAdminToken();
+  if (!token) { msg.className = 'admin-msg err'; msg.textContent = 'Nejste přihlášeni.'; return; }
+  try {
+    var res = await fetch(IDENTITY_URL + '/admin/users', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: email, send_invite: true })
+    });
+    if (res.ok) {
+      msg.className = 'admin-msg ok';
+      msg.textContent = 'Pozvánka odeslána na ' + email;
+      document.getElementById('admin-invite-email').value = '';
+      adminLoadUsers();
+    } else {
+      var err = await res.json().catch(function(){ return {}; });
+      msg.className = 'admin-msg err';
+      msg.textContent = 'Chyba: ' + (err.msg || err.error_description || res.status);
+    }
+  } catch(e) {
+    msg.className = 'admin-msg err';
+    msg.textContent = 'Síťová chyba: ' + e.message;
+  }
+}
+
+async function adminLoadUsers() {
+  var list = document.getElementById('admin-user-list');
+  var token = _getAdminToken();
+  if (!token) { list.innerHTML = '<div class="user-list-empty">Nejste přihlášeni.</div>'; return; }
+  list.innerHTML = '<div class="user-list-empty">Načítání...</div>';
+  try {
+    var res = await fetch(IDENTITY_URL + '/admin/users?per_page=50', {
+      headers: { 'Authorization': 'Bearer ' + token }
+    });
+    if (!res.ok) {
+      list.innerHTML = '<div class="user-list-empty">Chyba ' + res.status + ' — ujistěte se, že máte v Netlify roli admin.</div>';
+      return;
+    }
+    var data = await res.json();
+    var users = data.users || [];
+    if (!users.length) { list.innerHTML = '<div class="user-list-empty">Žádní uživatelé.</div>'; return; }
+    list.innerHTML = users.map(function(u) {
+      var confirmed = u.confirmed_at ? true : false;
+      var statusLabel = confirmed ? 'Aktivní' : 'Čeká na potvrzení';
+      var statusClass = confirmed ? 'confirmed' : 'pending';
+      return '<div class="user-row">' +
+        '<span class="user-email">' + u.email + '</span>' +
+        '<span class="user-status ' + statusClass + '">' + statusLabel + '</span>' +
+        '</div>';
+    }).join('');
+  } catch(e) {
+    list.innerHTML = '<div class="user-list-empty">Síťová chyba.</div>';
+  }
+}
 </script>
 </body>
 </html>
