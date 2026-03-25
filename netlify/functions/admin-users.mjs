@@ -46,11 +46,19 @@ export async function handler(event) {
     return json(500, { error: 'Chybí environment proměnné NETLIFY_ACCESS_TOKEN nebo NETLIFY_SITE_ID' });
   }
 
-  const apiBase = `https://api.netlify.com/api/v1/sites/${SITE_ID}/identity`;
   const netlifyHeaders = {
     'Authorization': 'Bearer ' + NETLIFY_TOKEN,
     'Content-Type': 'application/json',
   };
+
+  // Získej ID identity instance
+  const identityRes = await fetch(`https://api.netlify.com/api/v1/sites/${SITE_ID}/identity`, { headers: netlifyHeaders });
+  const identityData = await identityRes.json();
+  console.log('Identity instance:', JSON.stringify(identityData).slice(0, 200));
+  if (!identityRes.ok) return json(identityRes.status, { error: 'Identity instance error: ' + (identityData.message || identityRes.status) });
+
+  const instanceId = identityData.id;
+  const apiBase = `https://api.netlify.com/api/v1/sites/${SITE_ID}/identity/${instanceId}`;
 
   // GET — seznam uživatelů
   if (event.httpMethod === 'GET') {
