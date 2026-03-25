@@ -79,5 +79,21 @@ export async function handler(event, context) {
     return json(res.status, data);
   }
 
+  // DELETE — smazat uživatele
+  if (event.httpMethod === 'DELETE') {
+    const userId = (event.queryStringParameters || {}).userId;
+    if (!userId) return json(400, { error: 'Chybí userId' });
+    const res = await fetch(serviceUrl + '/admin/users/' + userId, {
+      method: 'DELETE',
+      headers: adminHeaders,
+    });
+    const text = await res.text();
+    console.log('DELETE admin/users/' + userId + ':', res.status, text.slice(0, 200));
+    if (res.status === 200 || res.status === 204) return json(200, { ok: true });
+    let data;
+    try { data = JSON.parse(text); } catch { data = { error: text }; }
+    return json(res.status, data);
+  }
+
   return json(405, { error: 'Nepodporovaná metoda' });
 }

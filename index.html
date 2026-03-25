@@ -136,6 +136,11 @@ header {
 .user-row .user-status.confirmed { background: #dcfce7; color: #166534; }
 .user-row .user-status.pending   { background: #fef3c7; color: #92400e; }
 .user-list-empty { color: var(--muted); font-size: 13px; text-align: center; padding: 20px; }
+.user-actions { display: flex; gap: 5px; }
+.user-btn { font-size: 11px; padding: 3px 9px; border-radius: 5px; border: 1px solid var(--border); background: var(--card); color: var(--text); cursor: pointer; }
+.user-btn:hover { background: var(--hover); }
+.user-btn.danger { border-color: #fca5a5; color: #dc2626; }
+.user-btn.danger:hover { background: #fee2e2; }
 body.dark .admin-field input { background: var(--card); }
 body.dark .user-row { background: rgba(100,140,255,.06); }
 body.dark .admin-msg.ok  { background: rgba(20,83,45,.3); color: #4ade80; }
@@ -1093,6 +1098,34 @@ async function adminInvite() {
   }
 }
 
+async function adminResetPassword(email) {
+  if (!confirm('Odeslat e-mail pro reset hesla uživateli ' + email + '?')) return;
+  try {
+    var res = await fetch(IDENTITY_URL + '/recover', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: email })
+    });
+    alert(res.ok ? 'E-mail odeslán.' : 'Chyba ' + res.status);
+  } catch(e) { alert('Síťová chyba.'); }
+}
+
+async function adminDeleteUser(userId, email) {
+  if (!confirm('Opravdu smazat uživatele ' + email + '?\nTato akce je nevratná.')) return;
+  var token = _getAdminToken();
+  try {
+    var res = await fetch('/.netlify/functions/admin-users?userId=' + encodeURIComponent(userId), {
+      method: 'DELETE',
+      headers: { 'Authorization': 'Bearer ' + token }
+    });
+    if (res.ok) { adminLoadUsers(); }
+    else {
+      var err = await res.json().catch(function(){ return {}; });
+      alert('Chyba: ' + (err.error || res.status));
+    }
+  } catch(e) { alert('Síťová chyba.'); }
+}
+
 async function adminLoadUsers() {
   var list = document.getElementById('admin-user-list');
   var token = _getAdminToken();
@@ -1114,9 +1147,15 @@ async function adminLoadUsers() {
       var confirmed = u.confirmed_at ? true : false;
       var statusLabel = confirmed ? 'Aktivní' : 'Čeká na potvrzení';
       var statusClass = confirmed ? 'confirmed' : 'pending';
+      var eid = u.email.replace(/"/g, '&quot;');
+      var uid = u.id;
       return '<div class="user-row">' +
         '<span class="user-email">' + u.email + '</span>' +
         '<span class="user-status ' + statusClass + '">' + statusLabel + '</span>' +
+        '<div class="user-actions">' +
+        '<button class="user-btn" onclick="adminResetPassword(\'' + eid + '\')">Reset hesla</button>' +
+        '<button class="user-btn danger" onclick="adminDeleteUser(\'' + uid + '\',\'' + eid + '\')">Smazat</button>' +
+        '</div>' +
         '</div>';
     }).join('');
   } catch(e) {
