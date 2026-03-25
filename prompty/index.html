@@ -199,7 +199,7 @@ footer a { color: var(--accent); text-decoration: none; }
   .prompt-body { padding: 16px; }
   summary { padding: 16px; }
 }
-body.dark{background:#0f1624;color:#e8edf8}body.dark .card{background:#1a2235;border-color:rgba(100,140,255,.15)}body.dark code,body.dark pre{background:#1e2d4a}
+body.dark{--bg:#0f1624;--card:#1a2235;--text:#e8edf8;--muted:#8899bb;--border:rgba(100,140,255,.15);--code-bg:#1e2d4a;background:var(--bg);color:var(--text)}body.dark .card{background:var(--card);border-color:var(--border)}body.dark code,body.dark pre{background:var(--code-bg)}
 </style>
 </head>
 <body>
