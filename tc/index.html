@@ -21,39 +21,59 @@
     }
     *, *::before, *::after { box-sizing: border-box; }
     body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; margin: 0; background: var(--bg); color: var(--text); }
-    header { padding: 16px 20px; background: var(--card); border-bottom: 1px solid var(--border); position: sticky; top: 48px; z-index: 5; box-shadow: var(--shadow); }
-    main { padding: 16px 20px; max-width: 1200px; margin: 0 auto; }
-    .grid { display: grid; grid-template-columns: 360px 1fr; gap: 16px; align-items: start; }
+    header { padding: 14px 20px; background: var(--card); border-bottom: 1px solid var(--border); position: sticky; top: 48px; z-index: 5; box-shadow: var(--shadow); }
+    main { padding: 16px 20px; max-width: 1280px; margin: 0 auto; }
+    .layout { display: grid; grid-template-columns: 380px 1fr; gap: 16px; align-items: start; }
     .card { background: var(--card); border: 1px solid var(--border); border-radius: var(--r); padding: 14px; box-shadow: var(--shadow); }
     .card h3 { margin: 0 0 10px 0; font-size: 14px; color: var(--brand); font-weight: 700; }
     .row { display: flex; gap: 10px; flex-wrap: wrap; }
     label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 4px; }
-    input, select {
-      width: 100%; padding: 10px; font-size: 14px;
+    input, select, textarea {
+      width: 100%; padding: 9px 10px; font-size: 14px;
       border: 1px solid var(--border); border-radius: 10px;
       background: var(--card); color: var(--text); outline: none;
       transition: border-color .15s;
     }
-    input:focus, select:focus { border-color: var(--accent); }
+    textarea { font-family: monospace; font-size: 12px; resize: vertical; }
+    input:focus, select:focus, textarea:focus { border-color: var(--accent); }
     input:disabled, select:disabled { background: var(--bg); opacity: .6; }
     .btn {
       cursor: pointer; border: 0; background: var(--brand); color: #fff;
-      padding: 10px 12px; border-radius: 10px; font-weight: 600; font-size: 14px;
-      transition: background .15s;
+      padding: 10px 14px; border-radius: 10px; font-weight: 600; font-size: 14px;
+      transition: background .15s; white-space: nowrap;
     }
-    .btn:hover { background: #122560; }
+    .btn:hover  { background: #122560; }
     .btn:disabled { opacity: .6; cursor: not-allowed; }
-    .hint { font-size: 12px; color: var(--muted); margin-top: 6px; line-height: 1.5; }
-    .kpi { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
-    .kpi .val { font-size: 20px; font-weight: 800; }
-    .kpi .sub { font-size: 12px; color: var(--muted); margin-top: 4px; }
-    .charts { display: grid; grid-template-columns: 1fr; gap: 12px; }
-    canvas { width: 100% !important; height: 300px !important; }
-    .small canvas { height: 260px !important; }
+    .btn-sm { padding: 6px 12px; font-size: 12px; }
+    .btn-ghost { background: var(--bg); color: var(--muted); border: 1px solid var(--border); }
+    .btn-ghost:hover { background: var(--border); color: var(--text); }
+    .hint { font-size: 12px; color: var(--muted); margin-top: 4px; line-height: 1.5; }
+    .info-panel { background: var(--info-bg); border: 1px solid var(--info-border); border-radius: 10px; padding: 10px; font-size: 12px; }
+    hr { border: none; border-top: 1px solid var(--border); margin: 10px 0; }
     details summary { cursor: pointer; font-size: 12px; color: var(--accent); font-weight: 600; }
     details summary:hover { opacity: .8; }
-    hr { border: none; border-top: 1px solid var(--border); margin: 12px 0; }
-    .info-panel { background: var(--info-bg); border: 1px solid var(--info-border); border-radius: 10px; padding: 10px; font-size: 12px; }
+
+    /* ── Tabs ── */
+    .tab-bar { display: flex; gap: 3px; margin-bottom: 14px; background: var(--bg); border-radius: 10px; padding: 3px; }
+    .tab-btn {
+      cursor: pointer; border: none; background: transparent; color: var(--muted);
+      padding: 7px 0; flex: 1; border-radius: 8px; font-size: 13px; font-weight: 600;
+      transition: all .15s;
+    }
+    .tab-btn.active { background: var(--card); color: var(--brand); box-shadow: 0 1px 4px rgba(27,50,128,.12); }
+    .tab-btn:hover:not(.active) { color: var(--text); }
+    .tab-pane { display: none; }
+    .tab-pane.active { display: grid; gap: 10px; }
+
+    /* ── KPIs ── */
+    .kpi { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+    .kpi-val { font-size: 19px; font-weight: 800; margin-top: 2px; }
+    .kpi-sub { font-size: 11px; color: var(--muted); margin-top: 3px; }
+
+    /* ── Charts ── */
+    canvas { width: 100% !important; height: 280px !important; }
+    .small canvas { height: 240px !important; }
+    .charts { display: grid; grid-template-columns: 1fr; gap: 12px; }
 
     /* Dark mode */
     body.dark {
@@ -68,534 +88,572 @@
     }
 
     @media (max-width: 980px) {
-      .grid { grid-template-columns: 1fr; }
-      .kpi  { grid-template-columns: repeat(2, 1fr); }
+      .layout { grid-template-columns: 1fr; }
+      .kpi    { grid-template-columns: repeat(2, 1fr); }
     }
   </style>
 </head>
 <body>
 <script>if(localStorage.getItem("dpu_theme")==="dark")document.body.classList.add("dark");</script>
-  <header>
-    <div style="display:flex; justify-content:space-between; align-items:center; gap:10px;">
-      <div>
-        <div style="font-weight:800;">Dimenzování tepelných čerpadel</div>
-        <div class="hint">Zatím je to “funkční kostra”: vstupy → simulace → grafy. Počasí/lokality a ceníky budeme dál zpřesňovat.</div>
-      </div>
-      <div style="display:flex; gap:10px; align-items:center;">
-        <button id="btnSim" class="btn">Simulovat</button>
-        <button id="btnExport" class="btn">Export Křivka (Excel)</button>
-      </div>
+
+<header>
+  <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap;">
+    <div>
+      <div style="font-weight:800; font-size:15px;">Dimenzování tepelných čerpadel</div>
+      <div class="hint" style="margin-top:2px;">Hodinová simulace · SCOP · Ekonomika · NPV/IRR</div>
     </div>
-  </header>
+    <div style="display:flex; gap:8px; align-items:center;">
+      <button id="btnSim" class="btn">Simulovat</button>
+      <button id="btnExport" class="btn btn-ghost" style="border:1px solid var(--border);">Export Excel</button>
+    </div>
+  </div>
+</header>
 
-  <main>
-    <div class="grid">
-      <div class="card">
-        <h3>Vstupy</h3>
+<main>
+  <div class="layout">
 
-        <div style="display:grid; gap:10px;">
-          <div>
-            <label>Typ tepelného čerpadla</label>
-            <select id="hp_type">
-              <option value="air_water">Vzduch-voda</option>
-              <option value="water_water">Voda-voda (podzemní voda)</option>
-              <option value="ground_water">Země-voda (geotermální sondy)</option>
+    <!-- ═══════════════ LEFT — INPUTS ═══════════════ -->
+    <div class="card">
+
+      <!-- Quick preset -->
+      <div style="margin-bottom:12px;">
+        <label>Předvolba (rychlý start)</label>
+        <select id="config_preset">
+          <option value="">— vybrat předvolbu —</option>
+          <option value="rd">Rodinný dům 12 kW (vzduch-voda)</option>
+          <option value="bytdom">Bytový dům 100 kW (vzduch-voda)</option>
+          <option value="komercni">Komerční objekt 200 kW (voda-voda)</option>
+          <option value="prumysl">Průmyslový objekt 500 kW (voda-voda)</option>
+        </select>
+      </div>
+
+      <!-- Tab bar -->
+      <div class="tab-bar">
+        <button class="tab-btn active" data-tab="zdroj"    onclick="switchTab('zdroj')">Zdroj</button>
+        <button class="tab-btn"        data-tab="soustava" onclick="switchTab('soustava')">Soustava</button>
+        <button class="tab-btn"        data-tab="ekonomika" onclick="switchTab('ekonomika')">Ekonomika</button>
+        <button class="tab-btn"        data-tab="optimum"  onclick="switchTab('optimum')">Optimum</button>
+      </div>
+
+      <!-- ── Tab: Zdroj ── -->
+      <div class="tab-pane active" id="tab-zdroj">
+
+        <div>
+          <label>Typ tepelného čerpadla</label>
+          <select id="hp_type">
+            <option value="air_water">Vzduch-voda</option>
+            <option value="water_water">Voda-voda (podzemní voda)</option>
+            <option value="ground_water">Země-voda (geotermální sondy)</option>
+          </select>
+        </div>
+
+        <div id="source_temp_row" style="display:none;">
+          <label id="source_temp_label">Teplota zdroje (°C)</label>
+          <input id="source_temp_c" type="number" step="0.5" value="10" />
+          <div class="hint" id="source_temp_hint">Pro podzemní vodu typicky 8–12 °C.</div>
+        </div>
+
+        <hr/>
+
+        <div>
+          <label>Dataset počasí</label>
+          <select id="dataset"></select>
+        </div>
+
+        <details>
+          <summary>Načíst hodinová klimadata z Open-Meteo ↗</summary>
+          <div style="margin-top:8px; display:grid; gap:8px;">
+            <div>
+              <label>Město (přednastav. souřadnice)</label>
+              <select id="city_preset">
+                <option value="">-- vybrat --</option>
+                <option value="50.0755,14.4378">Praha</option>
+                <option value="49.1951,16.6068">Brno</option>
+                <option value="49.8209,18.2625">Ostrava</option>
+                <option value="49.7477,13.3776">Plzeň</option>
+                <option value="48.9745,14.4747">České Budějovice</option>
+                <option value="50.7663,15.0543">Liberec</option>
+                <option value="50.2092,15.8327">Hradec Králové</option>
+                <option value="49.5938,17.2509">Olomouc</option>
+                <option value="49.2241,17.6638">Zlín</option>
+                <option value="50.2304,12.8711">Karlovy Vary</option>
+                <option value="50.6607,14.0323">Ústí nad Labem</option>
+                <option value="49.9450,17.9070">Opava</option>
+              </select>
+            </div>
+            <div class="row">
+              <div style="flex:1; min-width:80px;">
+                <label>Lat</label>
+                <input id="climate_lat" type="number" step="0.0001" value="50.0755" />
+              </div>
+              <div style="flex:1; min-width:80px;">
+                <label>Lon</label>
+                <input id="climate_lon" type="number" step="0.0001" value="14.4378" />
+              </div>
+              <div style="flex:1; min-width:60px;">
+                <label>Rok</label>
+                <select id="climate_year"></select>
+              </div>
+            </div>
+            <button id="btnFetchClimate" class="btn">Načíst z Open-Meteo</button>
+            <div id="climateStatus" class="hint">Klimadata: z datasetu výše</div>
+          </div>
+        </details>
+      </div>
+
+      <!-- ── Tab: Soustava ── -->
+      <div class="tab-pane" id="tab-soustava">
+
+        <div class="row">
+          <div style="flex:1; min-width:120px;">
+            <label id="hp_power_label">Výkon TČ při A7/W45 (kW)</label>
+            <input id="hp_power_kw" type="number" step="0.1" value="120" oninput="calcAccumulation()" />
+          </div>
+          <div style="flex:1; min-width:120px;">
+            <label>Odstavení TČ (°C)</label>
+            <input id="hp_cutoff_c" type="number" step="0.1" value="-15" />
+          </div>
+        </div>
+
+        <hr/>
+
+        <div class="row">
+          <div style="flex:1; min-width:120px;">
+            <label>Roční spotřeba ÚT (GJ/rok)</label>
+            <input id="ut_gj" type="number" step="0.1" value="800" />
+          </div>
+          <div style="flex:1; min-width:120px;">
+            <label>Roční spotřeba TUV (GJ/rok)</label>
+            <input id="tuv_gj" type="number" step="0.1" value="120" />
+          </div>
+        </div>
+
+        <div class="row">
+          <div style="flex:1; min-width:140px;">
+            <label>Profil TUV</label>
+            <select id="tuv_profile">
+              <option value="uniform">Rovnoměrný (celý rok)</option>
+              <option value="daily_peaks">Denní špičky (ráno + večer)</option>
             </select>
           </div>
-
-          <div>
-            <label>Předvolba (rychlý start)</label>
-            <select id="config_preset">
-              <option value="">— vybrat předvolbu —</option>
-              <option value="rd">Rodinný dům 12 kW (vzduch-voda)</option>
-              <option value="bytdom">Bytový dům 100 kW (vzduch-voda)</option>
-              <option value="komercni">Komerční objekt 200 kW (voda-voda)</option>
-              <option value="prumysl">Průmyslový objekt 500 kW (voda-voda)</option>
-            </select>
+          <div style="flex:1; min-width:100px;">
+            <label>Min. teplota TUV (°C)</label>
+            <input id="tuv_min_temp_c" type="number" value="55" step="1" min="40" max="80" />
           </div>
+        </div>
 
-          <div id="source_temp_row" style="display:none;">
-            <label id="source_temp_label">Teplota zdroje (°C)</label>
-            <input id="source_temp_c" type="number" step="0.5" value="10" />
-            <div class="hint" id="source_temp_hint">Pro podzemní vodu typicky 8–12 °C.</div>
-          </div>
+        <hr/>
 
-          <div>
-            <label>Dataset počasí</label>
-            <select id="dataset"></select>
-          </div>
+        <details>
+          <summary>Parametry modelu TČ a topné soustavy ▸</summary>
+          <div style="margin-top:8px; display:grid; gap:8px;">
 
-          <details id="climateDetails" style="margin-top:2px;">
-            <summary style="cursor:pointer; font-size:12px; color:var(--accent); font-weight:600;">Načíst hodinová klimadata z Open-Meteo ↗</summary>
-            <div style="margin-top:8px; display:grid; gap:8px;">
-              <div>
-                <label>Město (přednastav. souřadnice)</label>
-                <select id="city_preset">
-                  <option value="">-- vybrat --</option>
-                  <option value="50.0755,14.4378">Praha</option>
-                  <option value="49.1951,16.6068">Brno</option>
-                  <option value="49.8209,18.2625">Ostrava</option>
-                  <option value="49.7477,13.3776">Plzeň</option>
-                  <option value="48.9745,14.4747">České Budějovice</option>
-                  <option value="50.7663,15.0543">Liberec</option>
-                  <option value="50.2092,15.8327">Hradec Králové</option>
-                  <option value="49.5938,17.2509">Olomouc</option>
-                  <option value="49.2241,17.6638">Zlín</option>
-                  <option value="50.2304,12.8711">Karlovy Vary</option>
-                  <option value="50.6607,14.0323">Ústí nad Labem</option>
-                  <option value="49.9450,17.9070">Opava</option>
+            <div class="row">
+              <div style="flex:1; min-width:140px;">
+                <label>Typ regulace</label>
+                <select id="hp_modulation">
+                  <option value="inverter">Inverter (proměnlivý výkon)</option>
+                  <option value="on_off">On/Off (plný výkon nebo stop)</option>
                 </select>
               </div>
-              <div class="row">
-                <div style="flex:1; min-width:90px;">
-                  <label>Lat (šířka)</label>
-                  <input id="climate_lat" type="number" step="0.0001" value="50.0755" />
-                </div>
-                <div style="flex:1; min-width:90px;">
-                  <label>Lon (délka)</label>
-                  <input id="climate_lon" type="number" step="0.0001" value="14.4378" />
-                </div>
-                <div style="flex:1; min-width:70px;">
-                  <label>Rok</label>
-                  <select id="climate_year"></select>
-                </div>
+              <div style="flex:1; min-width:110px;" id="min_load_row">
+                <label>Min. výkon invertoru (%)</label>
+                <input id="hp_min_load_pct" type="number" value="25" step="5" min="5" max="60" />
               </div>
-              <button id="btnFetchClimate" class="btn">Načíst z Open-Meteo</button>
-              <div id="climateStatus" class="hint">Klimadata: z datasetu výše</div>
-            </div>
-          </details>
-
-          <div class="row">
-            <div style="flex:1; min-width:140px;">
-              <label>Roční spotřeba ÚT (GJ/rok)</label>
-              <input id="ut_gj" type="number" step="0.1" value="800" />
-            </div>
-            <div style="flex:1; min-width:140px;">
-              <label>Roční spotřeba TUV (GJ/rok)</label>
-              <input id="tuv_gj" type="number" step="0.1" value="120" />
-            </div>
-          </div>
-
-          <div class="row">
-            <div style="flex:1; min-width:140px;">
-              <label>Profil TUV</label>
-              <select id="tuv_profile">
-                <option value="uniform">Rovnoměrný (celý rok)</option>
-                <option value="daily_peaks">Denní špičky (ráno + večer)</option>
-              </select>
-            </div>
-            <div style="flex:1; min-width:140px;">
-              <label>Min. teplota TUV (°C)</label>
-              <input id="tuv_min_temp_c" type="number" value="55" step="1" min="40" max="80" />
-            </div>
-          </div>
-
-          <details style="margin-top:4px;">
-            <summary style="cursor:pointer; font-size:12px; color:var(--accent); font-weight:600;">Vlastní hodinový profil spotřeby tepla (CSV) ▸</summary>
-            <div style="margin-top:8px; display:grid; gap:8px;">
-              <div class="hint">CSV soubor s hodnotami v kWh — jeden sloupec, bez záhlaví, ideálně 8 760 řádků. Pokud je nahraný, pole ÚT+TUV se ignorují.</div>
-              <input type="file" id="custom_demand_file" accept=".csv,.txt" />
-              <div id="custom_demand_status" class="hint">Nenahráno</div>
-            </div>
-          </details>
-
-          <div class="row">
-            <div style="flex:1; min-width:140px;">
-              <label id="hp_power_label">Výkon TČ při A7/W45 (kW)</label>
-              <input id="hp_power_kw" type="number" step="0.1" value="120" oninput="calcAccumulation()" />
-            </div>
-            <div style="flex:1; min-width:140px;" id="cutoff_row">
-              <label>Odstavení TČ (°C)</label>
-              <input id="hp_cutoff_c" type="number" step="0.1" value="-15" />
-            </div>
-          </div>
-
-          <details style="margin-top:6px;">
-            <summary style="cursor:pointer; font-size:12px; color:var(--accent); font-weight:600;">Parametry modelu TČ a topné soustavy ▸</summary>
-            <div style="margin-top:8px; display:grid; gap:8px;">
-              <div class="row">
-                <div style="flex:1; min-width:140px;">
-                  <label>Typ regulace</label>
-                  <select id="hp_modulation">
-                    <option value="inverter">Inverter (proměnlivý výkon)</option>
-                    <option value="on_off">On/Off (plný výkon nebo stop)</option>
-                  </select>
-                </div>
-                <div style="flex:1; min-width:120px;" id="min_load_row">
-                  <label>Min. výkon invertoru (%)</label>
-                  <input id="hp_min_load_pct" type="number" value="25" step="5" min="5" max="60" />
-                </div>
-                <div style="flex:1; min-width:120px; display:none;" id="cycling_loss_row">
-                  <label>Ztráta cyklováním (%)</label>
-                  <input id="hp_cycling_loss_pct" type="number" value="5" step="1" min="0" max="20" />
-                </div>
+              <div style="flex:1; min-width:110px; display:none;" id="cycling_loss_row">
+                <label>Ztráta cyklováním (%)</label>
+                <input id="hp_cycling_loss_pct" type="number" value="5" step="1" min="0" max="20" />
               </div>
+            </div>
+
+            <div class="row">
+              <div style="flex:1; min-width:110px;">
+                <label id="cop_label">COP při A7/W45</label>
+                <input id="cop_nominal" type="number" step="0.1" value="3.2" />
+              </div>
+              <div style="flex:1; min-width:110px;">
+                <label>Výp. vnitřní teplota (°C)</label>
+                <input id="t_base_c" type="number" step="0.5" value="20" />
+              </div>
+              <div style="flex:1; min-width:110px;">
+                <label>Mez topení ven. teplota (°C)</label>
+                <input id="t_heat_on_c" type="number" step="0.5" value="14" />
+              </div>
+            </div>
+
+            <div style="font-size:11px; font-weight:600; color:var(--muted);">Topná křivka: T_voda = max(min, sklon × T_venku + intercept)</div>
+            <div class="row">
+              <div style="flex:1; min-width:90px;">
+                <label>Sklon (°C/°C)</label>
+                <input id="hw_slope" type="number" step="0.05" value="-1.25" />
+              </div>
+              <div style="flex:1; min-width:90px;">
+                <label>Intercept při 0 °C</label>
+                <input id="hw_intercept" type="number" step="0.5" value="42.5" />
+              </div>
+              <div style="flex:1; min-width:90px;">
+                <label>Min. teplota vody (°C)</label>
+                <input id="hw_min_c" type="number" step="0.5" value="45" />
+              </div>
+            </div>
+
+            <details style="margin-top:2px;">
+              <summary>Vlastní výkonová tabulka TČ (přepíše vestavěnou) ▸</summary>
+              <div style="margin-top:8px; display:grid; gap:6px;">
+                <div class="hint">CSV: T_zdroj,T_voda,COP,Výkon_kW — bez záhlaví, min. 2 body. COP a výkon jsou absolutní hodnoty.</div>
+                <textarea id="custom_perf_csv" rows="5" placeholder="7,45,3.2,120&#10;2,45,2.9,115&#10;-7,45,2.5,108&#10;7,55,2.8,118&#10;2,55,2.5,113&#10;-7,55,2.2,105"></textarea>
+                <div class="row" style="gap:6px;">
+                  <button class="btn btn-sm" onclick="parseCustomTable()">Ověřit a použít</button>
+                  <button class="btn btn-sm btn-ghost" onclick="clearCustomTable()">Zrušit vlastní tabulku</button>
+                </div>
+                <div id="custom_perf_status" class="hint"></div>
+              </div>
+            </details>
+          </div>
+        </details>
+
+        <details>
+          <summary>Reverzibilní TČ – chlazení ▸</summary>
+          <div style="margin-top:8px; display:grid; gap:8px;">
+            <label style="display:flex; align-items:center; gap:6px; cursor:pointer; font-size:13px; color:var(--text);">
+              <input type="checkbox" id="cooling_enabled" style="width:auto;" />
+              Zahrnout chlazení do simulace
+            </label>
+            <div id="cooling_params" style="display:none; display:grid; gap:8px;">
               <div class="row">
                 <div style="flex:1; min-width:120px;">
-                  <label id="cop_label">Jmenovitý COP při A7/W45</label>
-                  <input id="cop_nominal" type="number" step="0.1" value="3.2" />
+                  <label>Roční potřeba chlazení (GJ/rok)</label>
+                  <input id="cooling_gj" type="number" value="0" step="1" min="0" />
                 </div>
                 <div style="flex:1; min-width:120px;">
-                  <label>Výpočtová vnitřní teplota (°C)</label>
-                  <input id="t_base_c" type="number" step="0.5" value="20" />
-                </div>
-                <div style="flex:1; min-width:120px;">
-                  <label>Mez topení – venk. teplota (°C)</label>
-                  <input id="t_heat_on_c" type="number" step="0.5" value="14" />
+                  <label>Práh ven. teploty pro chlazení (°C)</label>
+                  <input id="cooling_threshold_c" type="number" value="18" step="1" />
                 </div>
               </div>
-              <div style="font-size:11px; font-weight:600; color:var(--muted); margin-top:2px;">Topná křivka (T_voda = max(min, sklon × T_venku + intercept))</div>
-              <div class="row">
-                <div style="flex:1; min-width:100px;">
-                  <label>Sklon (°C/°C)</label>
-                  <input id="hw_slope" type="number" step="0.05" value="-1.25" />
-                </div>
-                <div style="flex:1; min-width:100px;">
-                  <label>Intercept při 0 °C</label>
-                  <input id="hw_intercept" type="number" step="0.5" value="42.5" />
-                </div>
-                <div style="flex:1; min-width:100px;">
-                  <label>Min. teplota vody (°C)</label>
-                  <input id="hw_min_c" type="number" step="0.5" value="45" />
-                </div>
-              </div>
-              <div class="hint">Výkonová tabulka: normalizována na A7/W45 = 1,0. Výkon a COP se interpolují bilineárně pro každou hodinu dle T_zdroje a T_vody.</div>
-
-              <details style="margin-top:4px;">
-                <summary style="cursor:pointer; font-size:12px; color:var(--accent); font-weight:600;">Vlastní výkonová tabulka TČ (přepíše vestavěnou) ▸</summary>
-                <div style="margin-top:8px; display:grid; gap:6px;">
-                  <div class="hint">Formát CSV: T_zdroj,T_voda,COP,Výkon_kW (bez záhlaví). Minimálně 4 body pro bilineární interpolaci. COP a výkon jsou absolutní hodnoty.</div>
-                  <textarea id="custom_perf_csv" rows="5" style="width:100%; font-family:monospace; font-size:12px; padding:6px; border:1px solid var(--border); border-radius:8px; background:var(--bg); color:var(--text);" placeholder="7,45,3.2,120&#10;2,45,2.9,115&#10;-7,45,2.5,108&#10;7,55,2.8,118&#10;2,55,2.5,113&#10;-7,55,2.2,105"></textarea>
-                  <div style="display:flex; gap:8px; align-items:center;">
-                    <button class="btn" style="font-size:12px; padding:6px 12px;" onclick="parseCustomTable()">Ověřit a použít tabulku</button>
-                    <button class="btn" style="font-size:12px; padding:6px 12px; background:var(--muted);" onclick="clearCustomTable()">Zrušit vlastní tabulku</button>
-                  </div>
-                  <div id="custom_perf_status" class="hint"></div>
-                </div>
-              </details>
-            </div>
-          </details>
-
-          <details style="margin-top:6px;">
-            <summary style="cursor:pointer; font-size:12px; color:var(--accent); font-weight:600;">Reverzibilní TČ – chlazení ▸</summary>
-            <div style="margin-top:8px; display:grid; gap:8px;">
               <div>
-                <label style="display:flex; align-items:center; gap:6px; cursor:pointer;">
-                  <input type="checkbox" id="cooling_enabled" />
-                  Zahrnout chlazení do simulace
-                </label>
-              </div>
-              <div id="cooling_params" style="display:none; display:grid; gap:8px;">
-                <div class="row">
-                  <div style="flex:1; min-width:130px;">
-                    <label>Roční potřeba chlazení (GJ/rok)</label>
-                    <input id="cooling_gj" type="number" value="0" step="1" min="0" />
-                  </div>
-                  <div style="flex:1; min-width:130px;">
-                    <label>Práh ven. teploty pro chlazení (°C)</label>
-                    <input id="cooling_threshold_c" type="number" value="18" step="1" />
-                  </div>
-                </div>
-                <div style="flex:1; min-width:130px;">
-                  <label>EER chlazení (0 = auto: COP−1)</label>
-                  <input id="eer_cooling" type="number" value="0" step="0.1" min="0" />
-                  <div class="hint">Automaticky EER = COP_topení − 1 (přibližný vztah pro reverzibilní TČ).</div>
-                </div>
+                <label>EER chlazení (0 = auto: COP−1)</label>
+                <input id="eer_cooling" type="number" value="0" step="0.1" min="0" />
+                <div class="hint">Auto: EER = COP_topení − 1</div>
               </div>
             </div>
-          </details>
+          </div>
+        </details>
 
+        <details>
+          <summary>Vlastní hodinový profil spotřeby tepla (CSV) ▸</summary>
+          <div style="margin-top:8px; display:grid; gap:6px;">
+            <div class="hint">CSV s hodnotami v kWh — jeden sloupec, bez záhlaví, ideálně 8 760 řádků. Přepíše zadaná GJ.</div>
+            <input type="file" id="custom_demand_file" accept=".csv,.txt" />
+            <div id="custom_demand_status" class="hint">Nenahráno</div>
+          </div>
+        </details>
+
+        <hr/>
+
+        <div style="background:var(--info-bg); border:1px solid var(--info-border); border-radius:10px; padding:10px;">
+          <div style="font-size:12px; font-weight:700; color:var(--brand); margin-bottom:6px;">Doporučená akumulace</div>
           <div class="row">
-            <div style="flex:1; min-width:140px;">
-              <label>Cena elektřiny (Kč/MWh, bez DPH)</label>
-              <input id="price_kcz_per_mwh" type="number" step="1" value="2500" />
-            </div>
-          </div>
-
-          <div class="row">
-            <div style="flex:1; min-width:140px;">
-              <label>Typ zákazníka</label>
-              <select id="customer_type">
-                <option value="household">Domácnost (D56d)</option>
-                <option value="business">Podnikatel (C56d)</option>
-              </select>
-            </div>
-            <div style="flex:1; min-width:140px;">
-              <label>Použitý tarif (zobrazí se i ve výsledcích)</label>
-              <input id="electricity_tariff" type="text" value="D56d" />
-            </div>
-          </div>
-
-          <div class="row">
-            <div style="flex:1; min-width:140px;">
-              <label>Dodavatel elektřiny</label>
-              <select id="supplier_key">
-                <option value="cez_2026" selected>ČEZ Distribuce – 2026 (D56d / D57d)</option>
-                <option value="egd_2026">EG.D / E.ON – 2026 (D56d / D57d)</option>
-                <option value="pre_2026">PREdistribuce – 2026 (D56d / D57d)</option>
-                <option value="custom">Vlastní ceny</option>
-              </select>
-
-              <div id="priceDetailPanel" class="info-panel" style="margin-top:10px;">
-                <div id="supplierPriceInfo"><span style="color:#64748b; font-style:italic;">Načítám ceník…</span></div>
-                <div id="customPriceForm" style="display:none;">
-                  <div style="font-weight:700; margin-bottom:8px; color:var(--brand);">Vlastní zadání cen elektřiny (bez DPH)</div>
-                  <div class="row">
-                    <div style="flex:1; min-width:120px;">
-                      <label>Cena VT (Kč/MWh)</label>
-                      <input id="custom_vt_kcz" type="number" step="50" value="3500" />
-                    </div>
-                    <div style="flex:1; min-width:120px;">
-                      <label>Cena NT (Kč/MWh)</label>
-                      <input id="custom_nt_kcz" type="number" step="50" value="3300" />
-                    </div>
-                  </div>
-                  <div class="row" style="margin-top:6px;">
-                    <div style="flex:1; min-width:120px;">
-                      <label>Podíl VT spotřeby (%)</label>
-                      <input id="custom_vt_share_pct" type="number" step="1" value="5" min="0" max="100" />
-                    </div>
-                    <div style="flex:1; min-width:120px; display:flex; align-items:flex-end;">
-                      <div class="hint" id="customPriceAvg" style="padding-bottom:10px;">Průměr: — Kč/MWh</div>
-                    </div>
-                  </div>
-                  <div class="hint">Průměrná cena se přepíše do pole „Cena elektřiny" výše a použije v simulaci.</div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <hr/>
-
-          <div class="row">
-            <div style="flex:1; min-width:140px;">
-              <label>Bivalence (po instalaci)</label>
-              <select id="bivalence_type">
-                <option value="gas_boiler">Plynový kotel</option>
-                <option value="electric_boiler">Elektrokotel</option>
-              </select>
-            </div>
-            <div style="flex:1; min-width:140px;">
-              <label>Účinnost bivalence (η)</label>
-              <input id="bivalence_efficiency" type="number" step="0.01" value="0.92" />
-            </div>
-          </div>
-
-          <div class="row">
-            <div style="flex:1; min-width:140px;">
-              <label>Cena plynu (Kč/m³)</label>
-              <input id="gas_price_kcz_per_m3" type="number" step="0.1" value="25" />
-            </div>
-            <div style="flex:1; min-width:140px;">
-              <label>Výhřevnost plynu (kWh/m³)</label>
-              <input id="gas_kwh_per_m3" type="number" step="0.1" value="10.5" />
-            </div>
-          </div>
-
-          <div class="row">
-            <div style="flex:1; min-width:140px;">
-              <label>Cena elektřiny pro elektrokotel (Kč/kWh)</label>
-              <input id="bivalence_price_kcz_per_kwh" type="number" step="0.01" value="4.0" />
-            </div>
-          </div>
-
-          <details style="margin-top:8px;">
-            <summary style="cursor:pointer; font-weight:650;">Původní zdroj tepla (pro porovnání „před/po“)</summary>
-            <div style="margin-top:10px;">
-              <div class="row">
-                <div style="flex:1; min-width:140px;">
-                  <label>Původní zdroj</label>
-                  <select id="base_source_type">
-                    <option value="gas_boiler">Plynový kotel</option>
-                    <option value="electric_boiler">Elektrokotel</option>
-                  </select>
-                </div>
-                <div style="flex:1; min-width:140px;">
-                  <label>Účinnost původního zdroje (η)</label>
-                  <input id="base_efficiency" type="number" step="0.01" value="0.90" />
-                </div>
-              </div>
-
-              <div class="row">
-                <div style="flex:1; min-width:140px;">
-                  <label>Cena plynu (Kč/m³)</label>
-                  <input id="base_gas_price_kcz_per_m3" type="number" step="0.1" value="25" />
-                </div>
-                <div style="flex:1; min-width:140px;">
-                  <label>Výhřevnost plynu (kWh/m³)</label>
-                  <input id="base_gas_kwh_per_m3" type="number" step="0.1" value="10.5" />
-                </div>
-              </div>
-
-              <div class="row">
-                <div style="flex:1; min-width:140px;">
-                  <label>Cena elektřiny (Kč/kWh)</label>
-                  <input id="base_price_kcz_per_kwh" type="number" step="0.01" value="4.0" />
-                </div>
-              </div>
-            </div>
-          </details>
-
-
-          <div class="row">
-            <div style="flex:1; min-width:140px;">
-              <label><input type="checkbox" id="include_depr" /> Zahrnout odpisy (pro optimum výkonu)</label>
-              <div class="hint">Když zapneš, přičte se “investice / roky”.</div>
-            </div>
-          </div>
-
-          <div class="row">
-            <div style="flex:1; min-width:140px;">
-              <label>Investice (Kč, bez DPH)</label>
-              <input id="investment_kcz" type="number" step="1000" value="0" />
-            </div>
-            <div style="flex:1; min-width:140px;">
-              <label>Odpisy (roky)</label>
-              <input id="depr_years" type="number" step="1" value="15" />
-            </div>
-          </div>
-
-          <div class="card">
-            <h3>Odhad optimálního výkonu TČ</h3>
-            <div class=”hint”>Graf: celkové roční náklady (bez DPH) vs výkon TČ. Pro smysluplné optimum nastav investici na kW – křivka pak zachycuje trade-off mezi velikostí TČ a kapitálovými náklady.</div>
-            <div class=”row” style=”margin-top:10px;”>
-              <div style=”flex:1; min-width:100px;”>
-                <label>Min (kW)</label>
-                <input id=”opt_min” type=”number” value=”20” step=”1” />
-              </div>
-              <div style=”flex:1; min-width:100px;”>
-                <label>Max (kW)</label>
-                <input id=”opt_max” type=”number” value=”300” step=”1” />
-              </div>
-              <div style=”flex:1; min-width:100px;”>
-                <label>Krok (kW)</label>
-                <input id=”opt_step” type=”number” value=”5” step=”1” />
-              </div>
-            </div>
-            <div class=”row” style=”margin-top:8px;”>
-              <div style=”flex:1; min-width:120px;”>
-                <label>Fixní investice (Kč)</label>
-                <input id=”invest_base_kcz” type=”number” step=”10000” value=”0” />
-              </div>
-              <div style=”flex:1; min-width:120px;”>
-                <label>Investice na kW (Kč/kW)</label>
-                <input id=”invest_per_kw_kcz” type=”number” step=”1000” value=”0” />
-              </div>
-            </div>
-            <div class=”hint”>Příklad: fixní 200 000 Kč + 18 000 Kč/kW → pro 100 kW TČ = 2 000 000 Kč investice.</div>
-            <button id=”btnOpt” class=”btn” style=”margin-top:10px; width:100%;”>Spočítat optimum</button>
-          </div>
-
-          <div class="hint">Tip: Pokud něco vypadá “divně”, je to teď spíš model než UI – ladíme to postupně na 1:1 s Excelem.</div>
-        </div>
-      </div>
-
-      <div>
-        <div class="card">
-          <h3>Výsledky</h3>
-          <div class="kpi">
-            <div class="card">
-              <div>Spotřeba elektřiny</div>
-              <div class="val" id="kpi_el">—</div>
-              <div class="sub" id="kpi_cop">SCOP: — | bival. bod: —</div>
-            </div>
-            <div class="card">
-              <div>Teplo z TČ</div>
-              <div class="val" id="kpi_hp_heat">—</div>
-              <div class="sub" id="kpi_biv">bivalence: —</div>
-            </div>
-            <div class="card">
-              <div>Špičky výkonu</div>
-              <div class="val" id="kpi_peak">—</div>
-              <div class="sub" id="kpi_peak2">TČ max / bivalence max: —</div>
-            </div>
-            <div class="card">
-              <div>Venkovní teploty</div>
-              <div class="val" id="kpi_tout">—</div>
-              <div class="sub" id="kpi_tout2">min / max: —</div>
-            </div>
-          </div>
-
-          <div class="card" style="margin-top:12px;">
-            <div style="font-weight:800;" id="kpi_cost">Elektřina: —</div>
-            <div class="hint" id="kpi_cost2">Odpisy: — | Celkem: —</div>
-          </div>
-
-          <div class="card" style="margin-top:12px;">
-            <h3>Finanční analýza</h3>
-            <div class="row" style="margin-bottom:8px;">
-              <div style="flex:1; min-width:110px;">
-                <label>Diskontní sazba (%/rok)</label>
-                <input id="discount_rate" type="number" value="5" step="0.5" min="0" max="30" oninput="calcNPV()" />
-              </div>
-              <div style="flex:1; min-width:110px;">
-                <label>Horizont hodnocení (roky)</label>
-                <input id="npv_years" type="number" value="20" step="1" min="1" max="50" oninput="calcNPV()" />
-              </div>
-            </div>
-            <div id="npv_result"><div class="hint">Zadejte investici a spusťte simulaci.</div></div>
-          </div>
-        </div>
-
-        <div class="charts" style="margin-top:12px;">
-          <div class="card small">
-            <h3>Odhad optimálního výkonu TČ (náklady vs výkon)</h3>
-            <canvas id="chOpt"></canvas>
-          </div>
-
-          <div class="card small">
-            <h3>Graf rozdělení vyrobeného tepla (ročně)</h3>
-            <canvas id="chHeatSplit"></canvas>
-          </div>
-
-          <div class="card">
-            <h3>Průběh hodinových teplot venkovního vzduchu (°C)</h3>
-            <canvas id="chTout"></canvas>
-          </div>
-
-          <div class="card">
-            <h3>Průběh hodinových výkonů (kW)</h3>
-            <canvas id="chPower"></canvas>
-          </div>
-
-          <div class="card">
-            <h3>Křivka trvání výkonu + topný faktor (COP)</h3>
-            <canvas id="chDurationCop"></canvas>
-          </div>
-
-          <div class="card small">
-            <h3>Topná křivka (T voda vs T venku)</h3>
-            <canvas id="chHeatingCurve"></canvas>
-          </div>
-        </div>
-
-        <div class="card" style="margin-top:12px;">
-          <h3>Doporučená akumulace</h3>
-          <div class="hint" style="margin-bottom:10px;">Minimální objem zásobníkového ohřívače pro udržení plynulého chodu TČ bez krátkých cyklů kompresoru.</div>
-          <div class="row">
-            <div style="flex:1; min-width:120px;">
+            <div style="flex:1; min-width:110px;">
               <label>Min. doba chodu TČ (min)</label>
               <input id="acc_t_min" type="number" value="5" step="1" min="1" oninput="calcAccumulation()" />
             </div>
-            <div style="flex:1; min-width:120px;">
-              <label>Teplotní zdvih v zásobníku (°C)</label>
+            <div style="flex:1; min-width:110px;">
+              <label>Teplotní zdvih zásobníku (°C)</label>
               <input id="acc_dt" type="number" value="5" step="0.5" min="1" oninput="calcAccumulation()" />
             </div>
           </div>
-          <div id="acc_result" style="margin-top:12px; font-size:15px; font-weight:600; color:var(--brand);">—</div>
-          <div class="hint" style="margin-top:4px;">V = P_TČ × t_min × 60 / (4,18 × ΔT) [litrů]</div>
+          <div id="acc_result" style="margin-top:8px; font-size:14px; font-weight:600; color:var(--brand);">—</div>
+          <div class="hint">V = P_TČ × t_min × 60 / (4,18 × ΔT) [litrů]</div>
         </div>
       </div>
-    </div>
-  </main>
 
-  <script src="./app.js"></script>
-  <script src="/shared/navbar.js" data-tool="Tepelná čerpadla"></script>
-  <script>
-    document.getElementById("hp_type")?.addEventListener("change", function() {
-      onHpTypeChange();
-      simulate();
-    });
-  </script>
+      <!-- ── Tab: Ekonomika ── -->
+      <div class="tab-pane" id="tab-ekonomika">
+
+        <div>
+          <label>Typ zákazníka</label>
+          <select id="customer_type">
+            <option value="household">Domácnost (D56d)</option>
+            <option value="business">Podnikatel (C56d)</option>
+          </select>
+        </div>
+
+        <div class="row">
+          <div style="flex:1; min-width:120px;">
+            <label>Dodavatel elektřiny</label>
+            <select id="supplier_key">
+              <option value="cez_2026" selected>ČEZ – 2026</option>
+              <option value="egd_2026">EG.D / E.ON – 2026</option>
+              <option value="pre_2026">PREdistribuce – 2026</option>
+              <option value="custom">Vlastní ceny</option>
+            </select>
+          </div>
+          <div style="flex:1; min-width:100px;">
+            <label>Tarif</label>
+            <input id="electricity_tariff" type="text" value="D56d" />
+          </div>
+        </div>
+
+        <div id="priceDetailPanel" class="info-panel">
+          <div id="supplierPriceInfo"><span style="font-style:italic;">Načítám ceník…</span></div>
+          <div id="customPriceForm" style="display:none;">
+            <div style="font-weight:700; margin-bottom:8px; color:var(--brand);">Vlastní ceny elektřiny (bez DPH)</div>
+            <div class="row">
+              <div style="flex:1; min-width:110px;">
+                <label>Cena VT (Kč/MWh)</label>
+                <input id="custom_vt_kcz" type="number" step="50" value="3500" />
+              </div>
+              <div style="flex:1; min-width:110px;">
+                <label>Cena NT (Kč/MWh)</label>
+                <input id="custom_nt_kcz" type="number" step="50" value="3300" />
+              </div>
+            </div>
+            <div class="row" style="margin-top:6px;">
+              <div style="flex:1; min-width:110px;">
+                <label>Podíl VT spotřeby (%)</label>
+                <input id="custom_vt_share_pct" type="number" step="1" value="5" min="0" max="100" />
+              </div>
+              <div style="flex:1; min-width:110px; display:flex; align-items:flex-end;">
+                <div class="hint" id="customPriceAvg" style="padding-bottom:10px;">Průměr: — Kč/MWh</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <label>Průměrná cena elektřiny (Kč/MWh, bez DPH)</label>
+          <input id="price_kcz_per_mwh" type="number" step="1" value="2500" />
+          <div class="hint">Vyplní se automaticky z ceníku. Lze přepsat ručně.</div>
+        </div>
+
+        <hr/>
+
+        <div class="row">
+          <div style="flex:1; min-width:140px;">
+            <label>Bivalence (po instalaci)</label>
+            <select id="bivalence_type">
+              <option value="gas_boiler">Plynový kotel</option>
+              <option value="electric_boiler">Elektrokotel</option>
+            </select>
+          </div>
+          <div style="flex:1; min-width:100px;">
+            <label>Účinnost bivalence (η)</label>
+            <input id="bivalence_efficiency" type="number" step="0.01" value="0.92" />
+          </div>
+        </div>
+
+        <div class="row">
+          <div style="flex:1; min-width:120px;">
+            <label>Cena plynu (Kč/m³)</label>
+            <input id="gas_price_kcz_per_m3" type="number" step="0.1" value="25" />
+          </div>
+          <div style="flex:1; min-width:120px;">
+            <label>Výhřevnost plynu (kWh/m³)</label>
+            <input id="gas_kwh_per_m3" type="number" step="0.1" value="10.5" />
+          </div>
+        </div>
+
+        <div>
+          <label>Cena el. pro elektrokotel (Kč/kWh)</label>
+          <input id="bivalence_price_kcz_per_kwh" type="number" step="0.01" value="4.0" />
+        </div>
+
+        <hr/>
+
+        <details>
+          <summary>Původní zdroj tepla (srovnání „před/po") ▸</summary>
+          <div style="margin-top:8px; display:grid; gap:8px;">
+            <div class="row">
+              <div style="flex:1; min-width:130px;">
+                <label>Původní zdroj</label>
+                <select id="base_source_type">
+                  <option value="gas_boiler">Plynový kotel</option>
+                  <option value="electric_boiler">Elektrokotel</option>
+                </select>
+              </div>
+              <div style="flex:1; min-width:100px;">
+                <label>Účinnost (η)</label>
+                <input id="base_efficiency" type="number" step="0.01" value="0.90" />
+              </div>
+            </div>
+            <div class="row">
+              <div style="flex:1; min-width:120px;">
+                <label>Cena plynu (Kč/m³)</label>
+                <input id="base_gas_price_kcz_per_m3" type="number" step="0.1" value="25" />
+              </div>
+              <div style="flex:1; min-width:120px;">
+                <label>Výhřevnost (kWh/m³)</label>
+                <input id="base_gas_kwh_per_m3" type="number" step="0.1" value="10.5" />
+              </div>
+            </div>
+            <div>
+              <label>Cena elektřiny (Kč/kWh)</label>
+              <input id="base_price_kcz_per_kwh" type="number" step="0.01" value="4.0" />
+            </div>
+          </div>
+        </details>
+
+        <hr/>
+
+        <div>
+          <label style="display:flex; align-items:center; gap:6px; cursor:pointer; font-size:13px; color:var(--text);">
+            <input type="checkbox" id="include_depr" style="width:auto;" />
+            Zahrnout odpisy do ročních nákladů
+          </label>
+          <div class="hint">Přičte investice / roky. Využijte i pro optimalizaci výkonu TČ.</div>
+        </div>
+
+        <div class="row">
+          <div style="flex:1; min-width:120px;">
+            <label>Investice (Kč, bez DPH)</label>
+            <input id="investment_kcz" type="number" step="1000" value="0" oninput="calcNPV()" />
+          </div>
+          <div style="flex:1; min-width:100px;">
+            <label>Odpisy (roky)</label>
+            <input id="depr_years" type="number" step="1" value="15" />
+          </div>
+        </div>
+
+        <div style="background:var(--info-bg); border:1px solid var(--info-border); border-radius:10px; padding:10px; margin-top:2px;">
+          <div style="font-size:12px; font-weight:700; color:var(--brand); margin-bottom:8px;">Finanční analýza</div>
+          <div class="row" style="margin-bottom:8px;">
+            <div style="flex:1; min-width:110px;">
+              <label>Diskontní sazba (%/rok)</label>
+              <input id="discount_rate" type="number" value="5" step="0.5" min="0" max="30" oninput="calcNPV()" />
+            </div>
+            <div style="flex:1; min-width:110px;">
+              <label>Horizont hodnocení (roky)</label>
+              <input id="npv_years" type="number" value="20" step="1" min="1" max="50" oninput="calcNPV()" />
+            </div>
+          </div>
+          <div id="npv_result"><div class="hint">Zadejte investici a spusťte simulaci.</div></div>
+        </div>
+      </div>
+
+      <!-- ── Tab: Optimum ── -->
+      <div class="tab-pane" id="tab-optimum">
+        <div class="hint" style="margin-bottom:4px;">Rozbor celkových ročních nákladů v závislosti na výkonu TČ. Při zadání investice na kW graf zachycuje trade-off výkon × CAPEX.</div>
+
+        <div class="row">
+          <div style="flex:1; min-width:90px;">
+            <label>Min výkon (kW)</label>
+            <input id="opt_min" type="number" value="20" step="1" />
+          </div>
+          <div style="flex:1; min-width:90px;">
+            <label>Max výkon (kW)</label>
+            <input id="opt_max" type="number" value="300" step="1" />
+          </div>
+          <div style="flex:1; min-width:80px;">
+            <label>Krok (kW)</label>
+            <input id="opt_step" type="number" value="5" step="1" />
+          </div>
+        </div>
+
+        <hr/>
+
+        <div style="font-size:12px; font-weight:600; color:var(--muted);">Investiční náklady (škálování s výkonem)</div>
+        <div class="row">
+          <div style="flex:1; min-width:120px;">
+            <label>Fixní složka (Kč)</label>
+            <input id="invest_base_kcz" type="number" step="10000" value="0" />
+          </div>
+          <div style="flex:1; min-width:120px;">
+            <label>Proměnná složka (Kč/kW)</label>
+            <input id="invest_per_kw_kcz" type="number" step="1000" value="0" />
+          </div>
+        </div>
+        <div class="hint">Příklad: fixní 200 000 Kč + 18 000 Kč/kW → pro 100 kW TČ = 2 000 000 Kč.</div>
+
+        <button id="btnOpt" class="btn" style="width:100%; margin-top:6px;">Spočítat optimum</button>
+
+        <div id="opt_best_info" class="hint" style="margin-top:6px;"></div>
+      </div>
+
+    </div><!-- /.card -->
+
+    <!-- ═══════════════ RIGHT — RESULTS ═══════════════ -->
+    <div>
+
+      <!-- KPIs -->
+      <div class="card">
+        <h3>Výsledky simulace</h3>
+        <div class="kpi">
+          <div class="card">
+            <div style="font-size:12px; color:var(--muted);">Spotřeba elektřiny</div>
+            <div class="kpi-val" id="kpi_el">—</div>
+            <div class="kpi-sub" id="kpi_cop">SCOP: — | bival. bod: —</div>
+          </div>
+          <div class="card">
+            <div style="font-size:12px; color:var(--muted);">Teplo z TČ</div>
+            <div class="kpi-val" id="kpi_hp_heat">—</div>
+            <div class="kpi-sub" id="kpi_biv">bivalence: —</div>
+          </div>
+          <div class="card">
+            <div style="font-size:12px; color:var(--muted);">Špičky výkonu</div>
+            <div class="kpi-val" id="kpi_peak">—</div>
+            <div class="kpi-sub" id="kpi_peak2">TČ / bival.: —</div>
+          </div>
+          <div class="card">
+            <div style="font-size:12px; color:var(--muted);">Venkovní teploty</div>
+            <div class="kpi-val" id="kpi_tout">—</div>
+            <div class="kpi-sub" id="kpi_tout2">min / max: —</div>
+          </div>
+        </div>
+        <div class="card" style="margin-top:10px;">
+          <div style="font-weight:800;" id="kpi_cost">Elektřina: —</div>
+          <div class="hint" id="kpi_cost2">Bivalence: — | Odpisy: — | Celkem: — | Úspora: —</div>
+        </div>
+      </div>
+
+      <!-- Charts -->
+      <div class="charts" style="margin-top:12px;">
+        <div class="card small">
+          <h3>Optimum výkonu TČ (náklady vs výkon)</h3>
+          <canvas id="chOpt"></canvas>
+        </div>
+
+        <div class="card small">
+          <h3>Rozdělení vyrobeného tepla (ročně)</h3>
+          <canvas id="chHeatSplit"></canvas>
+        </div>
+
+        <div class="card">
+          <h3>Průběh hodinových teplot venkovního vzduchu (°C)</h3>
+          <canvas id="chTout"></canvas>
+        </div>
+
+        <div class="card">
+          <h3>Průběh hodinových výkonů (kW)</h3>
+          <canvas id="chPower"></canvas>
+        </div>
+
+        <div class="card">
+          <h3>Křivka trvání výkonu + topný faktor (COP)</h3>
+          <canvas id="chDurationCop"></canvas>
+        </div>
+
+        <div class="card small">
+          <h3>Topná křivka (T voda vs T venku)</h3>
+          <canvas id="chHeatingCurve"></canvas>
+        </div>
+      </div>
+
+    </div><!-- /right -->
+  </div><!-- /.layout -->
+</main>
+
+<script src="./app.js"></script>
+<script src="/shared/navbar.js" data-tool="Tepelná čerpadla"></script>
+<script>
+  function switchTab(tab) {
+    document.querySelectorAll(".tab-btn").forEach(b => b.classList.toggle("active", b.dataset.tab === tab));
+    document.querySelectorAll(".tab-pane").forEach(p => p.classList.toggle("active", p.id === "tab-" + tab));
+  }
+
+  document.getElementById("hp_type")?.addEventListener("change", function() {
+    onHpTypeChange();
+    simulate();
+  });
+</script>
 </body>
 </html>

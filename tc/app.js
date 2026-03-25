@@ -613,9 +613,10 @@ async function optimize() {
     if (res.best) {
       document.getElementById("hp_power_kw").value = res.best.hp_power_kw;
       const investInfo = res.best.investment_kcz > 0
-        ? ` | Investice: ${Math.round(res.best.investment_kcz).toLocaleString("cs-CZ")} Kč`
+        ? ` · Investice: ${Math.round(res.best.investment_kcz).toLocaleString("cs-CZ")} Kč`
         : "";
-      console.info(`Optimum: ${res.best.hp_power_kw} kW, náklady ${Math.round(res.best.cost_kcz).toLocaleString("cs-CZ")} Kč/rok${investInfo}`);
+      const infoEl = document.getElementById("opt_best_info");
+      if (infoEl) infoEl.textContent = `✓ Optimum: ${res.best.hp_power_kw} kW · Náklady: ${Math.round(res.best.cost_kcz).toLocaleString("cs-CZ")} Kč/rok${investInfo} → výkon přepsán`;
     }
   } catch (e) {
     alert("Chyba optimalizace:\n" + (e?.message || e));
