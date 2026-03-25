@@ -1072,10 +1072,10 @@ async function adminInvite() {
   var token = _getAdminToken();
   if (!token) { msg.className = 'admin-msg err'; msg.textContent = 'Nejste přihlášeni.'; return; }
   try {
-    var res = await fetch(IDENTITY_URL + '/admin/users', {
+    var res = await fetch('/.netlify/functions/admin-users', {
       method: 'POST',
       headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: email, send_invite: true })
+      body: JSON.stringify({ email: email })
     });
     if (res.ok) {
       msg.className = 'admin-msg ok';
@@ -1099,7 +1099,7 @@ async function adminLoadUsers() {
   if (!token) { list.innerHTML = '<div class="user-list-empty">Nejste přihlášeni.</div>'; return; }
   list.innerHTML = '<div class="user-list-empty">Načítání...</div>';
   try {
-    var res = await fetch(IDENTITY_URL + '/admin/users?per_page=50', {
+    var res = await fetch('/.netlify/functions/admin-users', {
       headers: { 'Authorization': 'Bearer ' + token }
     });
     if (!res.ok) {
