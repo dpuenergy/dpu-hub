@@ -257,10 +257,13 @@ function calcNPV() {
   const r       = parseFloat(document.getElementById("discount_rate")?.value || 5) / 100;
   const years   = parseInt(document.getElementById("npv_years")?.value || 20);
   const el      = document.getElementById("npv_result");
-  if (!el) return;
+  const elInline = document.getElementById("npv_result_inline");
+  if (!el && !elInline) return;
 
   if (!savings || savings <= 0 || !invest || invest <= 0) {
-    el.innerHTML = '<div class="hint">Zadejte investici a spusťte simulaci pro výpočet.</div>';
+    const msg = '<div class="hint">Zadejte investici a spusťte simulaci pro výpočet.</div>';
+    if (el) el.innerHTML = msg;
+    if (elInline) elInline.innerHTML = "";
     return;
   }
 
@@ -282,22 +285,24 @@ function calcNPV() {
   if (irr >= 1.99 || irr < 0) irr = null;
 
   const fmt = v => Math.round(v).toLocaleString("cs-CZ");
-  const npvColor = npv >= 0 ? "var(--brand)" : "#dc2626";
-  el.innerHTML = `
-    <div class="row" style="gap:8px; flex-wrap:wrap;">
-      <div class="card" style="flex:1; min-width:100px; text-align:center; padding:10px 6px;">
-        <div style="font-size:11px; color:var(--muted);">Prostá návratnost</div>
-        <div style="font-size:18px; font-weight:800;">${payback.toFixed(1)} let</div>
+  const npvCls = npv >= 0 ? "box-good" : "box-bad";
+  const html = `
+    <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px;">
+      <div class="box" style="text-align:center;">
+        <div class="box-label">Prostá návratnost</div>
+        <div class="box-val">${payback.toFixed(1)} let</div>
       </div>
-      <div class="card" style="flex:1; min-width:120px; text-align:center; padding:10px 6px;">
-        <div style="font-size:11px; color:var(--muted);">NPV (${years} let, ${(r * 100).toFixed(1)} %)</div>
-        <div style="font-size:18px; font-weight:800; color:${npvColor};">${fmt(npv)} Kč</div>
+      <div class="box ${npvCls}" style="text-align:center;">
+        <div class="box-label">NPV (${years} let, ${(r * 100).toFixed(1)} %)</div>
+        <div class="box-val">${fmt(npv)} Kč</div>
       </div>
-      <div class="card" style="flex:1; min-width:90px; text-align:center; padding:10px 6px;">
-        <div style="font-size:11px; color:var(--muted);">IRR</div>
-        <div style="font-size:18px; font-weight:800;">${irr != null ? (irr * 100).toFixed(1) + " %" : "—"}</div>
+      <div class="box" style="text-align:center;">
+        <div class="box-label">IRR</div>
+        <div class="box-val">${irr != null ? (irr * 100).toFixed(1) + " %" : "—"}</div>
       </div>
     </div>`;
+  if (el) el.innerHTML = html;
+  if (elInline) elInline.innerHTML = html;
 }
 
 // ── Accumulation tank sizing ──────────────────────────────────────────────────
@@ -448,10 +453,27 @@ function getInputs() {
 
 // ── KPIs ──────────────────────────────────────────────────────────────────────
 
+function _boxClass(el, cls) {
+  if (!el) return;
+  el.classList.remove("box-good", "box-warn", "box-bad");
+  if (cls) el.classList.add(cls);
+}
+
 function updateKpis(summary) {
   _lastSavingsKcz    = summary.savings_kcz    || null;
   _lastInvestmentKcz = parseFloat(document.getElementById("investment_kcz")?.value || 0) || null;
-  calcNPV();
+
+  // Color-code KPI boxes
+  const cop = summary.avg_cop || 0;
+  _boxClass(document.getElementById("box_el"),
+    cop >= 3.5 ? "box-good" : cop >= 2.5 ? null : "box-bad");
+
+  const hpShare = summary.heat_from_hp_mwh / Math.max(0.01, summary.heat_from_hp_mwh + summary.bivalence_mwh);
+  _boxClass(document.getElementById("box_heat"),
+    hpShare >= 0.9 ? "box-good" : hpShare >= 0.7 ? null : "box-warn");
+
+  _boxClass(document.getElementById("box_tout"), null);
+  _boxClass(document.getElementById("box_peak"), null);
 
   document.getElementById("kpi_el").textContent   = fmtMwh(summary.electricity_mwh);
   const bivalStr = summary.bivalent_point_c != null
