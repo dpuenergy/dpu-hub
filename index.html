@@ -1086,19 +1086,33 @@ async function adminInvite() {
     if (res.ok) {
       document.getElementById('admin-invite-email').value = '';
       adminLoadUsers();
-      // Build invite link from confirmation_token if present
-      var inviteToken = data.confirmation_token;
-      if (inviteToken) {
-        var inviteUrl = 'https://calm-cocada-79e019.netlify.app/#invite_token=' + inviteToken;
-        msg.className = 'admin-msg ok';
-        msg.innerHTML =
-          'Uživatel vytvořen. Pokud email nedorazí, pošlete odkaz ručně:<br>' +
-          '<input type="text" readonly value="' + inviteUrl + '" ' +
-          'style="width:100%;margin-top:6px;font-size:11px;padding:4px 6px;border-radius:4px;border:1px solid #86efac;background:#f0fdf4;color:#166534;" ' +
-          'onclick="this.select()" />';
+      msg.className = 'admin-msg ok';
+      msg.textContent = 'Uživatel vytvořen, načítám pozvánkový odkaz…';
+
+      // POST vrátí user ID — ihned zavolej GET pro confirmation_token
+      var userId = data.id;
+      if (userId) {
+        try {
+          var r2 = await fetch('/.netlify/functions/admin-users?userId=' + encodeURIComponent(userId), {
+            headers: { 'Authorization': 'Bearer ' + token }
+          });
+          var u = await r2.json().catch(function(){ return {}; });
+          var invToken = u.confirmation_token;
+          if (invToken) {
+            var inviteUrl = 'https://calm-cocada-79e019.netlify.app/#invite_token=' + invToken;
+            msg.innerHTML =
+              '<strong>Uživatel vytvořen.</strong> Pošlete odkaz ručně (email, Teams…):<br>' +
+              '<input type="text" readonly value="' + inviteUrl + '" ' +
+              'style="width:100%;margin-top:6px;font-size:11px;padding:5px 7px;border-radius:5px;border:1px solid #86efac;background:#f0fdf4;color:#166534;cursor:pointer;" ' +
+              'onclick="this.select()" />';
+          } else {
+            msg.textContent = 'Uživatel vytvořen. Token nenalezen — viz záložka Přehled uživatelů → Pozvánkový odkaz.';
+          }
+        } catch(e2) {
+          msg.textContent = 'Uživatel vytvořen. Odkaz nelze načíst (' + e2.message + ') — viz Přehled uživatelů.';
+        }
       } else {
-        msg.className = 'admin-msg ok';
-        msg.textContent = 'Pozvánka odeslána na ' + email + ' (email by měl přijít za chvíli).';
+        msg.textContent = 'Uživatel vytvořen (ID nezjištěno — viz Přehled uživatelů → Pozvánkový odkaz).';
       }
     } else {
       msg.className = 'admin-msg err';
