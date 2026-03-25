@@ -1136,30 +1136,39 @@ async function adminResetPassword(email) {
   } catch(e) { alert('Síťová chyba.'); }
 }
 
-async function adminGetInviteLink(userId) {
+async function adminSetTempPassword(userId, email) {
   var token = _getAdminToken();
   if (!token) { alert('Nejste přihlášeni.'); return; }
+  // Generuj náhodné heslo: 3 slova + číslo (snadno čitelné)
+  var words = ['Slunce','Morava','Praha','Energie','Teplo','Zima','Jaro','Voda','Hora','Les'];
+  var pw = words[Math.floor(Math.random()*words.length)] + words[Math.floor(Math.random()*words.length)] + Math.floor(10+Math.random()*90);
+  if (!confirm('Nastavit dočasné heslo pro ' + email + '?\n\nHeslo: ' + pw + '\n\nUživateli ho sdělte ručně. Po přihlášení si ho může resetovat přes "Zapomněl jsem heslo".')) return;
   try {
     var res = await fetch('/.netlify/functions/admin-users?userId=' + encodeURIComponent(userId), {
-      headers: { 'Authorization': 'Bearer ' + token }
+      method: 'PUT',
+      headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password: pw, confirm: true })
     });
     var data = await res.json().catch(function(){ return {}; });
-    var invToken = data.confirmation_token;
-    if (invToken) {
-      var url = 'https://calm-cocada-79e019.netlify.app/#invite_token=' + invToken;
+    if (res.ok) {
       var box = document.createElement('div');
       box.style.cssText = 'position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;';
-      box.innerHTML = '<div style="background:#fff;border-radius:12px;padding:24px;max-width:500px;width:90%;box-shadow:0 8px 40px rgba(0,0,0,.3);">' +
-        '<div style="font-weight:700;font-size:15px;margin-bottom:8px;">Pozvánkový odkaz</div>' +
-        '<div style="font-size:12px;color:#64748b;margin-bottom:10px;">Zkopírujte a pošlete uživateli (email, Teams, atd.):</div>' +
-        '<input type="text" readonly value="' + url + '" style="width:100%;padding:8px;border:1px solid #86efac;border-radius:6px;font-size:11px;background:#f0fdf4;color:#166534;" onclick="this.select()" />' +
-        '<div style="margin-top:14px;text-align:right;"><button onclick="this.closest(\'div\').parentElement.remove()" style="padding:7px 16px;background:#1b3280;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:600;">Zavřít</button></div>' +
+      box.innerHTML = '<div style="background:#fff;border-radius:12px;padding:24px;max-width:420px;width:90%;box-shadow:0 8px 40px rgba(0,0,0,.3);">' +
+        '<div style="font-weight:700;font-size:15px;margin-bottom:4px;">Dočasné heslo nastaveno</div>' +
+        '<div style="font-size:12px;color:#64748b;margin-bottom:12px;">Sdělte uživateli <strong>' + email + '</strong> tyto přihlašovací údaje:</div>' +
+        '<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:12px;margin-bottom:12px;">' +
+        '<div style="font-size:11px;color:#64748b;">Email</div><div style="font-weight:600;">' + email + '</div>' +
+        '<div style="font-size:11px;color:#64748b;margin-top:8px;">Heslo</div>' +
+        '<div style="font-size:20px;font-weight:800;letter-spacing:2px;color:#1b3280;">' + pw + '</div></div>' +
+        '<div style="font-size:11px;color:#64748b;margin-bottom:14px;">Po přihlášení může heslo změnit přes "Zapomněl jsem heslo" na přihlašovací stránce.</div>' +
+        '<button onclick="this.closest(\'div\').parentElement.remove()" style="width:100%;padding:9px;background:#1b3280;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:600;font-size:14px;">Zavřít</button>' +
         '</div>';
       document.body.appendChild(box);
+      adminLoadUsers();
     } else {
-      alert('Token nenalezen v odpovědi API. Uživatel mohl být již potvrzen nebo token expiroval.');
+      alert('Chyba ' + res.status + ': ' + (data.error || data.msg || JSON.stringify(data)));
     }
-  } catch(e) { alert('Chyba: ' + e.message); }
+  } catch(e) { alert('Síťová chyba: ' + e.message); }
 }
 
 async function adminDeleteUser(userId, email) {
@@ -1203,7 +1212,7 @@ async function adminLoadUsers() {
       var uid = u.id;
       var actionBtn = confirmed
         ? '<button class="user-btn" onclick="adminResetPassword(\'' + eid + '\')">Reset hesla</button>'
-        : '<button class="user-btn" onclick="adminGetInviteLink(\'' + uid + '\')">Pozvánkový odkaz</button>';
+        : '<button class="user-btn" onclick="adminSetTempPassword(\'' + uid + '\',\'' + eid + '\')">Dočasné heslo</button>';
       return '<div class="user-row">' +
         '<span class="user-email">' + u.email + '</span>' +
         '<span class="user-status ' + statusClass + '">' + statusLabel + '</span>' +

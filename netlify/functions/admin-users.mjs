@@ -6,7 +6,7 @@ const IDENTITY_URL  = 'https://calm-cocada-79e019.netlify.app/.netlify/identity'
 
 const CORS = {
   'Access-Control-Allow-Origin':  'https://calm-cocada-79e019.netlify.app',
-  'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS',
+  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
   'Access-Control-Allow-Headers': 'Authorization, Content-Type',
   'Content-Type': 'application/json',
 };
@@ -78,6 +78,23 @@ export async function handler(event, context) {
     });
     const text = await res.text();
     console.log('POST admin/users:', res.status, text.slice(0, 300));
+    let data;
+    try { data = JSON.parse(text); } catch { data = { error: text }; }
+    return json(res.status, data);
+  }
+
+  // PUT — aktualizovat uživatele (potvrdit email, nastavit heslo)
+  if (event.httpMethod === 'PUT') {
+    const userId = (event.queryStringParameters || {}).userId;
+    if (!userId) return json(400, { error: 'Chybí userId' });
+    const body = JSON.parse(event.body || '{}');
+    const res = await fetch(serviceUrl + '/admin/users/' + userId, {
+      method: 'PUT',
+      headers: adminHeaders,
+      body: JSON.stringify(body),
+    });
+    const text = await res.text();
+    console.log('PUT admin/users/' + userId + ':', res.status, text.slice(0, 300));
     let data;
     try { data = JSON.parse(text); } catch { data = { error: text }; }
     return json(res.status, data);
