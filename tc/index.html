@@ -3,40 +3,82 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>TČ kalkulátor – prototyp</title>
+  <title>Dimenzování tepelných čerpadel | DPU Energy</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
   <style>
-    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; margin: 0; background:#f6f7fb; color:#111; }
-    header { padding:16px 20px; background:#fff; border-bottom:1px solid #e6e8ef; position: sticky; top:48px; z-index:5;}
-    main { padding: 16px 20px; max-width: 1200px; margin: 0 auto; }
-    .grid { display:grid; grid-template-columns: 360px 1fr; gap: 16px; align-items: start; }
-    .card { background:#fff; border:1px solid #e6e8ef; border-radius:12px; padding: 14px; box-shadow: 0 1px 0 rgba(0,0,0,0.02); }
-    .card h3 { margin:0 0 10px 0; font-size: 14px; color:#334; }
-    .row { display:flex; gap:10px; flex-wrap: wrap; }
-    label { display:block; font-size: 12px; color:#445; margin-bottom: 4px; }
-    input, select { width:100%; padding:10px; border:1px solid #d9dce7; border-radius:10px; font-size: 14px; }
-    .btn { cursor:pointer; border:0; background:#111827; color:#fff; padding:10px 12px; border-radius:10px; font-weight:600; }
-    .btn:disabled{opacity:.6; cursor:not-allowed;}
-    .hint { font-size:12px; color:#667; margin-top:6px; }
-    .kpi { display:grid; grid-template-columns: repeat(4, 1fr); gap:12px; }
-    .kpi .val { font-size: 20px; font-weight: 750; }
-    .kpi .sub { font-size: 12px; color:#667; margin-top:4px; }
-    .charts { display:grid; grid-template-columns: 1fr; gap: 12px; }
-    canvas { width:100% !important; height: 300px !important; }
-    .small canvas { height: 260px !important; }
-    @media (max-width: 980px){
-      .grid { grid-template-columns: 1fr; }
-      .kpi { grid-template-columns: repeat(2, 1fr); }
+    :root {
+      --brand:  #1b3280;
+      --accent: #2e8cff;
+      --bg:     #f0f3f9;
+      --card:   #ffffff;
+      --text:   #0d1b3e;
+      --muted:  #5a6a8a;
+      --border: rgba(27,50,128,.12);
+      --r:      12px;
+      --shadow: 0 2px 12px rgba(27,50,128,.10);
+      --info-bg:     #eff6ff;
+      --info-border: #bfdbfe;
     }
-  body.dark{background:#0f1624;color:#e8edf8}body.dark .card,.dark .box,.dark .panel{background:#1a2235;border-color:rgba(100,140,255,.15)}body.dark input,body.dark select{background:#1a2235;color:#e8edf8;border-color:rgba(100,140,255,.2)}
-</style>
+    *, *::before, *::after { box-sizing: border-box; }
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; margin: 0; background: var(--bg); color: var(--text); }
+    header { padding: 16px 20px; background: var(--card); border-bottom: 1px solid var(--border); position: sticky; top: 48px; z-index: 5; box-shadow: var(--shadow); }
+    main { padding: 16px 20px; max-width: 1200px; margin: 0 auto; }
+    .grid { display: grid; grid-template-columns: 360px 1fr; gap: 16px; align-items: start; }
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: var(--r); padding: 14px; box-shadow: var(--shadow); }
+    .card h3 { margin: 0 0 10px 0; font-size: 14px; color: var(--brand); font-weight: 700; }
+    .row { display: flex; gap: 10px; flex-wrap: wrap; }
+    label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+    input, select {
+      width: 100%; padding: 10px; font-size: 14px;
+      border: 1px solid var(--border); border-radius: 10px;
+      background: var(--card); color: var(--text); outline: none;
+      transition: border-color .15s;
+    }
+    input:focus, select:focus { border-color: var(--accent); }
+    input:disabled, select:disabled { background: var(--bg); opacity: .6; }
+    .btn {
+      cursor: pointer; border: 0; background: var(--brand); color: #fff;
+      padding: 10px 12px; border-radius: 10px; font-weight: 600; font-size: 14px;
+      transition: background .15s;
+    }
+    .btn:hover { background: #122560; }
+    .btn:disabled { opacity: .6; cursor: not-allowed; }
+    .hint { font-size: 12px; color: var(--muted); margin-top: 6px; line-height: 1.5; }
+    .kpi { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+    .kpi .val { font-size: 20px; font-weight: 800; }
+    .kpi .sub { font-size: 12px; color: var(--muted); margin-top: 4px; }
+    .charts { display: grid; grid-template-columns: 1fr; gap: 12px; }
+    canvas { width: 100% !important; height: 300px !important; }
+    .small canvas { height: 260px !important; }
+    details summary { cursor: pointer; font-size: 12px; color: var(--accent); font-weight: 600; }
+    details summary:hover { opacity: .8; }
+    hr { border: none; border-top: 1px solid var(--border); margin: 12px 0; }
+    .info-panel { background: var(--info-bg); border: 1px solid var(--info-border); border-radius: 10px; padding: 10px; font-size: 12px; }
+
+    /* Dark mode */
+    body.dark {
+      --bg:          #0f1624;
+      --card:        #1a2235;
+      --text:        #e8edf8;
+      --muted:       #8899bb;
+      --border:      rgba(100,140,255,.15);
+      --shadow:      0 2px 12px rgba(0,0,0,.35);
+      --info-bg:     #1a2a3a;
+      --info-border: rgba(100,140,255,.25);
+    }
+
+    @media (max-width: 980px) {
+      .grid { grid-template-columns: 1fr; }
+      .kpi  { grid-template-columns: repeat(2, 1fr); }
+    }
+  </style>
 </head>
 <body>
 <script>if(localStorage.getItem("dpu_theme")==="dark")document.body.classList.add("dark");</script>
   <header>
     <div style="display:flex; justify-content:space-between; align-items:center; gap:10px;">
       <div>
-        <div style="font-weight:800;">Tepelné čerpadlo – interaktivní nástroj (prototyp)</div>
+        <div style="font-weight:800;">Dimenzování tepelných čerpadel</div>
         <div class="hint">Zatím je to “funkční kostra”: vstupy → simulace → grafy. Počasí/lokality a ceníky budeme dál zpřesňovat.</div>
       </div>
       <div style="display:flex; gap:10px; align-items:center;">
@@ -136,7 +178,7 @@
                   <input id="t_heat_on_c" type="number" step="0.5" value="14" />
                 </div>
               </div>
-              <div style="font-size:11px; font-weight:600; color:#475569; margin-top:2px;">Topná křivka (T_voda = max(min, sklon × T_venku + intercept))</div>
+              <div style="font-size:11px; font-weight:600; color:var(--muted); margin-top:2px;">Topná křivka (T_voda = max(min, sklon × T_venku + intercept))</div>
               <div class="row">
                 <div style="flex:1; min-width:100px;">
                   <label>Sklon (°C/°C)</label>
@@ -186,10 +228,10 @@
                 <option value="custom">Vlastní ceny</option>
               </select>
 
-              <div id="priceDetailPanel" style="margin-top:10px; padding:10px; background:#f0f9ff; border:1px solid #bae6fd; border-radius:10px; font-size:12px;">
+              <div id="priceDetailPanel" class="info-panel" style="margin-top:10px;">
                 <div id="supplierPriceInfo"><span style="color:#64748b; font-style:italic;">Načítám ceník…</span></div>
                 <div id="customPriceForm" style="display:none;">
-                  <div style="font-weight:700; margin-bottom:8px; color:#0369a1;">Vlastní zadání cen elektřiny (bez DPH)</div>
+                  <div style="font-weight:700; margin-bottom:8px; color:var(--brand);">Vlastní zadání cen elektřiny (bez DPH)</div>
                   <div class="row">
                     <div style="flex:1; min-width:120px;">
                       <label>Cena VT (Kč/MWh)</label>
@@ -305,7 +347,7 @@
             </div>
           </div>
 
-          <div class="card" style="background:#fbfbff;">
+          <div class="card">
             <h3>Odhad optimálního výkonu TČ</h3>
             <div class=”hint”>Graf: celkové roční náklady (bez DPH) vs výkon TČ. Pro smysluplné optimum nastav investici na kW – křivka pak zachycuje trade-off mezi velikostí TČ a kapitálovými náklady.</div>
             <div class=”row” style=”margin-top:10px;”>
