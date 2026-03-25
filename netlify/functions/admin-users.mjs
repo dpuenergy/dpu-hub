@@ -2,9 +2,7 @@
 // Proxy pro Netlify Identity admin API — přístupné jen pro ALLOWED_EMAIL
 
 const ALLOWED_EMAIL = 'hridel@dpuenergy.cz';
-const NETLIFY_TOKEN = process.env.NETLIFY_ACCESS_TOKEN;
-const SITE_ID       = process.env.NETLIFY_SITE_ID;
-const IDENTITY_URL  = `https://calm-cocada-79e019.netlify.app/.netlify/identity`;
+const IDENTITY_URL  = 'https://calm-cocada-79e019.netlify.app/.netlify/identity';
 
 const CORS = {
   'Access-Control-Allow-Origin':  'https://calm-cocada-79e019.netlify.app',
@@ -46,31 +44,16 @@ export async function handler(event) {
     return json(500, { error: 'Chybí environment proměnné NETLIFY_ACCESS_TOKEN nebo NETLIFY_SITE_ID' });
   }
 
-  const netlifyHeaders = {
-    'Authorization': 'Bearer ' + NETLIFY_TOKEN,
+  const adminHeaders = {
+    'Authorization': 'Bearer ' + token,
     'Content-Type': 'application/json',
   };
 
-  // Získej ID identity instance
-  const identityRes = await fetch(`https://api.netlify.com/api/v1/sites/${SITE_ID}/identity`, { headers: netlifyHeaders });
-  const identityText = await identityRes.text();
-  console.log('Identity response:', identityRes.status, identityText.slice(0, 400));
-  if (!identityRes.ok) return json(identityRes.status, { error: 'Identity instance error ' + identityRes.status + ': ' + identityText.slice(0, 200) });
-  let identityData;
-  try { identityData = JSON.parse(identityText); } catch(e) { return json(502, { error: 'Identity response not JSON: ' + identityText.slice(0, 200) }); }
-
-  const instanceId = identityData.id;
-  console.log('Instance ID:', instanceId);
-  if (!instanceId) return json(502, { error: 'Identity instance ID not found in: ' + identityText.slice(0, 200) });
-  const apiBase = `https://api.netlify.com/api/v1/sites/${SITE_ID}/identity/${instanceId}`;
-
   // GET — seznam uživatelů
   if (event.httpMethod === 'GET') {
-    const url = apiBase + '/users?per_page=100';
-    console.log('GET', url);
-    const res = await fetch(url, { headers: netlifyHeaders });
+    const res = await fetch(IDENTITY_URL + '/admin/users?per_page=100', { headers: adminHeaders });
     const text = await res.text();
-    console.log('Response', res.status, text.slice(0, 300));
+    console.log('GET admin/users:', res.status, text.slice(0, 300));
     let data;
     try { data = JSON.parse(text); } catch { data = { error: text }; }
     return json(res.status, data);
@@ -80,15 +63,13 @@ export async function handler(event) {
   if (event.httpMethod === 'POST') {
     const body = JSON.parse(event.body || '{}');
     if (!body.email) return json(400, { error: 'Chybí email' });
-    const url = apiBase + '/users';
-    console.log('POST', url, body.email);
-    const res = await fetch(url, {
+    const res = await fetch(IDENTITY_URL + '/admin/users', {
       method: 'POST',
-      headers: netlifyHeaders,
+      headers: adminHeaders,
       body: JSON.stringify({ email: body.email, send_invite: true }),
     });
     const text = await res.text();
-    console.log('Response', res.status, text.slice(0, 300));
+    console.log('POST admin/users:', res.status, text.slice(0, 300));
     let data;
     try { data = JSON.parse(text); } catch { data = { error: text }; }
     return json(res.status, data);
