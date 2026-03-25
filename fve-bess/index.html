@@ -1306,12 +1306,12 @@ function economics(m,econ){
 
 
 const CHART_COLORS = {
-  navy: "rgb(40,37,96)",
-  lightBlue: "rgb(200,214,234)",
-  yellow: "rgb(225,218,77)",
-  teal: "rgb(151,192,204)",
-  brown: "rgb(178,153,107)",
-  purple: "rgb(100,79,133)"
+  navy:      "rgb(27,50,128)",    // --brand
+  lightBlue: "rgb(46,140,255)",   // --accent
+  yellow:    "rgb(245,185,55)",   // amber
+  teal:      "rgb(32,178,140)",   // zelená pro výrobu
+  brown:     "rgb(120,100,200)",  // fialová pro baterie (světlejší)
+  purple:    "rgb(90,80,180)"     // fialová pro baterie
 };
 
 function rgba(color,a){
@@ -1324,7 +1324,7 @@ function ceilToTens(x){ return Math.ceil(x/10)*10; }
 // ── Chart.js setup ────────────────────────────────────────────────────────────
 Chart.defaults.font.family = 'system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,sans-serif';
 Chart.defaults.font.size = 11;
-Chart.defaults.color = 'rgba(40,55,100,.85)';
+Chart.defaults.color = 'rgba(27,50,128,.75)';
 
 const _charts = {};
 function _mkChart(canvas, config){
@@ -2198,7 +2198,7 @@ function drawProductionCharts(simArgs, simDetail){
   // Monthly: spotřeba
   const ldBars = [{name:'Výroba do spotřeby', ys:mPvToLoad, fill:CHART_COLORS.teal}];
   if (hasBatt) ldBars.push({name:'Baterie vybíjení', ys:mBattDis, fill:CHART_COLORS.purple});
-  ldBars.push({name:'Dovoz ze sítě', ys:mImp, fill:'rgb(200,70,55)'});
+  ldBars.push({name:'Dovoz ze sítě', ys:mImp, fill:'rgb(220,60,60)'});
   drawStackedBar($('chartMonthlyLoad'), ldBars,
     {name:'Celková spotřeba', ys:mLoad, stroke:CHART_COLORS.navy},
     {labels:months, yLabel:'kWh'});
@@ -2214,7 +2214,7 @@ function drawProductionCharts(simArgs, simDetail){
   // Pie: spotřeba
   const pieLd = [{name:'Výroba do spotřeby', value:ePvDirect, fill:CHART_COLORS.teal}];
   if (hasBatt && simDetail.eBattDis>0) pieLd.push({name:'Baterie vybíjení', value:simDetail.eBattDis, fill:CHART_COLORS.purple});
-  if (simDetail.eImp>0) pieLd.push({name:'Dovoz ze sítě', value:simDetail.eImp, fill:'rgb(200,70,55)'});
+  if (simDetail.eImp>0) pieLd.push({name:'Dovoz ze sítě', value:simDetail.eImp, fill:'rgb(220,60,60)'});
   drawDonut($('chartPieLoad'), pieLd);
 }
 
@@ -2350,7 +2350,7 @@ function drawDayStacked(simDetail, day){
 
   const ldBars = [{name:'Výroba do spotřeby', ys:pvToLoad, fill:CHART_COLORS.teal}];
   if (hasBatt) ldBars.push({name:'Baterie vybíjení', ys:battDis, fill:CHART_COLORS.purple});
-  ldBars.push({name:'Dovoz ze sítě', ys:imp, fill:'rgb(200,70,55)'});
+  ldBars.push({name:'Dovoz ze sítě', ys:imp, fill:'rgb(220,60,60)'});
 
   // Sdílené maximum osy Y (výroba i spotřeba na stejné škále)
   const pvStackH = Array.from({length:24}, (_,h) => pvBars.reduce((s,b)=>s+(b.ys[h]||0),0));
@@ -2366,11 +2366,11 @@ function drawDayStacked(simDetail, day){
 
   drawStackedBar($('chartDayPv'), pvBars, null, {
     labels:hours, yLabel:'kW', xStep:4, yMax: sharedYMax,
-    refLine:{name:'Spotřeba', ys:ldTotal, stroke:'rgba(200,70,55,.55)'},
+    refLine:{name:'Spotřeba', ys:ldTotal, stroke:'rgba(220,60,60,.55)'},
   });
   drawStackedBar($('chartDayLoad'), ldBars, null, {
     labels:hours, yLabel:'kW', xStep:4, yMax: sharedYMax,
-    refLine:{name:'Výroba FVE', ys:pvTotal, stroke:'rgba(40,120,200,.8)'},
+    refLine:{name:'Výroba FVE', ys:pvTotal, stroke:'rgba(46,140,255,.8)'},
   });
 
   // ── SOC charts ──────────────────────────────────────────────────────────────
