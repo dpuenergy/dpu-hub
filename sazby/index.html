@@ -10,9 +10,11 @@
 body{margin:0;background:var(--bg);color:var(--ink);}
 .wrap{max-width:1180px;margin:0 auto;padding:22px;}
 iframe{width:100%;border:0;border-radius:var(--radius);box-shadow:var(--shadow);background:#fff;}
+body.dark{background:#0f1624;color:#e8edf8}body.dark .card,.dark .panel,.dark .box{background:#1a2235;border-color:rgba(100,140,255,.15)}body.dark input,body.dark select{background:#1a2235;color:#e8edf8;border-color:rgba(100,140,255,.2)}
 </style>
 </head>
 <body>
+<script>if(localStorage.getItem("dpu_theme")==="dark")document.body.classList.add("dark");</script>
 <div class="wrap">
   <iframe id="frameNN" title="Kalkulačka NN"></iframe>
   <iframe id="frameVN" title="Kalkulačka VN" style="display:none;"></iframe>

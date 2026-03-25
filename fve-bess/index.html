@@ -4,6 +4,8 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 <title>PV Sizer v6.5</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.8/dist/chart.umd.min.js"></script>
 <style>
 :root{
   --bg:#f6f8fb; --card:#fff; --text:#000; --muted:rgba(0,0,0,.72); --line:rgba(12,25,48,.10);
@@ -35,6 +37,10 @@ h1{margin:0; font-size:22px}
 .head h2{margin:0; font-size:14px}
 .pill{display:inline-flex; padding:6px 10px; border-radius:999px; border:1px solid var(--line);
   background:rgba(27,50,128,.06); color:var(--muted); font-size:12px; white-space:nowrap;}
+.dayNavBtn{display:inline-flex; padding:4px 9px; border-radius:999px; border:1px solid var(--line);
+  background:rgba(27,50,128,.05); color:var(--muted); font-size:11px; font-family:inherit;
+  cursor:pointer; white-space:nowrap; line-height:1.5}
+.dayNavBtn:hover{background:rgba(27,50,128,.12); color:var(--text)}
 .body{padding:14px}
 label{display:block; font-weight:400; margin-top:12px; font-size:12px; color:var(--text)}
 
@@ -42,7 +48,7 @@ label{display:block; font-weight:400; margin-top:12px; font-size:12px; color:var
 .lbl2{display:block; font-weight:400; margin-top:2px; font-size:12px; color:var(--text); opacity:.85}
 .subHead{font-size:14px; color:var(--brand); font-weight:800; margin:0 0 8px}
 small{color:var(--text)}
-input[type="text"], input[type="number"], select, textarea{
+input[type="text"], input[type="number"], input[type="date"], select, textarea{
   width:100%; padding:10px 11px; border-radius:14px;
   border:1px solid rgba(12,25,48,.14); background:#fff; color:var(--text);
 }
@@ -78,7 +84,13 @@ input[type="file"]{width:100%; padding:10px 0; color:var(--muted)}
 .status.bad{border-color:rgba(225,29,72,.35); background:rgba(225,29,72,.07); color:#3a0010}
 .kpi{display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:6px}
 @media(max-width:520px){.kpi{grid-template-columns:1fr}}
-.box{padding:10px 12px; border-radius:14px; border:1px solid var(--line); background:#fff}
+.box{padding:10px 12px; border-radius:14px; border:1px solid var(--line); background:#fff; transition:background .2s,border-color .2s}
+.box.kpi-good{background:rgba(22,163,74,.08); border-color:rgba(22,163,74,.35)}
+.box.kpi-good .v{color:#15803d}
+.box.kpi-warn{background:rgba(245,158,11,.08); border-color:rgba(245,158,11,.4)}
+.box.kpi-warn .v{color:#92400e}
+.box.kpi-bad {background:rgba(225,29,72,.07); border-color:rgba(225,29,72,.3)}
+.box.kpi-bad  .v{color:#be123c}
 .t{color:var(--muted); font-size:12px}
 .v{font-size:18px; font-weight:980; margin-top:4px}
 .sectionTitle{margin-top:14px; font-weight:600; font-size:13px}
@@ -92,7 +104,8 @@ input[type="file"]{width:100%; padding:10px 0; color:var(--muted)}
 .check{display:flex; gap:10px; align-items:center; margin-top:10px; padding:10px; border-radius:14px; border:1px solid var(--line); background:#fff}
 .check input[type="checkbox"]{width:18px; height:18px}
 .inlineCost{width:170px}
-.charts{display:grid; gap:12px; margin-top:12px}
+.charts{display:grid; gap:12px; margin-top:0}
+.charts-outer{max-width:1240px; margin:14px auto 0; padding:0 16px 26px}
 .chartTitle{display:flex; justify-content:space-between; align-items:baseline; margin:0 0 6px}
 .legendCtl{display:flex; flex-wrap:wrap; gap:10px; margin-top:10px; font-size:12px; color:#000}
 .legendCtl label{display:flex; align-items:center; gap:8px; cursor:pointer; user-select:none}
@@ -100,7 +113,11 @@ input[type="file"]{width:100%; padding:10px 0; color:var(--muted)}
 .legendSw{width:10px; height:10px; border-radius:3px; display:inline-block; border:1px solid rgba(12,25,48,.18)}
 .chartTitle .name{font-weight:980}
 .chartTitle .note{color:var(--muted); font-size:12px}
-canvas{width:100%; height:260px; display:block; border-radius:14px; border:1px solid var(--line); background:#fff}
+.ch-wrap{position:relative; height:260px; border-radius:14px; border:1px solid var(--line); background:#fff}
+.ch-wrap > canvas{border-radius:inherit}
+.ch-wrap.h200{height:200px}
+.ch-wrap.h300{height:300px}
+canvas{display:block}
 .foot{padding:10px 0 24px; color:var(--muted); text-align:center; font-size:12px}
 code{font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;}
 .table{
@@ -250,9 +267,7 @@ input:disabled, select:disabled, textarea:disabled{
 
 hr{border-color:rgba(27,50,128,.10)}
 
-canvas{
-  border-radius:16px;
-}
+/* ch-wrap border-radius se přenáší na canvas přes .ch-wrap > canvas */
 
 /* Hard overrides (no gradients, black typography) */
 body{background:var(--bg) !important; color:var(--text) !important;}
@@ -284,6 +299,10 @@ input[type="file"]::file-selector-button:hover{
 }
 
 /* One and only one extra frame: Základní vstupy */
+.basicBox[data-collapsible] .chartTitle{cursor:pointer;user-select:none}
+.basicBox[data-collapsible] .chartTitle .name::after{content:' ▲';font-size:9px;opacity:.45;margin-left:4px}
+.basicBox[data-collapsible].collapsed .chartTitle .name::after{content:' ▼'}
+.basicBox[data-collapsible].collapsed>*:not(.chartTitle){display:none!important}
 .basicBox{
   margin-top:8px;
   padding:12px;
@@ -309,9 +328,11 @@ input[type="file"]::file-selector-button:hover{
 
 
 .btnGhost:disabled{opacity:.55;color:#000;}
+body.dark{background:#0f1624;color:#e8edf8}body.dark .card{background:#1a2235;border-color:rgba(100,140,255,.15)}body.dark input,body.dark select,body.dark textarea{background:#1a2235;color:#e8edf8;border-color:rgba(100,140,255,.2)}
 </style>
 </head>
 <body>
+<script>if(localStorage.getItem("dpu_theme")==="dark")document.body.classList.add("dark");</script>
 <header>
   <div class="wrap">
     <h1>PV Sizer v6.5</h1>
@@ -330,20 +351,24 @@ input[type="file"]::file-selector-button:hover{
       <input id="loadFile" type="file" accept=".csv,text/csv" />
       <label>Vzorový profil výroby elektrické energie (kWh/kWp/hod) - *.csv</label>
       <input id="pvFile" type="file" accept=".csv,text/csv" />
-<div class="row2" style="margin-top:10px">
+<div class="row3" style="margin-top:10px">
         <div>
           <label>Instalovaný výkon vzorového profilu (kWp)</label>
-          <input id="pvProfileKwp" type="text" inputmode="decimal" step="0.01" value="1.00" />
-</div>
+          <input id="pvProfileKwp" type="text" inputmode="decimal" step="0.01" value="1.00" placeholder="1.00" title="Výkon FVE systému, pro který byl simulation report vygenerován. Slouží k normalizaci na kWh/kWp/hod." />
+        </div>
+        <div>
+          <label>Rok dat spotřeby</label>
+          <input id="dataYear" type="number" min="2000" max="2099" value="2021" step="1" title="Rok importovaných dat – ovlivňuje dny v týdnu a navigaci v kalendáři. Automaticky se detekuje z CSV." />
+        </div>
         <div>
           <label>Roční spotřeba (po nahrání profilu)</label>
           <div class="pill" style="display:inline-flex" id="loadSumPill">—</div>
-</div>
+        </div>
       </div>
 
       
       </div>
-<div class="basicBox">
+<div class="basicBox" data-collapsible="ekonomika">
         <div class="chartTitle"><div class="name">Ekonomika</div><div class="note"></div></div>
       <div class="row2">
         <div>
@@ -379,7 +404,7 @@ input[type="file"]::file-selector-button:hover{
       
             </div>
 
-      <div class="basicBox">
+      <div class="basicBox" data-collapsible="fve">
         <div class="chartTitle"><div class="name">Fotovoltaická elektrárna</div><div class="note"></div></div>
       <div class="row2">
         <div>
@@ -415,7 +440,7 @@ input[type="file"]::file-selector-button:hover{
         </div>
         <div>
           <label>Přímé zadání instalovaného výkonu FVE (kWp)</label>
-          <input id="pvManualKwp" type="text" inputmode="decimal" step="0.1" value="0" />
+          <input id="pvManualKwp" type="text" inputmode="decimal" step="0.1" value="0" placeholder="např. 49" title="Aktivní jen při výběru 'Zadat přímo'. Zadej konkrétní výkon FVE — nástroj pak přeskočí optimalizaci výkonu a použije tuto hodnotu." />
 </div>
       </div>
 
@@ -441,7 +466,7 @@ input[type="file"]::file-selector-button:hover{
 
       </div>
 
-      <div class="basicBox">
+      <div class="basicBox" data-collapsible="akumulace">
         <div class="chartTitle"><div class="name">Akumulace</div><div class="note"></div></div>
 
       <div class="subBox" id="batteryFrame">
@@ -462,9 +487,9 @@ input[type="file"]::file-selector-button:hover{
         </div>
 
         <div class="row3">
-          <div><label>Kapacita baterie (kWh)</label><input id="batteryKwh" type="text" inputmode="decimal" step="0.1" value="0" /></div>
-          <div><label>Poměr výkon:kapacita (0 - 1)</label><input id="batteryPratio" type="text" inputmode="decimal" step="0.01" value="0.50" /></div>
-          <div><label>Účinnost nabíjení a vybíjení (%)</label><input id="batteryRte" type="text" inputmode="decimal" step="1" value="92" /></div>
+          <div><label>Kapacita baterie (kWh)</label><input id="batteryKwh" type="text" inputmode="decimal" step="0.1" value="0" placeholder="např. 10" title="Použitelná kapacita baterie v kWh. Typicky 5–20 kWh pro RD, 20–200 kWh pro firmy." /></div>
+          <div><label>Poměr výkon:kapacita (0 - 1)</label><input id="batteryPratio" type="text" inputmode="decimal" step="0.01" value="0.50" placeholder="0.50" title="C-rate: 0.5 = baterie se nabije/vybije za 2 hodiny. LiFePO4 typicky 0.5–1.0." /></div>
+          <div><label>Účinnost nabíjení a vybíjení (%)</label><input id="batteryRte" type="text" inputmode="decimal" step="1" value="92" placeholder="92" title="Round-trip efficiency (RTE) — součin účinnosti nabíjení a vybíjení. LiFePO4 typicky 90–95 %." /></div>
         </div>
   </div>
 </div>
@@ -501,7 +526,7 @@ input[type="file"]::file-selector-button:hover{
         </div>
 
         <div class="row2">
-          <div><label>Velikost akumulační nádrže (l)</label><input id="tuvLiters" type="text" inputmode="decimal" step="1" value="0" /></div>
+          <div><label>Velikost akumulační nádrže (l)</label><input id="tuvLiters" type="text" inputmode="decimal" step="1" value="0" placeholder="např. 300" title="Objem zásobníku TUV v litrech. Pro RD typicky 200–500 l, pro bytový dům 500–5000 l." /></div>
           <div></div>
         </div>
         <div class="subTitle">Technické parametry</div>
@@ -534,11 +559,11 @@ input[type="file"]::file-selector-button:hover{
           <div><label>Minimální teplota TUV v zásobníku T<sub>min</sub> (°C)</label><input id="tuvTmin" type="text" inputmode="decimal" step="0.1" value="10" /></div>
           <div><label>Maximální teplota TUV v zásobníku T<sub>max</sub> (°C)</label><input id="tuvTmax" type="text" inputmode="decimal" step="0.1" value="60" /></div>
           <div><label>Měrná energie v zásobníku (kWh/(l·K))</label><input id="tuvKwhPerLK" type="text" inputmode="decimal" step="0.000001" value="0.001163" /></div>
-          <div><label>Potřeba TUV (kWh<sub>t</sub>/den)</label><input id="tuvAnnual" type="text" inputmode="decimal" step="1" value="0" /></div>
+          <div><label>Potřeba TUV (kWh<sub>t</sub>/den)</label><input id="tuvAnnual" type="text" inputmode="decimal" step="1" value="0" placeholder="např. 8" title="Průměrná denní tepelná potřeba pro přípravu TUV. RD ~5–10 kWh_t/den, škola nebo hotel výrazně více." /></div>
         </div>
         <div class="row3">
-          <div><label>Výkon el. ohřevu (kW<sub>e</sub>)</label><input id="tuvKw" type="text" inputmode="decimal" step="0.1" value="0" /></div>
-          <div><label>COP (kWh<sub>t</sub> / kWh<sub>e</sub>)</label><input id="tuvCop" type="text" inputmode="decimal" step="0.01" value="1.00" /></div>
+          <div><label>Výkon el. ohřevu (kW<sub>e</sub>)</label><input id="tuvKw" type="text" inputmode="decimal" step="0.1" value="0" placeholder="např. 3" title="Elektrický příkon topného tělesa nebo tepelného čerpadla. 0 = neomezený výkon (pohltí vše co FVE vyrobí navíc). Typicky 2–6 kW." /></div>
+          <div><label>COP (kWh<sub>t</sub> / kWh<sub>e</sub>)</label><input id="tuvCop" type="text" inputmode="decimal" step="0.01" value="1.00" placeholder="1.00" title="Topný faktor: 1.0 = odporový boiler, 2.5–4.0 = tepelné čerpadlo. Udává kolik kWh tepla vznikne z 1 kWh elektřiny." /></div>
 <div><label>Doba ohřevu celé nádrže</label><div class="pill" id="tuvHeatTimePill">—</div></div>
         </div>
         
@@ -621,7 +646,7 @@ input[type="file"]::file-selector-button:hover{
       
       </div>
 
-      <div class="basicBox">
+      <div class="basicBox" data-collapsible="naklady">
         <div class="chartTitle"><div class="name">Investiční a provozní náklady</div><div class="note"></div></div>
 
         <div class="subBox">
@@ -743,54 +768,98 @@ input[type="file"]::file-selector-button:hover{
         <div class="box"><div class="t">Vlastní spotřeba / Přetoky (kWh/rok)</div><div class="v" id="kpiEnergies">—</div></div>
       </div>
 
-      <div class="charts">
-        <div>
-          <div class="chartTitle"><div class="name">Optimální výkon FVE dle kritérií</div><div class="note"></div></div>
-          <canvas id="chartMetrics"></canvas>
-        </div>
-        <div class="row2">
-          <div>
-            <div class="chartTitle"><div class="name">Energetická bilance</div><div class="note">ročně</div></div>
-            <canvas id="chartEnergy"></canvas>
-          </div>
-          <div>
-            <div class="chartTitle"><div class="name">Kumulativní cashflow</div><div class="note"></div></div>
-            <canvas id="chartCash"></canvas>
-          </div>
-        </div>
-        <div>
-          <div class="chartTitle"><div class="name">Denní průběh</div><div class="note"></div></div>
-          <div class="row2" style="margin-bottom:8px">
-            <div><select id="daySelect"></select></div>
-            <div><span class="pill" id="pillDay">—</span></div>
-          </div>
-          <canvas id="chartDay"></canvas>
-          <div id="dayLegend" class="legendCtl"></div>
-        </div>
-
-        <div>
-          <div class="chartTitle"><div class="name">Technické údaje provozu baterie</div><div class="note"></div></div>
-          <div class="kpi">
-            <div class="box"><div class="t">Doba využití baterie za rok</div><div class="v" id="kpiEfc">—</div></div>
-            <div class="box"><div class="t">Počet nabíjecích cyklů za rok</div><div class="v" id="kpiSeg">—</div></div>
-            <div class="box"><div class="t">Průměrná délka nabíjecího cyklu</div><div class="v" id="kpiSegLen">—</div></div>
-            <div class="box"><div class="t">Průměrný objem energie na cyklus</div><div class="v" id="kpiSegE">—</div></div>
-          </div>
-          <small id="battNote">—</small>
-        </div>
-
-        <div id="optResultsBox" style="display:none;">
-          <div class="chartTitle"><div class="name">Top varianty z optimalizace</div><div class="note">nejlepší skóre</div></div>
-          <table class="table" id="optTable"></table>
-        </div>
+      <div id="scenariosBox" style="display:none;margin-bottom:16px;">
+        <div class="chartTitle"><div class="name">Porovnání scénářů</div><div class="note">stejný výkon FVE</div></div>
+        <div style="overflow-x:auto;"><table class="table" id="scenariosTable"></table></div>
       </div>
 
-      
+      <div style="margin-top:14px">
+        <div class="chartTitle"><div class="name">Optimální výkon FVE dle kritérií</div><div class="note"></div></div>
+        <div class="ch-wrap"><canvas id="chartMetrics"></canvas></div>
       </div>
-
+      <div style="margin-top:14px">
+        <div class="chartTitle"><div class="name">Kumulativní cashflow</div><div class="note"></div></div>
+        <div class="ch-wrap"><canvas id="chartCash"></canvas></div>
+      </div>
+      <div style="margin-top:14px">
+        <div class="chartTitle"><div class="name">Technické údaje provozu baterie</div><div class="note"></div></div>
+        <div class="kpi">
+          <div class="box"><div class="t">Doba využití baterie za rok</div><div class="v" id="kpiEfc">—</div></div>
+          <div class="box"><div class="t">Počet nabíjecích cyklů za rok</div><div class="v" id="kpiSeg">—</div></div>
+          <div class="box"><div class="t">Průměrná délka nabíjecího cyklu</div><div class="v" id="kpiSegLen">—</div></div>
+          <div class="box"><div class="t">Průměrný objem energie na cyklus</div><div class="v" id="kpiSegE">—</div></div>
+        </div>
+        <small id="battNote">—</small>
+      </div>
+      <div id="sensitivityBox" style="display:none;margin-top:14px">
+        <div class="chartTitle"><div class="name">Sensitivitní analýza NPV</div><div class="note">vliv ceny elektřiny ±50 %</div></div>
+        <div class="ch-wrap"><canvas id="chartSensitivity"></canvas></div>
+      </div>
       <div class="foot">Offline HTML+JS • žádné servery • jen data</div>
     </div>
   </section>
+</div>
+<div class="charts-outer">
+  <div class="charts">
+    <div class="row2">
+      <div>
+        <div class="chartTitle"><div class="name">Výroba FVE — kam putuje</div><div class="note">měsíčně</div></div>
+        <div class="ch-wrap h300"><canvas id="chartMonthlyPv"></canvas></div>
+      </div>
+      <div>
+        <div class="chartTitle"><div class="name">Spotřeba — z jakých zdrojů</div><div class="note">měsíčně</div></div>
+        <div class="ch-wrap h300"><canvas id="chartMonthlyLoad"></canvas></div>
+      </div>
+    </div>
+    <div class="row2">
+      <div>
+        <div class="chartTitle"><div class="name">Rozložení výroby FVE</div><div class="note">ročně</div></div>
+        <div class="ch-wrap h200"><canvas id="chartPiePv"></canvas></div>
+      </div>
+      <div>
+        <div class="chartTitle"><div class="name">Pokrytí spotřeby</div><div class="note">ročně</div></div>
+        <div class="ch-wrap h200"><canvas id="chartPieLoad"></canvas></div>
+      </div>
+    </div>
+    <div>
+      <div class="chartTitle"><div class="name">Denní průběh</div><div class="note"></div></div>
+      <div style="margin-bottom:10px">
+        <div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center; margin-bottom:6px">
+          <input type="date" id="dayPicker" style="width:auto; flex:0 0 auto; padding:6px 10px" title="Vybrat datum z kalendáře">
+          <button class="dayNavBtn" id="btnBestPv"  title="Den s nejvyšší výrobou FVE">↑ Max výroba</button>
+          <button class="dayNavBtn" id="btnWorstPv" title="Den s nejnižší výrobou FVE">↓ Min výroba</button>
+          <button class="dayNavBtn" id="btnMaxImp"  title="Den s nejvyšším dovozem ze sítě">↑ Max dovoz</button>
+          <button class="dayNavBtn" id="btnAvgDay"  title="Den nejblíže průměrné denní výrobě">≈ Průměr</button>
+        </div>
+        <div id="monthBtns" style="display:flex; gap:4px; flex-wrap:wrap; margin-bottom:6px"></div>
+        <span class="pill" id="pillDay" style="white-space:normal; height:auto">—</span>
+      </div>
+      <div class="row2">
+        <div>
+          <div class="chartTitle"><div class="name">Výroba FVE — kam putuje</div><div class="note">hodinově</div></div>
+          <div class="ch-wrap h300"><canvas id="chartDayPv"></canvas></div>
+        </div>
+        <div>
+          <div class="chartTitle"><div class="name">Spotřeba — z jakých zdrojů</div><div class="note">hodinově</div></div>
+          <div class="ch-wrap h300"><canvas id="chartDayLoad"></canvas></div>
+        </div>
+      </div>
+      <div id="socRow" style="display:none; gap:10px; margin-top:8px">
+        <div id="battSocBox">
+          <div class="chartTitle"><div class="name">Stav nabití baterie</div><div class="note">% kapacity · hodinově</div></div>
+          <div class="ch-wrap h200"><canvas id="chartSocBatt"></canvas></div>
+        </div>
+        <div id="tuvSocBox">
+          <div class="chartTitle"><div class="name">Teplota zásobníku TUV</div><div class="note">°C · hodinově</div></div>
+          <div class="ch-wrap h200"><canvas id="chartSocTuv"></canvas></div>
+        </div>
+      </div>
+    </div>
+    <div id="optResultsBox" style="display:none;">
+      <div class="chartTitle"><div class="name">Top varianty z optimalizace</div><div class="note">nejlepší skóre</div></div>
+      <table class="table" id="optTable"></table>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -867,13 +936,73 @@ function formatFixed(id,decimals){
 
 
 
-function parseSingleColumnCSV(text){
-  const lines=text.split(/\r?\n/).map(s=>s.trim()).filter(Boolean);
-  const vals=[];
+function detectYearFromCSV(text){
+  const lines = text.split(/\r?\n/).slice(0, 10);
+  const delim = lines[0]?.includes(';') ? ';' : ',';
   for (const line of lines){
-    const first=line.split(/[;,]/)[0].trim();
-    const v=Number(first.replace(",","."));
-    if (Number.isFinite(v)) vals.push(v);
+    for (const field of line.split(delim)){
+      const f = field.trim().replace(/^["']|["']$/g,'');
+      // ISO: 2023-01-01 nebo 2023-01-01T00:00
+      let m = f.match(/^(\d{4})-\d{2}-\d{2}/);
+      if (m){ const y=+m[1]; if(y>=2000&&y<=2099) return y; }
+      // České: 01.01.2023 nebo 1.1.2023
+      m = f.match(/^\d{1,2}\.\d{1,2}\.(\d{4})/);
+      if (m){ const y=+m[1]; if(y>=2000&&y<=2099) return y; }
+    }
+  }
+  return null;
+}
+
+function parseSingleColumnCSV(text, preferredColumns){
+  const lines=text.split(/\r?\n/).map(s=>s.trim()).filter(Boolean);
+  if (!lines.length) throw new Error("CSV neobsahuje žádná číselná data.");
+
+  // Detect delimiter: prefer ; if present in first line, else ,
+  const delim = lines[0].includes(';') ? ';' : ',';
+
+  // Try to find preferred column by header name
+  let colIdx = -1;
+  const headers = lines[0].split(delim).map(h => h.trim());
+  if (preferredColumns) {
+    for (const name of preferredColumns) {
+      const idx = headers.findIndex(h => h.toLowerCase() === name.toLowerCase());
+      if (idx >= 0) { colIdx = idx; break; }
+    }
+  }
+
+  // If no preferred column found, scan data rows for first non-empty numeric column
+  if (colIdx < 0) {
+    outer: for (let i = 1; i < Math.min(lines.length, 20); i++) {
+      const fields = lines[i].split(delim);
+      for (let j = 0; j < fields.length; j++) {
+        const f = fields[j].trim();
+        const v = Number(f.replace(',', '.'));
+        if (f !== '' && Number.isFinite(v)) { colIdx = j; break outer; }
+      }
+    }
+  }
+
+  if (colIdx < 0) throw new Error("CSV neobsahuje žádná číselná data.");
+
+  // Detect optional unit row (row after header): non-empty, non-numeric value in detected column
+  let scale = 1;
+  let dataStart = 1;
+  if (lines.length > 1) {
+    const unitField = (lines[1].split(delim)[colIdx] || '').trim();
+    const unitVal = Number(unitField.replace(',', '.'));
+    if (unitField !== '' && !Number.isFinite(unitVal)) {
+      // Unit row present — convert Wh → kWh if needed
+      if (unitField.toLowerCase() === 'wh') scale = 0.001;
+      dataStart = 2;
+    }
+  }
+
+  const vals = [];
+  for (let i = dataStart; i < lines.length; i++) {
+    const fields = lines[i].split(delim);
+    const f = (fields[colIdx] || '').trim();
+    const v = Number(f.replace(',', '.'));
+    if (Number.isFinite(v)) vals.push(v * scale);
   }
   if (!vals.length) throw new Error("CSV neobsahuje žádná číselná data.");
   return vals;
@@ -884,13 +1013,22 @@ function tuvCapacityKwh(liters, tmin, tmax, kwhPerLK){
   return Math.max(0, liters) * dT * Math.max(0, kwhPerLK);
 }
 
-function simulateDetailed(load,pvPerKwp,p,batt,tuv){
+function simulate(load,pvPerKwp,p,batt,tuv,{detailed=false}={}){
   const n=Math.min(load.length,pvPerKwp.length);
-  const arr = (n)=> new Float64Array(n);
 
-  const pvA=arr(n), loadA=arr(n), expA=arr(n), impA=arr(n);
-  const battChA=arr(n), battDisA=arr(n), socA=arr(n);
-  const tuvChElA=arr(n), socTA=arr(n), tuvTempA=arr(n), tuvBackupThA=arr(n), tuvBackupElA=arr(n);
+  // Arrays only allocated in detailed mode
+  const pvA      = detailed ? new Float64Array(n) : null;
+  const loadA    = detailed ? new Float64Array(n) : null;
+  const expA     = detailed ? new Float64Array(n) : null;
+  const impA     = detailed ? new Float64Array(n) : null;
+  const battChA  = detailed ? new Float64Array(n) : null;
+  const battDisA = detailed ? new Float64Array(n) : null;
+  const socA     = detailed ? new Float64Array(n) : null;
+  const tuvChElA     = detailed ? new Float64Array(n) : null;
+  const socTA        = detailed ? new Float64Array(n) : null;
+  const tuvTempA     = detailed ? new Float64Array(n) : null;
+  const tuvBackupThA = detailed ? new Float64Array(n) : null;
+  const tuvBackupElA = detailed ? new Float64Array(n) : null;
 
   let eLoad=0, ePv=0, ePvUsed=0, eExp=0, eImp=0;
   let eBattChEl=0, eBattDis=0;
@@ -918,9 +1056,10 @@ function simulateDetailed(load,pvPerKwp,p,batt,tuv){
   const backupEff=tOn?Math.max(0,(tuv.backupEff ?? 1)):1; // kWh_th/kWh_el
   let socT=0;
 
-  // battery discharge segments
+  // discharge segments + batt diag (detailed mode only)
   let segCount=0, segDur=0, segEnergy=0;
   let inSeg=false, curDur=0, curE=0;
+  let socBMin=Infinity, socBMax=-Infinity, socBSum=0;
   const eps=1e-6;
 
   for (let i=0;i<n;i++){
@@ -950,8 +1089,8 @@ function simulateDetailed(load,pvPerKwp,p,batt,tuv){
       if (socT >= drawTh) socT -= drawTh;
       else { backupTh = drawTh - socT; socT=0; }
     }
-    tuvBackupThA[i]=backupTh;
     eTuvBackupTh += backupTh;
+    if (detailed) tuvBackupThA[i]=backupTh;
 
     // If backup is electric, convert to extra electrical load (can be supplied by PV/battery)
     let backupEl=0;
@@ -960,10 +1099,9 @@ function simulateDetailed(load,pvPerKwp,p,batt,tuv){
       L += backupEl;
       eTuvBackupEl += backupEl;
     }
-    tuvBackupElA[i]=backupEl;
+    if (detailed) tuvBackupElA[i]=backupEl;
 
-    pvA[i]=PV;
-    loadA[i]=L;
+    if (detailed){ pvA[i]=PV; loadA[i]=L; }
     ePv += PV;
     eLoad += L;
 
@@ -986,8 +1124,8 @@ function simulateDetailed(load,pvPerKwp,p,batt,tuv){
 
     // import
     if (Lrem>eps){
-      impA[i]=Lrem;
       eImp += Lrem;
+      if (detailed) impA[i]=Lrem;
     }
 
     // PV -> battery charge
@@ -1003,179 +1141,89 @@ function simulateDetailed(load,pvPerKwp,p,batt,tuv){
       eBattChEl += ch;
     }
 
-    // PV -> TUV charge
+    // PV -> TUV charge (tKwEl=0 means unrestricted power — limited only by tank capacity)
     let tChEl=0;
-    if (tOn && tCapTh>0 && tKwEl>0 && PVrem>eps && cop>0){
-      let el=Math.min(PVrem,tKwEl);
+    if (tOn && tCapTh>0 && PVrem>eps && cop>0){
+      let el = (tKwEl>0) ? Math.min(PVrem,tKwEl) : PVrem;
       const roomTh=tCapTh-socT;
       const elMax=roomTh/cop;
       el=Math.min(el,elMax);
-      const addTh=el*cop;
-      socT += addTh;
-      PVrem -= el;
-      tChEl = el;
-      eTuvChEl += el;
-      eTuvChTh += addTh;
+      if (el>eps){
+        const addTh=el*cop;
+        socT += addTh;
+        PVrem -= el;
+        tChEl = el;
+        eTuvChEl += el;
+        eTuvChTh += addTh;
+      }
     }
 
     // export
     if (PVrem>eps){
-      expA[i]=PVrem;
       eExp += PVrem;
+      if (detailed) expA[i]=PVrem;
     }
 
     // PV used on site (electric)
     ePvUsed += (pvToLoad + battChEl + tChEl);
 
-    battChA[i]=battChEl;
-    battDisA[i]=battDis;
-    socA[i]=socB;
-    tuvChElA[i]=tChEl;
-    socTA[i]=socT;
+    if (detailed){
+      battChA[i]=battChEl; battDisA[i]=battDis; socA[i]=socB;
+      tuvChElA[i]=tChEl; socTA[i]=socT;
+      tuvTempA[i] = tCapTh>0 ? tmin+Math.max(0,Math.min(1,socT/tCapTh))*(tmax-tmin) : NaN;
+    }
 
-    if (tCapTh>0){
-      const frac=Math.max(0,Math.min(1, socT/tCapTh));
-      tuvTempA[i]=tmin+frac*(tmax-tmin);
-    } else tuvTempA[i]=NaN;
-
-    // discharge segment tracking
+    // Batt diag — inline tracking (avoids post-loop array pass)
     if (bOn && bKwh>0){
-      const isDis=battDis>eps;
-      if (isDis && !inSeg){ inSeg=true; curDur=0; curE=0; }
-      if (inSeg){
-        if (isDis){ curDur += 1; curE += battDis; }
-        else { inSeg=false; segCount += 1; segDur += curDur; segEnergy += curE; }
+      if (socB < socBMin) socBMin=socB;
+      if (socB > socBMax) socBMax=socB;
+      socBSum += socB;
+      if (detailed){
+        const isDis=battDis>eps;
+        if (isDis && !inSeg){ inSeg=true; curDur=0; curE=0; }
+        if (inSeg){
+          if (isDis){ curDur++; curE+=battDis; }
+          else { inSeg=false; segCount++; segDur+=curDur; segEnergy+=curE; }
+        }
       }
     }
   }
-  if (inSeg){ segCount += 1; segDur += curDur; segEnergy += curE; }
+  if (detailed && inSeg){ segCount++; segDur+=curDur; segEnergy+=curE; }
 
   const coverage = (eLoad>0) ? (1 - eImp/eLoad) : 0;
   let selfcons = (ePv>0) ? (ePvUsed/ePv) : 0;
   selfcons = Math.min(1, Math.max(0, selfcons));
 
-  // batt diag
-  let efc=0, socMin=NaN, socMax=NaN, socAvg=NaN;
-  if (bOn && bKwh>0){
-    efc = eBattDis / bKwh;
-    socMin=Infinity; socMax=-Infinity;
-    let sum=0;
-    for (let i=0;i<n;i++){ const s=socA[i]; socMin=Math.min(socMin,s); socMax=Math.max(socMax,s); sum+=s; }
-    socAvg=sum/n;
-  }
-  const avgSegLen = segCount>0 ? segDur/segCount : 0;
-  const avgSegE   = segCount>0 ? segEnergy/segCount : 0;
-
-  return {
-    n,
+  const result = {
     eLoad, ePv, ePvUsed, eExp, eImp,
     eBattChEl, eBattDis,
     eTuvChEl, eTuvChTh, eTuvDemandTh, eTuvBackupTh, eTuvBackupEl,
     coverage, selfcons,
-    arrays:{pvA,loadA,expA,impA,battChA,battDisA,socA,tuvChElA,socTA,tuvTempA,tuvBackupThA,tuvBackupElA},
-    battDiag:{efc, segCount, avgSegLen, avgSegE, socMin, socMax, socAvg}
   };
+  if (detailed){
+    const hasBatt = bOn && bKwh>0;
+    result.n = n;
+    result.arrays = {pvA,loadA,expA,impA,battChA,battDisA,socA,tuvChElA,socTA,tuvTempA,tuvBackupThA,tuvBackupElA};
+    result.battDiag = {
+      efc:       hasBatt ? eBattDis/bKwh : 0,
+      segCount,
+      avgSegLen: segCount>0 ? segDur/segCount    : 0,
+      avgSegE:   segCount>0 ? segEnergy/segCount : 0,
+      socMin:    hasBatt ? socBMin : NaN,
+      socMax:    hasBatt ? socBMax : NaN,
+      socAvg:    hasBatt && n>0 ? socBSum/n : NaN,
+    };
+  }
+  return result;
 }
 
+function simulateDetailed(load,pvPerKwp,p,batt,tuv){
+  return simulate(load,pvPerKwp,p,batt,tuv,{detailed:true});
+}
+
+
 function simulateFast(load,pvPerKwp,p,batt,tuv){
-  const n=Math.min(load.length,pvPerKwp.length);
-  let eLoad=0, ePv=0, ePvUsed=0, eExp=0, eImp=0;
-  let eTuvDemandTh=0, eTuvBackupTh=0, eTuvBackupEl=0;
-
-  const bOn=batt.enabled;
-  const bKwh=bOn?Math.max(0,batt.kwh):0;
-  const bKw=bOn?Math.max(0,batt.kw):0;
-  const rte=bOn?Math.min(1,Math.max(0.01,batt.rte)):1;
-  const eta=Math.sqrt(rte);
-  let socB=0;
-
-  const tOn=tuv.enabled;
-  const liters=tOn?Math.max(0,tuv.liters):0;
-  const tCapTh = tOn ? tuvCapacityKwh(liters,tuv.tmin,tuv.tmax,tuv.kwhPerLK) : 0;
-  const tKwEl=tOn?Math.max(0,tuv.kw):0;
-  const tDailyTh=tOn?Math.max(0,(tuv.daily ?? tuv.annual ?? 0)):0;
-  const cop=tOn?Math.max(0,(tuv.cop ?? 1)):1;
-  const backupMode=tOn?(tuv.backup||"dh"):"dh";
-  const backupEff=tOn?Math.max(0,(tuv.backupEff ?? 1)):1;
-  let socT=0;
-
-  const eps=1e-9;
-  for (let i=0;i<n;i++){
-    let L=load[i];
-    const PV=pvPerKwp[i]*p;
-
-    // TUV draw
-    const hour=i%24;
-    let drawTh=0;
-    if (tOn && tCapTh>0 && tDailyTh>0){
-      if (hour===6||hour===7||hour===8) drawTh=0.6*tDailyTh/3;
-      else if (hour===18||hour===19||hour===20) drawTh=0.4*tDailyTh/3;
-    }
-    eTuvDemandTh += drawTh;
-
-    let backupTh=0;
-    if (drawTh>0){
-      if (socT >= drawTh) socT -= drawTh;
-      else { backupTh = drawTh - socT; socT=0; }
-    }
-    eTuvBackupTh += backupTh;
-
-    if (tOn && backupMode==="electric" && backupTh>eps && backupEff>eps){
-      const backupEl = backupTh/backupEff;
-      L += backupEl;
-      eTuvBackupEl += backupEl;
-    }
-
-    eLoad += L;
-    ePv += PV;
-
-    const pvToLoad=Math.min(L,PV);
-    let Lrem=L-pvToLoad, PVrem=PV-pvToLoad;
-
-    // batt discharge
-    if (bOn && bKwh>0 && bKw>0 && Lrem>eps){
-      const dis=Math.min(Lrem,bKw);
-      const need=dis/eta;
-      const taken=Math.min(socB,need);
-      const delivered=taken*eta;
-      socB-=taken;
-      Lrem-=delivered;
-    }
-    if (Lrem>eps) eImp += Lrem;
-
-    // batt charge
-    let battChEl=0;
-    if (bOn && bKwh>0 && bKw>0 && PVrem>eps){
-      let ch=Math.min(PVrem,bKw);
-      const room=bKwh-socB;
-      let add=ch*eta;
-      if (add>room){ add=room; ch=add/eta; }
-      socB+=add;
-      PVrem-=ch;
-      battChEl=ch;
-    }
-
-    // TUV charge
-    let tChEl=0;
-    if (tOn && tCapTh>0 && tKwEl>0 && PVrem>eps && cop>0){
-      let el=Math.min(PVrem,tKwEl);
-      const roomTh=tCapTh-socT;
-      const elMax=roomTh/cop;
-      el=Math.min(el,elMax);
-      socT += el*cop;
-      PVrem -= el;
-      tChEl = el;
-    }
-
-    if (PVrem>eps) eExp += PVrem;
-
-    ePvUsed += (pvToLoad + battChEl + tChEl);
-  }
-
-  const coverage = eLoad>0 ? (1 - eImp/eLoad) : 0;
-  let selfcons = ePv>0 ? (ePvUsed/ePv) : 1;
-  selfcons = Math.min(1, Math.max(0, selfcons));
-  return {eLoad,ePv,ePvUsed,eExp,eImp,coverage,selfcons,eTuvDemandTh,eTuvBackupTh,eTuvBackupEl};
+  return simulate(load,pvPerKwp,p,batt,tuv);
 }
 
 function findMinPForCoverage(simArgs,target,pmax){
@@ -1273,594 +1321,156 @@ function rgba(color,a){
 }
 function ceilToTens(x){ return Math.ceil(x/10)*10; }
 
-// charts
-function dprCanvas(canvas){
-  const dpr=window.devicePixelRatio||1;
-  const rect=canvas.getBoundingClientRect();
-  const w=Math.max(320,rect.width), h=rect.height||260;
-  canvas.width=Math.floor(w*dpr); canvas.height=Math.floor(h*dpr);
-  const ctx=canvas.getContext("2d"); ctx.setTransform(dpr,0,0,dpr,0,0);
-  return {ctx,w,h};
-}
-if (!CanvasRenderingContext2D.prototype.roundRect){
-  CanvasRenderingContext2D.prototype.roundRect=function(x,y,w,h,r){
-    if (w<2*r) r=w/2; if (h<2*r) r=h/2;
-    this.beginPath(); this.moveTo(x+r,y);
-    this.arcTo(x+w,y,x+w,y+h,r);
-    this.arcTo(x+w,y+h,x,y+h,r);
-    this.arcTo(x,y+h,x,y,r);
-    this.arcTo(x,y,x+w,y,r);
-    this.closePath(); return this;
-  }
+// ── Chart.js setup ────────────────────────────────────────────────────────────
+Chart.defaults.font.family = 'system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,sans-serif';
+Chart.defaults.font.size = 11;
+Chart.defaults.color = 'rgba(40,55,100,.85)';
+
+const _charts = {};
+function _mkChart(canvas, config){
+  if (!canvas) return null;
+  const id = canvas.id;
+  if (_charts[id]) { _charts[id].destroy(); delete _charts[id]; }
+  _charts[id] = new Chart(canvas, config);
+  return _charts[id];
 }
 
-function niceStep(range, targetTicks){
-  const r = Math.max(range, 1e-12);
-  const raw = r / Math.max(1, targetTicks);
-  const exp = Math.floor(Math.log10(raw));
-  const base = Math.pow(10, exp);
-  const frac = raw / base;
-  let nice;
-  if (frac <= 1) nice = 1;
-  else if (frac <= 2) nice = 2;
-  else if (frac <= 5) nice = 5;
-  else nice = 10;
-  return nice * base;
-}
-function niceScale(minV, maxV, targetTicks){
-  if (!isFinite(minV) || !isFinite(maxV)) return {min:0,max:1,step:1,ticks:4};
-  if (maxV-minV < 1e-12){ maxV = minV + 1; }
-  const step = niceStep(maxV-minV, targetTicks);
-  const minN = Math.floor(minV/step)*step;
-  const maxN = Math.ceil(maxV/step)*step;
-  const ticks = Math.max(2, Math.round((maxN-minN)/step));
-  return {min:minN, max:maxN, step, ticks};
-}
-function drawLine(canvas,series,opts){
-  const {ctx,w,h}=dprCanvas(canvas);
-  // more bottom space for ticks + axis label
-  const pad={l:52,r:12,t:14,b:44};
-  const W=w-pad.l-pad.r, H=h-pad.t-pad.b;
-
-  let xmin=Infinity,xmax=-Infinity,ymin=Infinity,ymax=-Infinity;
-  for (const s of series){
-    for (let i=0;i<s.xs.length;i++){
-      xmin=Math.min(xmin,s.xs[i]); xmax=Math.max(xmax,s.xs[i]);
-      ymin=Math.min(ymin,s.ys[i]); ymax=Math.max(ymax,s.ys[i]);
-    }
-  }
-  if (!isFinite(xmin)) return;
-
-  if (opts?.xmin!=null) xmin=opts.xmin;
-  if (opts?.xmax!=null) xmax=opts.xmax;
-  if (opts?.ymin!=null) ymin=opts.ymin;
-  if (opts?.ymax!=null) ymax=opts.ymax;
-  if (ymax-ymin<1e-9){ymax=ymin+1;}
-
-  ctx.clearRect(0,0,w,h);
-  const grid="rgba(12,25,48,.08)", axis="rgba(12,25,48,.18)", label="rgba(91,103,122,.95)";
-  ctx.font="12px system-ui"; ctx.lineWidth=1;
-
-  // ----- Y ticks -----
-  let yTicks=[], yMin=ymin, yMax=ymax;
-  if (opts?.yTickStep){
-    const step=Math.max(1e-12, opts.yTickStep);
-    yMin = Math.floor(ymin/step)*step;
-    yMax = Math.ceil(ymax/step)*step;
-    const n = Math.max(1, Math.round((yMax-yMin)/step));
-    yTicks = Array.from({length:n+1},(_,i)=>yMin+i*step);
-  } else {
-    const yNice = niceScale(ymin, ymax, 4);
-    yMin = yNice.min; yMax = yNice.max;
-    const gy = yNice.ticks;
-    yTicks = Array.from({length:gy+1},(_,i)=> yMax - (yMax-yMin)*(i/gy));
-    yTicks.reverse(); // bottom->top
-  }
-  ymin=yMin; ymax=yMax;
-
-  const drawY = (v)=> pad.t + (1-(v-ymin)/(ymax-ymin))*H;
-
-  // grid + labels for y
-  for (let i=0;i<yTicks.length;i++){
-    const v=yTicks[i];
-    const y=drawY(v);
-    ctx.strokeStyle=grid; ctx.beginPath(); ctx.moveTo(pad.l,y); ctx.lineTo(pad.l+W,y); ctx.stroke();
-    ctx.fillStyle=label;
-    ctx.fillText(opts?.yFmt?opts.yFmt(v):fmtCs(v,0), 8, y+4);
-  }
-
-  // ----- X ticks -----
-  let xTicks=[];
-  if (Array.isArray(opts?.xTicks) && opts.xTicks.length){
-    xTicks = opts.xTicks.slice();
-  } else if (opts?.xStep){
-    const step=Math.max(1e-12, opts.xStep);
-    const a = Math.floor(xmin/step)*step;
-    const b = Math.ceil(xmax/step)*step;
-    for (let v=a; v<=b+1e-9; v+=step) xTicks.push(v);
-    xmin=a; xmax=b;
-  } else {
-    const gx=5;
-    xTicks = Array.from({length:gx+1},(_,i)=> xmin + (xmax-xmin)*(i/gx));
-  }
-
-  const xTo=(x)=>pad.l+((x-xmin)/(xmax-xmin))*W;
-  const yTo=(y)=>pad.t+(1-(y-ymin)/(ymax-ymin))*H;
-
-  // downsample x labels if too many
-  const maxLabels = opts?.xMaxLabels ?? 12;
-  const labelEvery = Math.max(1, Math.ceil(xTicks.length / maxLabels));
-
-  for (let i=0;i<xTicks.length;i++){
-    const v=xTicks[i];
-    const x=xTo(v);
-    ctx.strokeStyle=grid; ctx.beginPath(); ctx.moveTo(x,pad.t); ctx.lineTo(x,pad.t+H); ctx.stroke();
-
-    if (i % labelEvery !== 0 && i !== xTicks.length-1) continue;
-    const txt=opts?.xFmt?opts.xFmt(v):fmtCs(v,0);
-    const tw=ctx.measureText(txt).width;
-    ctx.fillStyle=label; ctx.fillText(txt, x-tw/2, pad.t+H+18);
-  }
-
-  // axes
-  ctx.strokeStyle=axis; ctx.beginPath(); ctx.moveTo(pad.l,pad.t+H); ctx.lineTo(pad.l+W,pad.t+H); ctx.stroke();
-  ctx.strokeStyle=axis; ctx.beginPath(); ctx.moveTo(pad.l,pad.t); ctx.lineTo(pad.l,pad.t+H); ctx.stroke();
-
-  // optional horizontal zero line
-  if (opts?.zeroLineAt!=null && opts?.drawZeroLine){
-    const z=opts.zeroLineAt;
-    if (z>=ymin-1e-9 && z<=ymax+1e-9){
-      const y= yTo(z);
-      ctx.strokeStyle="rgba(12,25,48,.28)";
-      ctx.setLineDash([5,5]);
-      ctx.beginPath(); ctx.moveTo(pad.l,y); ctx.lineTo(pad.l+W,y); ctx.stroke();
-      ctx.setLineDash([]);
-    }
-  }
-
-  // series
-  for (const s of series){
-    ctx.strokeStyle=s.stroke; ctx.lineWidth=2; ctx.setLineDash(s.dashed?[6,4]:[]);
+// Plugin pro nulovou čáru + značku návratnosti v line grafech
+const _zeroLinePlugin = {
+  id: 'zeroLine',
+  afterDraw(chart, _args, pluginOpts){
+    if (!pluginOpts?.enabled) return;
+    const {ctx, chartArea, scales} = chart;
+    const y0 = scales.y.getPixelForValue(0);
+    if (y0 < chartArea.top || y0 > chartArea.bottom) return;
+    ctx.save();
+    ctx.setLineDash([5,5]);
+    ctx.strokeStyle = 'rgba(12,25,48,.28)';
+    ctx.lineWidth = 1;
     ctx.beginPath();
-    for (let i=0;i<s.xs.length;i++){
-      const X=xTo(s.xs[i]), Y=yTo(s.ys[i]);
-      if (i===0) ctx.moveTo(X,Y); else ctx.lineTo(X,Y);
-    }
-    ctx.stroke(); ctx.setLineDash([]);
-  }
-
-  // mark where series crosses zero (payback point)
-  if (opts?.markZeroCross && opts?.zeroLineAt!=null && series && series.length===1){
-    const s=series[0];
-    const z=opts.zeroLineAt;
-    for (let i=1;i<s.xs.length;i++){
-      const y0=s.ys[i-1], y1=s.ys[i];
-      if ((y0<z && y1>=z) || (y0>z && y1<=z)){
-        const t=(z-y0)/((y1-y0)||1e-9);
-        const xc=s.xs[i-1] + t*(s.xs[i]-s.xs[i-1]);
-        const X=xTo(xc);
-        const Y=yTo(z);
-        ctx.strokeStyle="rgba(12,25,48,.35)";
-        ctx.setLineDash([4,4]);
-        ctx.beginPath(); ctx.moveTo(X,pad.t); ctx.lineTo(X,pad.t+H); ctx.stroke();
-        ctx.setLineDash([]);
-        ctx.fillStyle="rgba(12,25,48,.65)";
-        ctx.beginPath(); ctx.arc(X,Y,4,0,Math.PI*2); ctx.fill();
-
-        if (opts?.paybackLabel){
-          ctx.font="12px system-ui,-apple-system,Segoe UI,Roboto";
-          ctx.fillStyle="rgba(12,25,48,.75)";
-          ctx.fillText(opts.paybackLabel, X+8, Math.max(pad.t+12, Y-10));
+    ctx.moveTo(chartArea.left, y0);
+    ctx.lineTo(chartArea.right, y0);
+    ctx.stroke();
+    if (pluginOpts.paybackLabel && chart.data.datasets.length >= 1){
+      const ds = chart.data.datasets[0].data;
+      for (let i = 1; i < ds.length; i++){
+        const yp = ds[i-1].y, yc = ds[i].y;
+        if ((yp < 0 && yc >= 0) || (yp > 0 && yc <= 0)){
+          const t = (0 - yp) / ((yc - yp) || 1e-9);
+          const xc = ds[i-1].x + t * (ds[i].x - ds[i-1].x);
+          const xPx = scales.x.getPixelForValue(xc);
+          ctx.setLineDash([4,4]);
+          ctx.strokeStyle = 'rgba(12,25,48,.35)';
+          ctx.beginPath(); ctx.moveTo(xPx, chartArea.top); ctx.lineTo(xPx, chartArea.bottom); ctx.stroke();
+          ctx.setLineDash([]);
+          ctx.fillStyle = 'rgba(12,25,48,.65)';
+          ctx.beginPath(); ctx.arc(xPx, y0, 4, 0, Math.PI*2); ctx.fill();
+          ctx.font = 'bold 11px system-ui';
+          ctx.fillStyle = 'rgba(12,25,48,.75)';
+          ctx.textAlign = 'left';
+          ctx.fillText(pluginOpts.paybackLabel, xPx + 8, Math.max(chartArea.top + 14, y0 - 8));
+          break;
         }
-        break;
       }
     }
-  }
-
-  // axis labels (extra spacing so they don't overlap tick labels)
-  if (opts?.xLabel){
-    ctx.fillStyle=label;
-    ctx.font="12px system-ui,-apple-system,Segoe UI,Roboto";
-    const tw=ctx.measureText(opts.xLabel).width;
-    ctx.fillText(opts.xLabel, pad.l + (W/2) - (tw/2), pad.t+H+36);
-  }
-  if (opts?.yLabel){
-    ctx.save();
-    ctx.translate(16, pad.t + H/2);
-    ctx.rotate(-Math.PI/2);
-    ctx.fillStyle=label;
-    ctx.font="12px system-ui,-apple-system,Segoe UI,Roboto";
-    const tw=ctx.measureText(opts.yLabel).width;
-    ctx.fillText(opts.yLabel, -tw/2, 0);
     ctx.restore();
   }
-
-  // legend
-  const lg = opts?.legend || series.map(s=>({name:s.name||"", color:(s.stroke||s.color||CHART_COLORS.navy)}));
-  if (lg && lg.length){
-    ctx.font="12px system-ui,-apple-system,Segoe UI,Roboto";
-    let x = pad.l + W - 6;
-    let y = pad.t + 6;
-    for (let i=lg.length-1;i>=0;i--){
-      const item=lg[i];
-      const name=item.name||"";
-      const tw=ctx.measureText(name).width;
-      x -= (tw + 20);
-      ctx.fillStyle=item.color;
-      ctx.fillRect(x, y, 10, 10);
-      ctx.fillStyle=label;
-      ctx.fillText(name, x+14, y+10);
-      x -= 14;
+};
+Chart.register(_zeroLinePlugin);
+function drawLine(canvas, series, opts){
+  if (!canvas || !series?.length) return;
+  const datasets = series.map(s => ({
+    label: s.name || '',
+    data: s.xs.map((x,i) => ({x, y: s.ys[i]})),
+    borderColor: s.stroke,
+    backgroundColor: 'transparent',
+    borderDash: s.dashed ? [6,4] : [],
+    tension: 0,
+    pointRadius: 0,
+    pointHoverRadius: 4,
+    borderWidth: 2,
+  }));
+  const vertLinesPlugin = opts?.vertLines?.length ? {
+    id: 'vertLines',
+    afterDraw(chart) {
+      const {ctx, chartArea, scales} = chart;
+      ctx.save();
+      for (const vl of opts.vertLines) {
+        const xPx = scales.x.getPixelForValue(vl.x);
+        if (xPx < chartArea.left - 1 || xPx > chartArea.right + 1) continue;
+        ctx.setLineDash([6,4]);
+        ctx.strokeStyle = vl.color || 'rgba(12,25,48,.55)';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(xPx, chartArea.top);
+        ctx.lineTo(xPx, chartArea.bottom);
+        ctx.stroke();
+        if (vl.label) {
+          ctx.setLineDash([]);
+          ctx.font = 'bold 11px system-ui';
+          ctx.fillStyle = vl.color || 'rgba(12,25,48,.75)';
+          ctx.textAlign = 'left';
+          ctx.fillText(vl.label, xPx + 4, chartArea.top + 14);
+        }
+      }
+      ctx.restore();
     }
-  }
-}
-function drawBars(canvas,labels,values,fills,vFmt,opts){
-  const {ctx,w,h}=dprCanvas(canvas);
-  const pad={l:44,r:12,t:14,b:34};
-  const W=w-pad.l-pad.r, H=h-pad.t-pad.b;
-  ctx.clearRect(0,0,w,h);
-
-  const rawMax=Math.max(...values,1);
-  const yNice = niceScale(0, rawMax, 4);
-  const ymax = yNice.max;
-  const gy = yNice.ticks;
-
-  const n=labels.length, gap=10, bw=(W-gap*(n-1))/n;
-
-  const grid="rgba(12,25,48,.10)";
-  const axis="rgba(12,25,48,.18)";
-  const label="rgba(91,103,122,.95)";
-  ctx.font="12px system-ui"; ctx.lineWidth=1;
-
-  // Y grid + labels
-  for (let i=0;i<=gy;i++){
-    const y=pad.t+(H*i/gy);
-    ctx.strokeStyle=grid; ctx.beginPath(); ctx.moveTo(pad.l,y); ctx.lineTo(pad.l+W,y); ctx.stroke();
-    const v=ymax-(ymax)*(i/gy);
-    ctx.fillStyle=label;
-    ctx.fillText(opts?.yFmt?opts.yFmt(v):fmtCs(v,0), 8, y+4);
-  }
-
-  // X axis
-  ctx.strokeStyle=axis;
-  ctx.beginPath(); ctx.moveTo(pad.l,pad.t+H); ctx.lineTo(pad.l+W,pad.t+H); ctx.stroke();
-
-  for (let i=0;i<n;i++){
-    const v=values[i];
-    const bh=(v/ymax)*(H-6);
-    const x=pad.l+i*(bw+gap), y=pad.t+(H-bh);
-
-    ctx.fillStyle=fills[i]; ctx.strokeStyle="rgba(12,25,48,.14)";
-    ctx.beginPath(); ctx.roundRect(x,y,bw,bh,10); ctx.fill(); ctx.stroke();
-
-    ctx.fillStyle="rgba(11,19,36,.88)";
-    const txt=vFmt(v); const tw=ctx.measureText(txt).width;
-    ctx.fillText(txt, x+(bw-tw)/2, y-6);
-
-    ctx.fillStyle=label;
-    const lab=labels[i]; const lw=ctx.measureText(lab).width;
-    ctx.fillText(lab, x+(bw-lw)/2, pad.t+H+18);
-  }
-
-  // axis labels
-  if (opts?.xLabel){
-    ctx.fillStyle=label;
-    const tw=ctx.measureText(opts.xLabel).width;
-    ctx.fillText(opts.xLabel, pad.l + (W/2) - (tw/2), pad.t+H+30);
-  }
-  if (opts?.yLabel){
-    ctx.save();
-    ctx.translate(14, pad.t + H/2);
-    ctx.rotate(-Math.PI/2);
-    ctx.fillStyle=label;
-    const tw=ctx.measureText(opts.yLabel).width;
-    ctx.fillText(opts.yLabel, -tw/2, 0);
-    ctx.restore();
-  }
-}
-
-
-
-// DPH: přepočet vstupů (bez DPH ↔ vč. DPH)
-let _vatModeLast = null;
-function vatFactor(idVat){
-  const v = num(idVat);
-  return 1 + (Number.isFinite(v) ? Math.max(0, v) : 0)/100;
-}
-function convertFieldValue(id, factor, decimals){
-  const el = $(id); if(!el) return;
-  const v = toNum(el.value);
-  if(!Number.isFinite(v)) return;
-  const out = v * factor;
-  if (decimals==null){
-    // keep raw (no forced decimals)
-    el.value = fmtNum(out, 2).replace(/\u00A0/g,' ');
-  } else {
-    el.value = fmtNum(out, decimals).replace(/\u00A0/g,' ');
-  }
-}
-function convertMoneyInputs(fromMode, toMode){
-  if (!fromMode || fromMode===toMode) return;
-  const dir = (fromMode==="net" && toMode==="gross") ? 1 : (fromMode==="gross" && toMode==="net") ? -1 : 0;
-  if (!dir) return;
-
-  const fInv = vatFactor("vatInvest");
-  const fEl  = vatFactor("vatElec");
-  const tuvSrc = $("tuvBackup") ? $("tuvBackup").value : "dh";
-  const fHeat = (tuvSrc==="gas") ? vatFactor("vatGas") : vatFactor("vatHeat");
-
-  const invFactor  = (dir===1) ? fInv : (1/fInv);
-  const elecFactor = (dir===1) ? fEl  : (1/fEl);
-  const heatFactor = (dir===1) ? fHeat: (1/fHeat);
-
-  // Investice
-  const invIdsInt = ["capexUnit","batteryCapexPerKwh","batteryCapexFixed","tuvCapexFixed","costLightning","costFall","costDispatch"];
-  for (const id of invIdsInt) convertFieldValue(id, invFactor, 0);
-
-  // Elektřina
-  const elecIds = ["priceImport","priceExport"];
-  for (const id of elecIds) convertFieldValue(id, elecFactor, 2);
-
-  // Teplo (TUV)
-  convertFieldValue("priceHeatTuv", heatFactor, 2);
-
-  updateCapexFixedUI();
-}
-function initVatMode(){
-  const el = $("vatMode");
-  if (!el) return;
-  _vatModeLast = el.value || "net";
-  el.addEventListener("change", ()=>{
-    const cur = el.value || "net";
-    convertMoneyInputs(_vatModeLast, cur);
-    _vatModeLast = cur;
+  } : null;
+  _mkChart(canvas, {
+    type: 'line',
+    data: {datasets},
+    plugins: vertLinesPlugin ? [vertLinesPlugin] : [],
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: {mode:'index', intersect:false},
+      plugins: {
+        legend: {
+          display: datasets.length > 1,
+          position: 'top', align: 'end',
+          labels: {boxWidth:10, padding:12, font:{size:11}},
+        },
+        tooltip: {
+          callbacks: {
+            title: ca => opts?.xFmt ? opts.xFmt(ca[0].parsed.x) : String(Math.round(ca[0].parsed.x)),
+            label: ctx => ' ' + ctx.dataset.label + ': ' + (opts?.yFmt ? opts.yFmt(ctx.parsed.y) : fmtCs(ctx.parsed.y,0)),
+          }
+        },
+        zeroLine: {enabled: !!(opts?.drawZeroLine), paybackLabel: opts?.paybackLabel || null},
+      },
+      scales: {
+        x: {
+          type: 'linear',
+          min: opts?.xmin != null ? opts.xmin : undefined,
+          max: opts?.xmax != null ? opts.xmax : undefined,
+          ticks: {
+            callback: v => opts?.xFmt ? opts.xFmt(v) : fmtCs(v,0),
+            maxTicksLimit: opts?.xMaxLabels ?? 8,
+          },
+          title: opts?.xLabel ? {display:true, text:opts.xLabel, font:{size:11}} : {display:false},
+          grid: {color:'rgba(12,25,48,.06)'},
+        },
+        y: {
+          min: opts?.ymin != null ? opts.ymin : undefined,
+          max: opts?.ymax != null ? opts.ymax : undefined,
+          ticks: {
+            callback: v => opts?.yFmt ? opts.yFmt(v) : fmtCs(v,0),
+            maxTicksLimit: 6,
+          },
+          title: opts?.yLabel ? {display:true, text:opts.yLabel, font:{size:11}} : {display:false},
+          grid: {color:'rgba(12,25,48,.06)'},
+        }
+      }
+    }
   });
 }
-
-// UI state
-let load=null, pvPerKwp=null;
-let tuvDemandProfileCsvTh = null;
-let tuvDemandProfileRefTh = null;
-let tuvDemandProfileTh = null; // compat
-let lastResult=null;
-let dayAxis = { yMax: 10, yStep: 5 };
-let daySeriesEnabled = null;
-const DAY_SERIES = [
-  {key:"load", name:"Spotřeba", color:CHART_COLORS.navy, dashed:false},
-  {key:"pv", name:"Výroba", color:CHART_COLORS.lightBlue, dashed:false},
-  {key:"buy", name:"Nákup", color:CHART_COLORS.purple, dashed:false},
-  {key:"exp", name:"Přetok", color:CHART_COLORS.yellow, dashed:true},
-  {key:"bdis", name:"Spotřeba z baterie", color:CHART_COLORS.teal, dashed:false},
-  {key:"bch", name:"Baterie z FVE", color:rgba(CHART_COLORS.teal,.35), dashed:true},
-  {key:"tuv", name:"TUV z FVE", color:CHART_COLORS.brown, dashed:true},
-];
-
-function computeDayAxis(simDetail){
-  try{
-    const A = simDetail?.arrays;
-    if (!A) return;
-    let mx = 0;
-    const keys = ["loadA","pvA","impA","expA","battDisA","battChA","tuvChElA"];
-    for (const k of keys){
-      const arr = A[k];
-      if (!arr) continue;
-      for (let i=0;i<arr.length;i++){
-        const v = arr[i]||0;
-        if (v>mx) mx=v;
-      }
-    }
-    const raw = mx * 1.1;
-    const step = (raw<=50)?5:10;
-    const yMax = Math.max(step, Math.ceil(raw/step)*step);
-    dayAxis = { yMax, yStep: step };
-  }catch(e){}
-}
-
-function ensureDaySeriesEnabled(){
-  if (daySeriesEnabled) return;
-  daySeriesEnabled = {};
-  for (const s of DAY_SERIES) daySeriesEnabled[s.key] = true;
-}
-
-function renderDayLegend(){
-  const host = $("dayLegend");
-  if (!host) return;
-  ensureDaySeriesEnabled();
-  host.innerHTML = "";
-  for (const s of DAY_SERIES){
-    const id = "lg_"+s.key;
-    const wrap = document.createElement("label");
-    const cb = document.createElement("input");
-    cb.type = "checkbox";
-    cb.id = id;
-    cb.checked = !!daySeriesEnabled[s.key];
-    cb.addEventListener("change", ()=>{
-      daySeriesEnabled[s.key] = cb.checked;
-      if (lastResult?.simDetail && lastResult?.p!=null){
-        const day = Number($("daySelect").value||"1");
-        drawDay(lastResult.simDetail, lastResult.p, day);
-      }
-    });
-    const sw = document.createElement("span");
-    sw.className = "legendSw";
-    sw.style.background = s.color;
-    const txt = document.createElement("span");
-    txt.textContent = s.name;
-    wrap.appendChild(cb);
-    wrap.appendChild(sw);
-    wrap.appendChild(txt);
-    host.appendChild(wrap);
-  }
-}
-
-async function readFileAsText(file){return await file.text();}
-function setStatus(kind,html){
-  const el=$("status");
-  el.className="status"+(kind?(" "+kind):"");
-  el.innerHTML=html;
-}
-function updateCapexFixedUI(){
-  const el = $("capexFixedSum");
-  if (!el) return;
-  const fixed = (typeof capexFixedItems==="function") ? capexFixedItems() : 0;
-  el.textContent = fmtKc(fixed);
-}
-
-
-function updateSubsidyUI(p, cap, subInfo){
-  const chk = $("useSubsidy");
-  const box = $("subsidyBox");
-  if (!chk || !box) return;
-  box.style.display = chk.checked ? "block" : "none";
-  const meta = subInfo?.program;
-  if ($("subsidyIntensityPill")) $("subsidyIntensityPill").textContent = subInfo?.intensText || "—";
-  if ($("subsidyAmountPill")) $("subsidyAmountPill").textContent = chk.checked ? fmtKc(subInfo?.sub||0) : "—";
-  if ($("subsidyNotePill")) $("subsidyNotePill").textContent = (subInfo?.note && chk.checked) ? subInfo.note : "Jen FVE + baterie.";
-}
-
-
-function refreshModeUI(){
-  const mode=$("mode").value;
-  $("singleTargetBox").style.display=(mode==="both")?"none":"block";
-  $("bothTargetBox").style.display=(mode==="both")?"block":"none";
-
-  // Dynamic label for single-target mode
-  const lbl = $("targetLabel");
-  if (lbl){
-    if (mode==="coverage") lbl.textContent = "Cílové pokrytí spotřeby vlastní výrobou (0 - 100 %)";
-    else if (mode==="selfcons") lbl.textContent = "Cílové využití EE pro vlastní spotřebu (0 - 100 %)";
-    else lbl.textContent = "Cílová hodnota (0 - 100 %)";
-  }
-}
-$("mode").addEventListener("change",refreshModeUI); refreshModeUI();
-initVatMode();
-
-// Enforce 2-decimal formatting for selected inputs
-["discount","pvProfileKwp","pmax"].forEach(id=>{
-  const el=$(id);
-  if(!el) return;
-  const fn=()=>formatFixed(id,2);
-  el.addEventListener("change", fn);
-  el.addEventListener("blur", fn);
-  fn(); // format initial
-});
-
-
-function refreshActiveFields(){
-  // FVE manual
-  const fveManual = $("pvSizeMode").value==="manual";
-  $("pvManualKwp").disabled = !fveManual;
-  $("pvManualKwp").classList.toggle("fieldActive", fveManual);
-  // Battery
-  const bOn = $("useBattery")?.checked;
-  const bManual = $("batterySizeMode") && $("batterySizeMode").value==="manual";
-  if ($("batteryKwh")) {$("batteryKwh").disabled = !bManual; $("batteryKwh").classList.toggle("fieldActive", bManual);}
-  if ($("batteryCapexPerKwh")) {$("batteryCapexPerKwh").disabled = !bOn; }
-  if ($("batteryCapexFixed")) {$("batteryCapexFixed").disabled = !bOn; }
-  if ($("batteryPratio")) {$("batteryPratio").disabled = false;
-}
-
-  // TUV manual
-  const tManual = $("tuvSizeMode") && $("tuvSizeMode").value==="manual";
-  if ($("tuvLiters")) {$("tuvLiters").disabled = !tManual; $("tuvLiters").classList.toggle("fieldActive", tManual);}
-  if ($("tuvTankCoeff")) {$("tuvTankCoeff").disabled = !($("useTuv")?.checked); }
-
-  // TUV demand mode
-  const dMode = $("tuvDemandMode") ? $("tuvDemandMode").value : "annual";
-  const tOn = !!($("useTuv")?.checked);
-
-  if ($("tuvAnnual")) $("tuvAnnual").disabled = (dMode==="csv");
-  if ($("tuvDemandFile")) $("tuvDemandFile").disabled = (dMode!=="csv");
-  if ($("tuvDemandRef")) $("tuvDemandRef").disabled = (dMode!=="ref");
-
-  if ($("tuvDemandCsvBox")) $("tuvDemandCsvBox").style.display = (dMode==="csv") ? "block" : "none";
-  if ($("tuvDemandRefBox")) $("tuvDemandRefBox").style.display = (dMode==="ref") ? "block" : "none";
-
-  if ($("tuvAnnual")) $("tuvAnnual").classList.toggle("fieldActive", dMode!=="csv" && tOn);
-  if ($("tuvDemandFile")) if ($("tuvDemandRef")) // Optimum box always follows checkbox
-  if ($("useOpt") && $("optBox")) $("optBox").style.display = $("useOpt").checked ? "block" : "none";
-
-}
-function toggleBox(chkId,boxId){
-  const chk=$(chkId), box=$(boxId);
-  const f=()=>box.style.display=chk.checked?"block":"none";
-  chk.addEventListener("change",f); f();
-}
-toggleBox("useBattery","batteryBox");
-toggleBox("useTuv","tuvBox");
-toggleBox("useOpt","optBox");
-  toggleBox("showDetailsCapex","detailsCapexBox");
-
-// Aktivace / deaktivace polí podle režimu
-for (const id of ["pvSizeMode","batterySizeMode","tuvSizeMode","tuvDemandMode","useBattery","useTuv"]){
-  const el = $(id);
-  if (el) el.addEventListener("change", refreshActiveFields);
-}
-refreshActiveFields();
-
-// TUV reference profiles (based on EN 13203-2 programs as summarized in STÚ-E 2015)
-const TUV_REF_PROGRAMS = {
-  p1: {label:"Program 1 – 1 osoba", events:[
-    {h:7,m:0,v:2.6},{h:7,m:30,v:2.6},{h:8,m:30,v:2.6},{h:9,m:30,v:2.6},
-    {h:11,m:30,v:2.6},{h:11,m:45,v:2.6},{h:12,m:45,v:7.7},
-    {h:18,m:0,v:2.6},{h:18,m:15,v:2.6},{h:20,m:30,v:10.3},{h:21,m:30,v:12.9},
-  ]},
-  p2: {label:"Program 2 – rodina + sprcha", events:[
-    {h:7,m:0,v:2.6},{h:7,m:15,v:34.4},{h:7,m:30,v:2.6},{h:8,m:1,v:2.6},
-    {h:8,m:15,v:2.6},{h:8,m:30,v:2.6},{h:8,m:45,v:2.6},{h:9,m:0,v:2.6},
-    {h:9,m:30,v:2.6},{h:10,m:30,v:2.6},{h:11,m:30,v:2.6},{h:11,m:45,v:2.6},
-    {h:12,m:45,v:7.7},{h:14,m:30,v:2.6},{h:15,m:30,v:2.6},{h:16,m:30,v:2.6},
-    {h:18,m:0,v:2.6},{h:18,m:15,v:2.6},{h:18,m:30,v:2.6},{h:19,m:0,v:2.6},
-    {h:20,m:30,v:18.1},{h:21,m:15,v:2.6},{h:21,m:30,v:34.4},
-  ]},
-  p3: {label:"Program 3 – 3 osoby + vana + sprcha", events:[
-    {h:7,m:0,v:2.6},{h:7,m:5,v:34.4},{h:7,m:30,v:2.6},{h:7,m:45,v:2.6},
-    {h:8,m:5,v:88.7},{h:8,m:25,v:2.6},{h:8,m:30,v:2.6},{h:8,m:45,v:2.6},
-    {h:9,m:0,v:2.6},{h:9,m:30,v:2.6},{h:10,m:30,v:2.6},{h:11,m:30,v:2.6},
-    {h:11,m:45,v:2.6},{h:12,m:45,v:7.7},{h:14,m:30,v:2.6},{h:15,m:30,v:2.6},
-    {h:16,m:30,v:2.6},{h:18,m:0,v:2.6},{h:18,m:15,v:2.6},{h:18,m:30,v:2.6},
-    {h:19,m:0,v:2.6},{h:20,m:30,v:18.1},{h:21,m:0,v:88.7},{h:21,m:30,v:2.6},
-  ]},
-};
-
-function tuvDailyWeightsFromEvents(events){
-  const w = new Array(24).fill(0);
-  for (const e of events){
-    const hh = Math.max(0, Math.min(23, Math.floor((e.h||0) + (e.m||0)/60)));
-    w[hh] += (Number(e.v)||0);
-  }
-  const sum = w.reduce((a,b)=>a+b,0);
-  if (sum>0){
-    for (let i=0;i<24;i++) w[i] /= sum;
-  }
-  return w;
-}
-
-function rebuildTuvRefProfile(){
-  const mode = $("tuvDemandMode")?.value || "annual";
-  if (mode!=="ref"){ return; }
-  const key = $("tuvDemandRef")?.value || "p1";
-  const dailyTh = num("tuvAnnual");
-  const n = (load && Array.isArray(load)) ? load.length : 8760;
-
-  const prog = TUV_REF_PROGRAMS[key] || TUV_REF_PROGRAMS.p1;
-  const w = tuvDailyWeightsFromEvents(prog.events);
-
-  const arr = new Array(n);
-  if (dailyTh>0){
-    for (let i=0;i<n;i++) arr[i] = w[i%24]*dailyTh;
-  } else {
-    for (let i=0;i<n;i++) arr[i] = 0;
-  }
-  tuvDemandProfileRefTh = arr;
+  appState.tuvDemandProfileRefTh = arr;
 }
 
 // Rebuild TUV reference profile when relevant inputs change
 
 function maybeRebuildTuvRef(){
   if ($("tuvDemandMode")?.value==="ref") rebuildTuvRefProfile();
-}
-$("tuvDemandMode")?.addEventListener("change", maybeRebuildTuvRef);
 $("tuvDemandRef")?.addEventListener("change", maybeRebuildTuvRef);
 $("tuvAnnual")?.addEventListener("input", maybeRebuildTuvRef);
 maybeRebuildTuvRef();
@@ -1902,90 +1512,27 @@ $("installType").addEventListener("change",()=>{
 async function handleFileChange(){
   try{
     if ($("loadFile").files[0]) {
-      load=parseSingleColumnCSV(await readFileAsText($("loadFile").files[0]));
-      const sum = load.reduce((a,b)=>a+(Number(b)||0),0);
+      const loadText = await readFileAsText($("loadFile").files[0]);
+      appState.load = parseSingleColumnCSV(loadText);
+      const sum = appState.load.reduce((a,b)=>a+(Number(b)||0),0);
       if ($("loadSumPill")) $("loadSumPill").textContent = fmtKwh(sum);
+      const detectedYear = detectYearFromCSV(loadText);
+      if (detectedYear){
+        appState.dataYear = detectedYear;
+        const yearEl = $("dataYear");
+        if (yearEl) yearEl.value = String(detectedYear);
+      }
     }
     if ($("pvFile").files[0]) {
-      const raw=parseSingleColumnCSV(await readFileAsText($("pvFile").files[0]));
+      const raw=parseSingleColumnCSV(await readFileAsText($("pvFile").files[0]), ['Inverter Output','AC Inverter Output','Array Energy']);
       const profKwp = num("pvProfileKwp");
       if (!(profKwp>0)) throw new Error("Instalovaný výkon pro vzorový profil musí být > 0.");
-      pvPerKwp = raw.map(v => (Number(v)||0)/profKwp);
+      appState.pvPerKwp = raw.map(v => (Number(v)||0)/profKwp);
     }
     if ($("tuvDemandFile") && $("tuvDemandFile").files[0]) {
       const rawTuv = parseSingleColumnCSV(await readFileAsText($("tuvDemandFile").files[0]));
       // očekávám stejný počet hodin jako u load profilu (typicky 8760)
-      if (load && rawTuv.length!==load.length){
-        throw new Error(`Nesedí délka TUV profilu a spotřeby: tuv=${rawTuv.length}, load=${load.length}`);
-      }
-      tuvDemandProfileCsvTh = rawTuv.map(v => (Number(v)||0));
-      tuvDemandProfileTh = tuvDemandProfileCsvTh; // compat
-    }
-    // If TUV reference profile is active, rebuild it to match current length
-    if ($("tuvDemandMode")?.value==="ref") { rebuildTuvRefProfile(); }
-if (load && pvPerKwp){
-      if (load.length!==pvPerKwp.length){
-        $("runBtn").disabled=true;
-        $("pillHours").textContent=`Hodin: ${load.length} vs ${pvPerKwp.length}`;
-        setStatus("bad",`❌ Nesedí délky řad: load=${load.length}, pv=${pvPerKwp.length}`);
-        return;
-      }
-      $("runBtn").disabled=false;
-      $("pillHours").textContent=`Hodin: ${load.length}`;
-      setStatus("ok","✅ Data načtena.");
-      fillDaySelect(load.length);
-    } else {
-      $("runBtn").disabled=true; $("pillHours").textContent="Hodin: —";
-      setStatus("","Nahraj oba CSV soubory.");
-    }
-  }catch(e){
-    $("runBtn").disabled=true;
-    setStatus("bad",`❌ ${e.message}`);
-  }
-}
-$("loadFile").addEventListener("change",handleFileChange);
-$("pvFile").addEventListener("change",handleFileChange);
-$("tuvDemandFile")?.addEventListener("change",handleFileChange);
-$("pvProfileKwp").addEventListener("input",()=>{ if ($("pvFile").files[0]) handleFileChange(); });
-
-function fillDaySelect(nHours){
-  const nDays=Math.floor(nHours/24);
-  const sel=$("daySelect");
-  sel.innerHTML="";
-  const count=Math.min(nDays,365);
-  for (let d=1; d<=count; d++){
-    const opt=document.createElement("option");
-    opt.value=String(d);
-    const base = new Date(Date.UTC(2021,0,1));
-    const dt = new Date(base.getTime() + (d-1)*24*3600*1000);
-    const dd = dt.getUTCDate();
-    const mm = dt.getUTCMonth()+1;
-    opt.textContent = `${dd}.${mm}.`;
-    sel.appendChild(opt);
-  }
-  sel.value="1";
-}
-
-function validateInputs(){
-  const pmax=num("pmax");
-  if (!(pmax>0)) throw new Error("Pmax musí být > 0.");
-
-  
-  const pvProf=num("pvProfileKwp");
-  if ($("pvFile")?.files?.[0]){ if (!(pvProf>0)) throw new Error("Instalovaný výkon pro vzorový profil musí být > 0."); }
-// PV manual sanity
-  if ($("pvSizeMode").value==="manual"){
-    const pm=num("pvManualKwp");
-    if (!(pm>=0 && pm<=pmax)) throw new Error("Ruční výkon FVE musí být 0–Pmax.");
-  }
-
-  const mode=$("mode").value;
-  if (mode!=="both"){
-    const t=num("target");
-    if (!(t>=0 && t<=100)) throw new Error("Cílová hodnota musí být 0–100 %.");
-  } else {
-    const tc=num("targetCoverage"), ts=num("targetSelfcons");
-    if (!(tc>=0 && tc<=100)) throw new Error("Cílové pokrytí musí být 0–100 %.");
+      if (appState.load && rawTuv.length!==appState.load.length){
     if (!(ts>=0 && ts<=100)) throw new Error("Cílové využití musí být 0–100 %.");
   }
   const pi=num("priceImport"), pe=num("priceExport");
@@ -2008,9 +1555,11 @@ function validateInputs(){
   if ($("useBattery").checked){
     const rte=num("batteryRte");
     if (!(rte>=0 && rte<=100)) throw new Error("Účinnost baterie musí být 0–100 %.");
+    const bMode = $("batterySizeMode")?.value;
+    if (bMode!=="auto" && !(num("batteryKwh")>0))
+      throw new Error("Baterie je zapnutá, ale kapacita je 0 kWh. Zadej kapacitu nebo zvol automatickou velikost.");
   }
 
-  
   if ($("useTuv").checked){
     const coeff=num("tuvTankCoeff");
     if (!(coeff>=0)) throw new Error("Koeficient CAPEX nádrže musí být >= 0.");
@@ -2024,6 +1573,11 @@ function validateInputs(){
   if ($("useTuv").checked){
     const tmin=num("tuvTmin"), tmax=num("tuvTmax");
     if (!(tmax>=tmin)) throw new Error("TUV: Tmax musí být >= Tmin.");
+    const tMode = $("tuvSizeMode")?.value;
+    if (tMode!=="auto" && !(num("tuvLiters")>0))
+      throw new Error("TUV je zapnutá, ale objem nádrže je 0 l. Zadej objem nebo zvol automatickou velikost.");
+    if (tmax<=tmin)
+      throw new Error("TUV: Tmax musí být větší než Tmin — jinak má nádrž nulovou tepelnou kapacitu.");
   }
 }
 
@@ -2146,11 +1700,17 @@ function opexYear(p){
   return num("opexFixed") + num("opexPerKwp")*p;
 }
 
+function setKpiColor(id, cls){
+  const el=$(id); if(!el) return;
+  el.classList.remove("kpi-good","kpi-warn","kpi-bad");
+  if(cls) el.classList.add(cls);
+}
+
 function renderKPIs(p,sim,eco,capexBefore,capexAfter,subsidy,best){
   $("kpiP").textContent=fmtKwp(p);
   $("kpiCapexBefore").textContent=fmtKc(capexBefore);
   $("kpiCapexAfter").textContent=fmtKc(capexAfter);
-  
+
   $("kpiSavingsElec").textContent=fmtKc(eco.savingsElec);
   $("kpiExportRev").textContent=fmtKc(eco.exportRev);
   $("kpiSavingsHeat").textContent=fmtKc(eco.savingsHeat);
@@ -2159,6 +1719,24 @@ function renderKPIs(p,sim,eco,capexBefore,capexAfter,subsidy,best){
   $("kpiPaybackNpv").textContent=`${pb} / ${fmtKc(eco.npv)}`;
   $("kpiMetrics").textContent=`${fmtPct(sim.coverage)} / ${fmtPct(sim.selfcons)}`;
   $("kpiEnergies").textContent=`${fmtKwh(sim.ePvUsed)} / ${fmtKwh(sim.eExp)}`;
+
+  // Barevné kódování
+  // Návratnost / NPV
+  const payback = eco.payback;
+  setKpiColor("kpiPaybackNpv",
+    eco.npv < 0 ? "kpi-bad" :
+    isFinite(payback) && payback <= 7  ? "kpi-good" :
+    isFinite(payback) && payback <= 12 ? "kpi-warn" : "kpi-bad");
+  // Pokrytí / selfcons
+  setKpiColor("kpiMetrics",
+    sim.coverage >= 0.60 ? "kpi-good" :
+    sim.coverage >= 0.40 ? "kpi-warn" : "kpi-bad");
+  // Roční přínos
+  setKpiColor("kpiBenefit",
+    eco.benefit1 > 0 ? "kpi-good" : "kpi-bad");
+  // CAPEX po dotaci — neutrální, jen zvýraznit pokud je dotace
+  setKpiColor("kpiCapexAfter",
+    subsidy > 0 ? "kpi-good" : null);
 
   // Sizes
   if ($("useBattery").checked){
@@ -2226,6 +1804,70 @@ function renderKPIs(p,sim,eco,capexBefore,capexAfter,subsidy,best){
 }
 
 
+function renderScenarios(){
+  const box = $("scenariosBox");
+  const tbl = $("scenariosTable");
+  if (!box || !tbl || !appState.lastResult) return;
+
+  const { p, simArgs } = appState.lastResult;
+  const { load, pvPerKwp, batt, tuv } = simArgs;
+
+  const econBase = {
+    priceImport:   num("priceImport"),
+    priceExport:   num("priceExport"),
+    priceHeatTuv:  num("priceHeatTuv"),
+    discount:      readPct("discount"),
+    years:         num("years"),
+    degradation:   readPct("degradation"),
+  };
+
+  const noBatt = {enabled:false,kwh:0,kw:0,rte:1};
+  const noTuv  = {enabled:false,daily:0,annual:0,profileTh:null};
+
+  const hasBatt = batt.enabled && batt.kwh > 0;
+  const hasTuv  = tuv.enabled  && (tuv.annual||0) > 0;
+
+  const scenarios = [
+    { label:'Bez FVE',          p:0, batt:noBatt, tuv:noTuv  },
+    { label:'Pouze FVE',        p,   batt:noBatt, tuv:noTuv  },
+  ];
+  if (hasBatt) scenarios.push({ label:'FVE + Baterie',   p, batt, tuv:noTuv });
+  if (hasTuv)  scenarios.push({ label:'FVE + TUV',       p, batt:noBatt, tuv });
+  if (hasBatt && hasTuv) scenarios.push({ label:'FVE + Baterie + TUV', p, batt, tuv, highlight:true });
+  else scenarios[scenarios.length-1].highlight = true;
+
+  const rows = scenarios.map(sc => {
+    const sim     = simulateFast(load, pvPerKwp, sc.p, sc.batt, sc.tuv);
+    const cap     = capexBreakdown(sc.p, sc.batt, sc.tuv);
+    const subInfo = computeSubsidy(sc.p, sc.batt, cap);
+    const capAfter = Math.max(0, cap.total - (subInfo.sub||0));
+    const opex     = sc.p > 0 ? opexYear(sc.p) : 0;
+    const eco      = economics(sim, {...econBase, capexTotal:capAfter, opexYear:opex});
+    return {sc, sim, eco, capAfter};
+  });
+
+  const cols = [
+    { h:'Scénář',                  fn: r => r.sc.label },
+    { h:'CAPEX po dotaci',         fn: r => fmtKc(r.capAfter) },
+    { h:'Dovoz ze sítě (kWh/rok)', fn: r => fmtKwh(r.sim.eImp) },
+    { h:'Přetoky (kWh/rok)',       fn: r => fmtKwh(r.sim.eExp) },
+    { h:'Pokrytí spotřeby',        fn: r => fmtPct(r.sim.coverage) },
+    { h:'Využití výroby',          fn: r => fmtPct(r.sim.selfcons) },
+    { h:'Roční přínos (Kč)',       fn: r => fmtKc(r.eco.benefit1) },
+    { h:'Prostá návratnost',       fn: r => isFinite(r.eco.payback) ? fmtCs(r.eco.payback,1)+' let' : '∞' },
+    { h:'NPV',                     fn: r => fmtKc(r.eco.npv) },
+  ];
+
+  let html = '<thead><tr>' + cols.map(c=>`<th>${c.h}</th>`).join('') + '</tr></thead><tbody>';
+  for (const row of rows){
+    const style = row.sc.highlight ? ' style="font-weight:600;background:rgba(40,37,96,.07)"' : '';
+    html += `<tr${style}>` + cols.map(c=>`<td>${c.fn(row)}</td>`).join('') + '</tr>';
+  }
+  html += '</tbody>';
+  tbl.innerHTML = html;
+  box.style.display = '';
+}
+
 function renderBattDiag(diag, battCfg){
   if (!battCfg.enabled || !(battCfg.kwh>0) || !(battCfg.kw>0)){
     $("kpiEfc").textContent="—";
@@ -2249,6 +1891,9 @@ function computeCurve(simArgs,pmax,steps){
     const m=simulateFast(simArgs.load,simArgs.pvPerKwp,p,simArgs.batt,simArgs.tuv);
     xs.push(p); cov.push(m.coverage); sc.push(m.selfcons);
   }
+  // At p=0 selfcons=0 by division-by-zero guard, but the limit as p→0 is ~1.
+  // Replace the degenerate first point to avoid a visual spike at the left edge.
+  if (sc.length > 1) sc[0] = sc[1];
   return {xs,cov,sc};
 }
 
@@ -2256,37 +1901,26 @@ function drawAll(simArgs,pmax,mode,p,targets,simDetail,eco){
   $("pillMode").textContent=`mode: ${mode}`;
 
   const curve=computeCurve(simArgs,pmax,60);
-  const axisMax = ceilToTens(pmax*1.1);
-  const xStepBase = (axisMax<=100)?5:10;
-  const vxs=[p,p], vys=[0,1];
+  const axisMax = Math.max(ceilToTens(pmax*1.1), ceilToTens(p*1.5));
   const series=[
-    {name:"Pokrytí spotřeby", xs:curve.xs, ys:curve.cov, stroke:CHART_COLORS.navy},
-    {name:"Využití vyrobené EE", xs:curve.xs, ys:curve.sc,  stroke:CHART_COLORS.teal},
-    {name:"Optimální výkon FVE", xs:vxs, ys:vys, stroke:CHART_COLORS.yellow, dashed:true},
+    {name:"Pokrytí spotřeby",     xs:curve.xs, ys:curve.cov, stroke:CHART_COLORS.navy},
+    {name:"Využití vyrobené EE",  xs:curve.xs, ys:curve.sc,  stroke:CHART_COLORS.teal},
   ];
   if (targets.cov!=null){
-    series.push({name:"Cílové pokrytí spotřeby", xs:[0,axisMax], ys:[targets.cov,targets.cov], stroke:rgba(CHART_COLORS.navy,.45), dashed:true});
+    series.push({name:"Cílové pokrytí spotřeby",      xs:[0,axisMax], ys:[targets.cov,targets.cov], stroke:rgba(CHART_COLORS.navy,.45), dashed:true});
   }
   if (targets.sc!=null){
-    series.push({name:"Cílové využití vyrobené EE", xs:[0,axisMax], ys:[targets.sc,targets.sc], stroke:rgba(CHART_COLORS.teal,.45), dashed:true});
+    series.push({name:"Cílové využití vyrobené EE",   xs:[0,axisMax], ys:[targets.sc,targets.sc],   stroke:rgba(CHART_COLORS.teal,.45), dashed:true});
   }
   drawLine($("chartMetrics"), series, {
     xmin:0, xmax:axisMax,
-    xStep:xStepBase,
     xFmt:(v)=>fmtCs(v,0),
     yFmt:(v)=>fmtCs(v*100,0)+"%",
     ymin:0, ymax:1,
     xLabel:"Výkon FVE (kWp)", yLabel:"%",
+    vertLines:[{x:p, label:`${fmtCs(p,1)} kWp`, color:'rgba(180,160,0,.85)'}],
   });
 
-  drawBars(
-    $("chartEnergy"),
-    ["Spotřeba","Výroba","Vlastní využití","Přetok"],
-    [simDetail.eLoad, simDetail.ePv, simDetail.ePvUsed, simDetail.eExp],
-    [rgba(CHART_COLORS.navy,.12), rgba(CHART_COLORS.lightBlue,.85), rgba(CHART_COLORS.teal,.55), rgba(CHART_COLORS.yellow,.55)],
-    (v)=>(fmtCs(v/1000,0)+" MWh"),
-    {yLabel:"MWh", yFmt:(v)=>fmtCs(v/1000,0)}
-  );
 
     // Cashflow (cumulative discounted)
   if (eco && eco.cashXs && eco.cashYs){
@@ -2302,130 +1936,479 @@ function drawAll(simArgs,pmax,mode,p,targets,simDetail,eco){
     );
   }
 
-  computeDayAxis(simDetail);
-  renderDayLegend();
-  const day=Number($("daySelect").value||"1");
-  drawDay(simDetail, p, day);
+  appState.dataYear = num("dataYear") || appState.dataYear || 2021;
+  const day = appState.currentDay || 1;
+  drawDayStacked(simDetail, day);
+  appState.dayNav = computeDayNav(simDetail.arrays, simDetail.n);
+  setupDayNav();
+
+  drawSensitivity(simDetail);
+  drawProductionCharts(simArgs, simDetail);
 }
 
-function drawDay(simDetail,p,day){
-  const {pvA,loadA,impA,expA,battDisA,battChA,tuvChElA} = simDetail.arrays;
-  const n = simDetail.n;
-  const d=Math.max(1,day)-1, start=d*24;
-  const xs=[...Array(24).keys()];
-  const pv=[], ld=[], imp=[], exp=[], bdis=[], bch=[], tuv=[];
-  for (let h=0;h<24;h++){
-    const i=start+h;
-    if (i>=n){ pv.push(0); ld.push(0); imp.push(0); exp.push(0); bdis.push(0); bch.push(0); tuv.push(0); continue; }
-    pv.push(pvA[i]||0);
-    ld.push(loadA[i]||0);
-    imp.push(impA[i]||0);
-    exp.push(expA[i]||0);
-    bdis.push(battDisA[i]||0);
-    bch.push(battChA[i]||0);
-    tuv.push(tuvChElA[i]||0);
+function drawSensitivity(simDetail){
+  const box = $("sensitivityBox");
+  const canvas = $("chartSensitivity");
+  if (!box || !canvas || !simDetail || !appState.lastResult) return;
+
+  const baseImport = num("priceImport");
+  const baseExport = num("priceExport");
+  const econBase = {
+    priceImport:  baseImport,
+    priceExport:  baseExport,
+    priceHeatTuv: num("priceHeatTuv"),
+    discount:     readPct("discount"),
+    years:        num("years"),
+    degradation:  readPct("degradation"),
+    capexTotal:   appState.lastResult.capexAfter,
+    opexYear:     opexYear(appState.lastResult.p),
+  };
+
+  const steps = 21; // -50% to +50% in 5% steps
+  const xs = [], ys = [];
+
+  for (let i = 0; i < steps; i++){
+    const factor = 0.5 + i * (1.0 / (steps - 1)); // 0.5 → 1.5
+    const pctChange = Math.round((factor - 1) * 100);
+    const eco = economics(simDetail, {
+      ...econBase,
+      priceImport: baseImport * factor,
+      priceExport: baseExport * factor,
+    });
+    xs.push(pctChange);
+    ys.push(eco.npv);
   }
-  $("pillDay").textContent=`P=${fmtKwp(p)} • den ${day}`;
-  ensureDaySeriesEnabled();
 
-  const series=[];
-  if (daySeriesEnabled.load) series.push({name:"Spotřeba", xs, ys:ld, stroke:CHART_COLORS.navy});
-  if (daySeriesEnabled.pv)   series.push({name:"Výroba", xs, ys:pv, stroke:CHART_COLORS.lightBlue});
-  if (daySeriesEnabled.buy)  series.push({name:"Nákup", xs, ys:imp, stroke:CHART_COLORS.purple});
-  if (daySeriesEnabled.exp)  series.push({name:"Přetok", xs, ys:exp, stroke:CHART_COLORS.yellow, dashed:true});
-  if (daySeriesEnabled.bdis) series.push({name:"Spotřeba z baterie", xs, ys:bdis, stroke:CHART_COLORS.teal});
-  if (daySeriesEnabled.bch)  series.push({name:"Baterie z FVE", xs, ys:bch, stroke:rgba(CHART_COLORS.teal,.35), dashed:true});
-  if (daySeriesEnabled.tuv)  series.push({name:"TUV z FVE", xs, ys:tuv, stroke:CHART_COLORS.brown, dashed:true});
+  const absMax = Math.max(...ys.map(v => Math.abs(v)), 1);
+  let scale = 1, unit = "Kč";
+  if (absMax >= 5e6){ scale = 1e6; unit = "mil. Kč"; }
+  else if (absMax >= 5e3){ scale = 1e3; unit = "tis. Kč"; }
 
-  // static axes for this computation: x multiples of 4, y max = 1.1 * yearly max (rounded to 5/10)
-  const xTicks=[0,4,8,12,16,20,24];
-  drawLine($("chartDay"), series, {
-    xmin:0, xmax:24, xTicks,
-    ymin:0, ymax:dayAxis?.yMax ?? 10, yTickStep:dayAxis?.yStep ?? 5,
-    xFmt:(v)=>String(Math.round(v)),
-    yFmt:(v)=>fmtCs(v,0),
-    xLabel:"Hodina", yLabel:"kW"
+  box.style.display = '';
+  drawLine(canvas,
+    [{name:"NPV", xs, ys: ys.map(v => v / scale), stroke: CHART_COLORS.navy}],
+    {
+      xFmt: v => (v >= 0 ? '+' : '') + v + ' %',
+      yFmt: v => fmtCs(v, 1),
+      xLabel: "Změna ceny elektřiny",
+      yLabel: unit,
+      zeroLineAt: 0,
+      drawZeroLine: true,
+      xStep: 10,
+    }
+  );
+}
+
+function aggregateMonthly(arr, n){
+  if (!arr) return new Array(12).fill(0);
+  const dpm = [31,28,31,30,31,30,31,31,30,31,30,31];
+  const res = new Array(12).fill(0);
+  let h = 0;
+  for (let m = 0; m < 12 && h < n; m++){
+    const end = Math.min(h + dpm[m]*24, n);
+    for (let i = h; i < end; i++) res[m] += (arr[i]||0);
+    h += dpm[m]*24;
+  }
+  return res;
+}
+
+function drawStackedBar(canvas, barSeries, lineData, opts){
+  if (!canvas || !barSeries?.length) return;
+  const n = barSeries[0].ys.length;
+  if (!n) return;
+  const labels = opts?.labels || Array.from({length:n}, (_,i) => String(i+1));
+  const xStep = opts?.xStep || 1;
+  const datasets = barSeries.map(s => ({
+    type: 'bar',
+    label: s.name,
+    data: s.ys,
+    backgroundColor: s.fill,
+    stack: 'main',
+    barPercentage: 0.85,
+    categoryPercentage: 0.92,
+    order: 2,
+  }));
+  if (lineData?.ys?.length){
+    datasets.push({
+      type: 'line',
+      label: lineData.name,
+      data: lineData.ys,
+      borderColor: lineData.stroke,
+      backgroundColor: 'transparent',
+      tension: 0.25,
+      pointRadius: 3,
+      pointHoverRadius: 5,
+      borderWidth: 2,
+      order: 1,
+    });
+  }
+  if (opts?.refLine?.ys?.length){
+    datasets.push({
+      type: 'line',
+      label: opts.refLine.name || '',
+      data: opts.refLine.ys,
+      borderColor: opts.refLine.stroke || 'rgba(12,25,48,.35)',
+      backgroundColor: 'transparent',
+      borderDash: [4,3],
+      tension: 0.3,
+      pointRadius: 0,
+      pointHoverRadius: 4,
+      borderWidth: 2,
+      order: 3,
+    });
+  }
+  _mkChart(canvas, {
+    type: 'bar',
+    data: {labels, datasets},
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: {mode:'index', intersect:false},
+      plugins: {
+        legend: {display:true, position:'bottom', labels:{boxWidth:12, padding:10, font:{size:11}}},
+        tooltip: {mode:'index', intersect:false},
+      },
+      scales: {
+        x: {
+          stacked: true,
+          grid: {display:false},
+          ticks: {
+            font:{size:11},
+            callback: (val, i) => (i % xStep === 0) ? labels[i] : '',
+            maxRotation: 0,
+          },
+        },
+        y: {
+          stacked: true,
+          max: opts?.yMax ?? undefined,
+          grid: {color:'rgba(12,25,48,.06)'},
+          ticks: {
+            maxTicksLimit: 6,
+            callback: v => {
+              if (v >= 1e6) return fmtCs(v/1e6,1)+' M';
+              if (v >= 1e3) return fmtCs(v/1e3,1)+' k';
+              return fmtCs(v,0);
+            }
+          },
+          title: opts?.yLabel ? {display:true, text:opts.yLabel, font:{size:11}} : {display:false},
+        }
+      }
+    }
   });
 }
 
-// Optimization
-function linspace(min,max,steps){
-  if (steps<=1) return [min];
-  const arr=[];
-  for (let i=0;i<steps;i++){
-    const t=i/(steps-1);
-    arr.push(min + (max-min)*t);
-  }
-  return arr;
+function drawDonut(canvas, segments, opts){
+  if (!canvas || !segments?.length) return;
+  const total = segments.reduce((a,s) => a+(s.value||0), 0);
+  if (!total) return;
+  _mkChart(canvas, {
+    type: 'doughnut',
+    data: {
+      labels: segments.map(s => s.name),
+      datasets: [{
+        data: segments.map(s => s.value),
+        backgroundColor: segments.map(s => s.fill),
+        borderWidth: 2,
+        borderColor: '#fff',
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      cutout: '52%',
+      plugins: {
+        legend: {
+          display: true,
+          position: 'right',
+          labels: {
+            boxWidth: 12, padding: 8, font:{size:11},
+            generateLabels: chart => {
+              const d = chart.data;
+              return d.labels.map((lbl,i) => {
+                const v = d.datasets[0].data[i];
+                const pct = Math.round(v/total*100);
+                return {
+                  text: lbl+' — '+pct+'%',
+                  fillStyle: d.datasets[0].backgroundColor[i],
+                  strokeStyle:'#fff', lineWidth:1, index:i, hidden:false,
+                };
+              });
+            }
+          }
+        },
+        tooltip: {
+          callbacks: {
+            label: ctx => ' '+fmtCs(ctx.raw,0)+' kWh ('+Math.round(ctx.raw/total*100)+'%)',
+          }
+        }
+      }
+    },
+    plugins: [{
+      id: 'centerLabel',
+      afterDraw(chart){
+        const {ctx: c, chartArea} = chart;
+        const cx = (chartArea.left+chartArea.right)/2;
+        const cy = (chartArea.top+chartArea.bottom)/2;
+        c.save();
+        c.textAlign = 'center';
+        c.font = 'bold 13px system-ui';
+        c.fillStyle = 'rgba(12,25,48,.65)';
+        c.fillText(fmtCs(total/1000,1)+' MWh', cx, cy-3);
+        c.font = '10px system-ui';
+        c.fillStyle = 'rgba(12,25,48,.4)';
+        c.fillText('celkem', cx, cy+12);
+        c.restore();
+      }
+    }]
+  });
 }
 
-function scoreVariant(priority, eco, sim){
-  // Higher score is better
-  if (priority==="npv"){
-    return eco.npv;
+function drawProductionCharts(simArgs, simDetail){
+  const A = simDetail?.arrays;
+  if (!A?.pvA) return;
+  const n = simDetail.n;
+  const months = ['Led','Úno','Bře','Dub','Kvě','Čvn','Čvc','Srp','Zář','Říj','Lis','Pro'];
+  const hasBatt = (simArgs.batt?.enabled) && (simArgs.batt?.kwh||0) > 0;
+  const hasTuv  = simArgs.tuv?.enabled;
+
+  // Per-hour: PV directly to load = PV - export - battCh - tuvCh
+  const pvToLoadH = new Float64Array(n);
+  for (let i=0;i<n;i++){
+    pvToLoadH[i] = Math.max(0, (A.pvA[i]||0)-(A.expA[i]||0)-(A.battChA[i]||0)-(A.tuvChElA[i]||0));
   }
-  if (priority==="payback"){
-    // maximize -payback, but handle infinity
-    return isFinite(eco.payback) ? -eco.payback : -1e18;
-  }
-  if (priority==="coverage"){
-    return sim.coverage;
-  }
-  // balanced: normalize roughly
-  // NPV in Kč might dominate; squash it by millions and add metrics
-  const npvM = eco.npv / 1e6;
-  const pb = isFinite(eco.payback) ? eco.payback : 99;
-  return npvM - 0.15*pb + 0.8*sim.coverage + 0.6*sim.selfcons;
+
+  const mPvToLoad = aggregateMonthly(pvToLoadH, n);
+  const mBattCh   = aggregateMonthly(A.battChA,   n);
+  const mTuvCh    = aggregateMonthly(A.tuvChElA,  n);
+  const mExp      = aggregateMonthly(A.expA,      n);
+  const mPv       = aggregateMonthly(A.pvA,       n);
+  const mLoad     = aggregateMonthly(A.loadA,     n);
+  const mBattDis  = aggregateMonthly(A.battDisA,  n);
+  const mImp      = aggregateMonthly(A.impA,      n);
+
+  // Monthly: výroba
+  const pvBars = [{name:'Do spotřeby', ys:mPvToLoad, fill:CHART_COLORS.teal}];
+  if (hasBatt) pvBars.push({name:'Nabíjení baterie', ys:mBattCh, fill:CHART_COLORS.brown});
+  if (hasTuv)  pvBars.push({name:'TUV z FVE', ys:mTuvCh, fill:rgba(CHART_COLORS.brown,.55)});
+  pvBars.push({name:'Přetok do sítě', ys:mExp, fill:CHART_COLORS.yellow});
+  drawStackedBar($('chartMonthlyPv'), pvBars,
+    {name:'Celková výroba FVE', ys:mPv, stroke:CHART_COLORS.navy},
+    {labels:months, yLabel:'kWh'});
+
+  // Monthly: spotřeba
+  const ldBars = [{name:'Výroba do spotřeby', ys:mPvToLoad, fill:CHART_COLORS.teal}];
+  if (hasBatt) ldBars.push({name:'Baterie vybíjení', ys:mBattDis, fill:CHART_COLORS.purple});
+  ldBars.push({name:'Dovoz ze sítě', ys:mImp, fill:'rgb(200,70,55)'});
+  drawStackedBar($('chartMonthlyLoad'), ldBars,
+    {name:'Celková spotřeba', ys:mLoad, stroke:CHART_COLORS.navy},
+    {labels:months, yLabel:'kWh'});
+
+  // Pie: výroba
+  const ePvDirect = Math.max(0, simDetail.ePvUsed - simDetail.eBattChEl - simDetail.eTuvChEl);
+  const piePv = [{name:'Do spotřeby', value:ePvDirect, fill:CHART_COLORS.teal}];
+  if (hasBatt && simDetail.eBattChEl>0) piePv.push({name:'Nabíjení baterie', value:simDetail.eBattChEl, fill:CHART_COLORS.brown});
+  if (hasTuv  && simDetail.eTuvChEl>0)  piePv.push({name:'TUV z FVE', value:simDetail.eTuvChEl, fill:rgba(CHART_COLORS.brown,.55)});
+  if (simDetail.eExp>0) piePv.push({name:'Přetok do sítě', value:simDetail.eExp, fill:CHART_COLORS.yellow});
+  drawDonut($('chartPiePv'), piePv);
+
+  // Pie: spotřeba
+  const pieLd = [{name:'Výroba do spotřeby', value:ePvDirect, fill:CHART_COLORS.teal}];
+  if (hasBatt && simDetail.eBattDis>0) pieLd.push({name:'Baterie vybíjení', value:simDetail.eBattDis, fill:CHART_COLORS.purple});
+  if (simDetail.eImp>0) pieLd.push({name:'Dovoz ze sítě', value:simDetail.eImp, fill:'rgb(200,70,55)'});
+  drawDonut($('chartPieLoad'), pieLd);
 }
 
-function buildSimArgsFromUI(battOverride, tuvOverride){
-  const battOn = ($("useBattery").checked && battOverride==null) ? true : (battOverride?.enabled ?? $("useBattery").checked);
-  const battKwh = num("batteryKwh");
-  const pr = clamp(num("batteryPratio")||0, 0, 1);
-  const battCfg = {
-    enabled: battOn,
-    kwh: battKwh,
-    kw: battKwh * pr,
-    pratio: pr,
-    rte: readPct("batteryRte"),
-  };
-
-  const tuvOn = ($("useTuv").checked && tuvOverride==null) ? true : (tuvOverride?.enabled ?? $("useTuv").checked);
-  const dModeTuv = $("tuvDemandMode")?.value || "annual";
-  let tuvProfile = null;
-  if (dModeTuv==="csv") tuvProfile = tuvDemandProfileCsvTh;
-  else if (dModeTuv==="ref") tuvProfile = tuvDemandProfileRefTh;
-  const tuvCfg = {
-    enabled: tuvOn,
-    profileTh: tuvProfile,
-    liters: tuvOverride?.liters ?? num("tuvLiters"),
-    tmin: num("tuvTmin"),
-    tmax: num("tuvTmax"),
-    kwhPerLK: num("tuvKwhPerLK"),
-    kw: num("tuvKw"),
-    daily: num("tuvAnnual"),
-    annual: num("tuvAnnual") * 365, // kompatibilita (starší verze)
-    demandMode: $("tuvDemandMode")?.value || "annual",
-    cop: num("tuvCop"),
-    backup: $("tuvBackup").value,
-    backupEff: num("tuvBackupEff"),
-  };
-
-  return { load, pvPerKwp, batt: battCfg, tuv: tuvCfg };
+function computeDayNav(A, n){
+  const nDays = Math.min(Math.floor(n/24), 365);
+  const dailyPv  = new Float64Array(nDays);
+  const dailyImp = new Float64Array(nDays);
+  const dailyLd  = new Float64Array(nDays);
+  for (let d=0; d<nDays; d++){
+    const s=d*24;
+    for (let h=0; h<24; h++){
+      const i=s+h; if (i>=n) break;
+      dailyPv[d]  += A.pvA[i]  ||0;
+      dailyImp[d] += A.impA[i] ||0;
+      dailyLd[d]  += A.loadA[i]||0;
+    }
+  }
+  const avgPv = dailyPv.reduce((a,b)=>a+b,0)/nDays;
+  let bestPv=0, worstPv=0, maxImp=0, avgDay=0;
+  let bpv=-Infinity, wpv=Infinity, mimp=-Infinity, adist=Infinity;
+  for (let d=0; d<nDays; d++){
+    if (dailyPv[d]  > bpv)  { bpv  = dailyPv[d];  bestPv  = d; }
+    if (dailyPv[d]  < wpv)  { wpv  = dailyPv[d];  worstPv = d; }
+    if (dailyImp[d] > mimp) { mimp = dailyImp[d]; maxImp  = d; }
+    const dd = Math.abs(dailyPv[d]-avgPv);
+    if (dd < adist) { adist = dd; avgDay = d; }
+  }
+  // Každý měsíc → den nejblíže mediánu výroby v tom měsíci
+  const base = new Date(Date.UTC(appState.dataYear||2021,0,1)).getTime();
+  const byMonth = Array.from({length:12}, (_,m) => {
+    const mS = Math.floor((new Date(Date.UTC(2021,m,1))-base)/86400000);
+    const mE = Math.min(Math.floor((new Date(Date.UTC(2021,m+1,1))-base)/86400000), nDays);
+    if (mS >= nDays) return Math.min(mS, nDays-1);
+    const sl = Array.from({length:mE-mS},(_,i)=>dailyPv[mS+i]).sort((a,b)=>a-b);
+    const med = sl[Math.floor(sl.length/2)];
+    let bd=mS, bdist=Infinity;
+    for (let d=mS; d<mE; d++){ const x=Math.abs(dailyPv[d]-med); if(x<bdist){bdist=x;bd=d;} }
+    return bd;
+  });
+  return {bestPv, worstPv, maxImp, avgDay, byMonth, dailyPv, dailyImp, dailyLd, nDays};
 }
 
-function computePvSizeForMode(simArgs){
-  const pmax=num("pmax");
-  const pvMode = $("pvSizeMode").value;
-  if (pvMode==="manual"){
-    const pMan = clamp(0, num("pvManualKwp"), pmax);
-    return {p:pMan, adjusted:false, tCovUsed:null, tScUsed:null};
+function gotoDay(day){
+  appState.currentDay = day;
+  const year = appState.dataYear || 2021;
+  const picker = $('dayPicker');
+  if (picker){
+    const dt = new Date(Date.UTC(year,0,1)+(day-1)*86400000);
+    picker.value = dt.toISOString().slice(0,10);
+  }
+  if (appState.lastResult?.simDetail) drawDayStacked(appState.lastResult.simDetail, day);
+}
+
+function setupDayNav(){
+  const nav = appState.dayNav;
+  if (!nav) return;
+  const months=['Led','Úno','Bře','Dub','Kvě','Čvn','Čvc','Srp','Zář','Říj','Lis','Pro'];
+  const mb=$('monthBtns');
+  if (mb){
+    mb.innerHTML = months.map((m,mi)=>
+      `<button class="dayNavBtn" data-day="${nav.byMonth[mi]+1}" title="Typický den – ${m}">${m}</button>`
+    ).join('');
+    mb.querySelectorAll('.dayNavBtn').forEach(btn=>btn.addEventListener('click',()=>gotoDay(+btn.dataset.day)));
+  }
+  const map=[['btnBestPv',nav.bestPv+1],['btnWorstPv',nav.worstPv+1],['btnMaxImp',nav.maxImp+1],['btnAvgDay',nav.avgDay+1]];
+  for (const [id,day] of map){ const b=$(id); if(b) b.onclick=()=>gotoDay(day); }
+
+  // Nastavit rozsah date pickeru a synchronizovat aktuální den
+  const year = appState.dataYear || 2021;
+  const picker = $('dayPicker');
+  if (picker){
+    picker.min = `${year}-01-01`;
+    const maxDt = new Date(Date.UTC(year,0,1)+(nav.nDays-1)*86400000);
+    picker.max = maxDt.toISOString().slice(0,10);
+    const curDay = appState.currentDay || 1;
+    const curDt  = new Date(Date.UTC(year,0,1)+(curDay-1)*86400000);
+    picker.value = curDt.toISOString().slice(0,10);
+  }
+}
+
+function drawDayStacked(simDetail, day){
+  if (!simDetail?.arrays) return;
+  const A = simDetail.arrays;
+  const n = simDetail.n;
+  const d = Math.max(1, day)-1, start = d*24;
+  // Použij konfiguraci, ne per-day aktivitu – jinak se pruhy skryjí na zimní dny bez výroby
+  const battCfg = appState.lastResult?.simArgs?.batt;
+  const tuvCfg  = appState.lastResult?.simArgs?.tuv;
+  const hasBatt = !!(battCfg?.enabled && (battCfg?.kwh||0) > 0);
+  const hasTuv  = !!(tuvCfg?.enabled);
+  const pvToLoad=[], battCh=[], tuvCh=[], exp=[], battDis=[], imp=[];
+  for (let h=0;h<24;h++){
+    const i = start+h;
+    const pvV  = i<n ? (A.pvA[i]||0)      : 0;
+    const expV = i<n ? (A.expA[i]||0)      : 0;
+    const bchV = i<n ? (A.battChA[i]||0)   : 0;
+    const tuvV = i<n ? (A.tuvChElA[i]||0)  : 0;
+    pvToLoad.push(Math.max(0, pvV-expV-bchV-tuvV));
+    battCh.push(bchV);
+    tuvCh.push(tuvV);
+    exp.push(expV);
+    battDis.push(i<n ? (A.battDisA[i]||0) : 0);
+    imp.push(i<n ? (A.impA[i]||0) : 0);
+  }
+  const hours = Array.from({length:24},(_,i)=>String(i));
+  const p = appState.lastResult?.p;
+  const pill = $("pillDay");
+  if (pill){
+    let pvDay=0, ldDay=0, impDay=0, expDay=0;
+    for (let h=0; h<24; h++){
+      const i=start+h; if (i>=n) break;
+      pvDay+=A.pvA[i]||0; ldDay+=A.loadA[i]||0; impDay+=A.impA[i]||0; expDay+=A.expA[i]||0;
+    }
+    let txt = p!=null ? `P=${fmtKwp(p)} • ` : '';
+    txt += `den ${day} • FV ${fmtCs(pvDay,1)} kWh • spotřeba ${fmtCs(ldDay,1)} kWh`;
+    if (impDay>0.05) txt += ` • dovoz ${fmtCs(impDay,1)} kWh`;
+    if (expDay>0.05) txt += ` • přetoky ${fmtCs(expDay,1)} kWh`;
+    if (hasBatt && battCfg.kwh>0 && A.socA){
+      const socS=A.socA[start]||0, socE=A.socA[Math.min(start+23,n-1)]||0;
+      txt += ` • bat. ${Math.round(socS/battCfg.kwh*100)}→${Math.round(socE/battCfg.kwh*100)} %`;
+    }
+    pill.textContent = txt;
   }
 
-  const mode=$("mode").value;
+  // Celkový hodinový průběh výroby a spotřeby (pro referenční čáry)
+  const pvTotal = Array.from({length:24}, (_,h) => { const i=start+h; return i<n?(A.pvA[i]||0):0; });
+  const ldTotal = Array.from({length:24}, (_,h) => { const i=start+h; return i<n?(A.loadA[i]||0):0; });
 
-  const target=readPct("target");
-  let tCov=readPct("targetCoverage");
+  const pvBars = [{name:'Do spotřeby', ys:pvToLoad, fill:CHART_COLORS.teal}];
+  if (hasBatt) pvBars.push({name:'Nabíjení baterie', ys:battCh, fill:CHART_COLORS.brown});
+  if (hasTuv)  pvBars.push({name:'TUV z FVE', ys:tuvCh, fill:rgba(CHART_COLORS.brown,.55)});
+  pvBars.push({name:'Přetok do sítě', ys:exp, fill:CHART_COLORS.yellow});
+
+  const ldBars = [{name:'Výroba do spotřeby', ys:pvToLoad, fill:CHART_COLORS.teal}];
+  if (hasBatt) ldBars.push({name:'Baterie vybíjení', ys:battDis, fill:CHART_COLORS.purple});
+  ldBars.push({name:'Dovoz ze sítě', ys:imp, fill:'rgb(200,70,55)'});
+
+  // Sdílené maximum osy Y (výroba i spotřeba na stejné škále)
+  const pvStackH = Array.from({length:24}, (_,h) => pvBars.reduce((s,b)=>s+(b.ys[h]||0),0));
+  const ldStackH = Array.from({length:24}, (_,h) => ldBars.reduce((s,b)=>s+(b.ys[h]||0),0));
+  const rawMax = Math.max(...pvTotal, ...ldTotal, ...pvStackH, ...ldStackH, 0.1);
+  const mag = Math.pow(10, Math.floor(Math.log10(rawMax)));
+  const niceSteps = [1,2,2.5,5,10];
+  let sharedYMax = mag*10;
+  for (const s of niceSteps){
+    const c = Math.ceil(rawMax*1.08/(mag*s))*(mag*s);
+    if (c >= rawMax*1.02){ sharedYMax = c; break; }
+  }
+
+  drawStackedBar($('chartDayPv'), pvBars, null, {
+    labels:hours, yLabel:'kW', xStep:4, yMax: sharedYMax,
+    refLine:{name:'Spotřeba', ys:ldTotal, stroke:'rgba(200,70,55,.55)'},
+  });
+  drawStackedBar($('chartDayLoad'), ldBars, null, {
+    labels:hours, yLabel:'kW', xStep:4, yMax: sharedYMax,
+    refLine:{name:'Výroba FVE', ys:pvTotal, stroke:'rgba(40,120,200,.8)'},
+  });
+
+  // ── SOC charts ──────────────────────────────────────────────────────────────
+  const socRow    = $('socRow');
+  const battSocBox = $('battSocBox');
+  const tuvSocBox  = $('tuvSocBox');
+  const hourNums   = Array.from({length:24}, (_,i) => i);
+  let showBatt = false, showTuv = false;
+
+  // Battery SOC (% kapacity)
+  const battKwh = battCfg?.kwh || 0;
+  if (battSocBox && hasBatt && battKwh > 0 && A.socA) {
+    showBatt = true;
+    const socPct = Array.from({length:24}, (_,h) => {
+      const i = start+h;
+      return i < n ? +(A.socA[i] / battKwh * 100).toFixed(1) : 0;
+    });
+    drawLine($('chartSocBatt'),
+      [{name:'SOC baterie', xs:hourNums, ys:socPct, stroke:CHART_COLORS.purple}],
+      {xmin:0, xmax:23, ymin:0, ymax:100,
+       xFmt:v=>String(Math.round(v)), yFmt:v=>fmtCs(v,0)+'%',
+       xLabel:'Hodina', yLabel:'%'}
+    );
+  }
+  if (battSocBox) battSocBox.style.display = showBatt ? '' : 'none';
+
+  // TUV teplota zásobníku (°C) + referenční čára min. teploty
+  if (tuvSocBox && hasTuv && A.tuvTempA) {
+    const temps = Array.from({length:24}, (_,h) => {
+      const i = start+h;
+      const t = i < n ? A.tuvTempA[i] : NaN;
+      return isFinite(t) ? +t.toFixed(1) : null;
+    });
+    if (temps.some(v => v !== null)) {
+      showTuv = true;
+      const tmin = tuvCfg?.tmin || 45;
+      drawLine($('chartSocTuv'),
+        [
   let tSc=readPct("targetSelfcons");
   const dominant=$("dominant").value;
 
@@ -2443,24 +2426,16 @@ function computePvSizeForMode(simArgs){
   }
 }
 
-function econFrom(simFastOrDetail, capex){
-  const econ={
-    priceImport:num("priceImport"),
-    priceExport:num("priceExport"),
-    priceHeatTuv:num("priceHeatTuv"),
-    tuvBackup:$("tuvBackup").value,
-    discount: readPct("discount"),
-    years:num("years"),
-    degradation: readPct("degradation"),
-    capexTotal:capexAfter,
-    opexYear:opexYear(lastResult?.p ?? 0), // overwritten for variants below
-  };
-  return econ;
-}
-
 function runOptimization(){
   const steps = num("optSteps");
   const priority = $("optPriority").value;
+
+  // Targets from the PV sizing section — applied as constraints on battery/TUV selection
+  const pvSizeMode = $("pvSizeMode").value;
+  const pvMode = $("mode").value;
+  const optTargets = (pvSizeMode === "manual")
+    ? { mode: pvMode, tCov: readPct("targetCoverage"), tSc: readPct("targetSelfcons") }
+    : null; // In auto mode PV is already sized to meet targets per variant — no extra penalty needed
 
   const optBatt = ($("useBattery").checked && $("batterySizeMode").value==="auto");
   const optTuv = ($("useTuv").checked && $("tuvSizeMode").value==="auto");
@@ -2499,53 +2474,7 @@ function runOptimization(){
 
       // capex & opex for this variant
       const cap = capexBreakdown(p, simArgs.batt, simArgs.tuv);
-  const subInfo = computeSubsidy(p, simArgs.batt, cap);
-  const capexBefore = cap.total;
-  const subsidy = subInfo.sub || 0;
-  const capexAfter = Math.max(0, capexBefore - subsidy);
-  updateSubsidyUI(p, cap, subInfo);
-
-      const econ = {
-        priceImport:num("priceImport"),
-        priceExport:num("priceExport"),
-    priceHeatTuv:num("priceHeatTuv"),
-    tuvBackup:$("tuvBackup").value,
-        discount: readPct("discount"),
-        years:num("years"),
-        degradation: readPct("degradation"),
-        capexTotal:capexAfter,
-        opexYear: opexYear(p),
-      };
-      const eco = economics(sim, econ);
-      const score = scoreVariant(priority, eco, sim);
-
-      variants.push({
-        score,
-        p,
-        battKwh: simArgs.batt.enabled ? simArgs.batt.kwh : 0,
-        battKw:  simArgs.batt.enabled ? simArgs.batt.kw : 0,
-        tuvL:    simArgs.tuv.enabled ? simArgs.tuv.liters : 0,
-        capex,
-        npv: eco.npv,
-        payback: eco.payback,
-        cov: sim.coverage,
-        sc: sim.selfcons,
-        export: sim.eExp,
-        adjusted: pvRes.adjusted,
-      });
-    }
-  }
-
-  variants.sort((a,b)=> b.score - a.score);
-  const best = variants[0];
-
-  // apply best to UI
-  if (optBatt){
-    $("useBattery").checked = true;
-    $("batteryBox").style.display="block";
-    $("batteryKwh").value = fmtCs(best.battKwh,1);
-    $("batteryPratio").value = fmtCs(best.battKw,2);
-  }
+      const subInfo = computeSubsidy(p, simArgs.batt, cap);
   if (optTuv){
     $("useTuv").checked = true;
     $("tuvBox").style.display="block";
@@ -2575,8 +2504,15 @@ function runOptimization(){
   return best;
 }
 
+function validateInputs(){
+  if (!appState.load || appState.load.length === 0)
+    throw new Error("Nejprve načtěte profil spotřeby (CSV soubor).");
+  if (!appState.pvPerKwp || appState.pvPerKwp.length === 0)
+    throw new Error("Nejprve načtěte výrobní profil FVE (CSV soubor).");
+}
+
 function run(){
-  validateInputs();
+  try { validateInputs(); } catch(e){ setStatus("err", e.message); return; }
 
   // if optimization enabled: choose best storage first (this also auto-adjusts storage inputs)
   let best=null;
@@ -2587,68 +2523,21 @@ function run(){
     $("optResultsBox").style.display="none";
   }
 
+  const pmax = num("pmax");
   const simArgs = buildSimArgsFromUI(null,null);
 
-  const pmax=num("pmax");
   const mode=$("mode").value;
-
-  const target=readPct("target");
+  const dominant=$("dominant").value;
   let tCov=readPct("targetCoverage");
   let tSc=readPct("targetSelfcons");
-  const dominant=$("dominant").value;
 
-  let p=0, adjusted=false;
-  if (mode==="coverage") p=findMinPForCoverage(simArgs,target,pmax);
-  else if (mode==="selfcons") p=findMaxPForSelfcons(simArgs,target,pmax);
-  else {
-    const res=solveBoth(simArgs,pmax,tCov,tSc,dominant);
-    p=res.p; adjusted=res.adjusted;
-    if (adjusted){
-      if (dominant==="coverage"){ $("targetSelfcons").value = fmtCs(res.tScUsed*100,1); tSc=res.tScUsed; }
-      else { $("targetCoverage").value = fmtCs(res.tCovUsed*100,1); tCov=res.tCovUsed; }
-    }
+  const pvRes = computePvSizeForMode(simArgs);
+  let { p, adjusted } = pvRes;
+  if (pvRes.adjusted){
+    if (dominant==="coverage" && pvRes.tScUsed!=null){ $("targetSelfcons").value = fmtCs(pvRes.tScUsed*100,1); tSc=pvRes.tScUsed; }
+    else if (dominant==="selfcons" && pvRes.tCovUsed!=null){ $("targetCoverage").value = fmtCs(pvRes.tCovUsed*100,1); tCov=pvRes.tCovUsed; }
   }
 
-  const simDetail = simulateDetailed(load,pvPerKwp,p,simArgs.batt,simArgs.tuv);
-  // Manual PV: v režimu „obě podmínky“ umím dopočítat sekundární cíl na nejlepší proveditelnou úroveň
-  const pvManual = $("pvSizeMode").value==="manual";
-  if (mode==="both" && pvManual){
-    const covAch = simDetail.coverage;
-    const scAch  = simDetail.selfcons;
-    const eps=1e-6;
-    if (dominant==="coverage"){
-      if (covAch + eps >= tCov){
-        if (scAch + eps < tSc){
-          $("targetSelfcons").value = fmtCs(clamp01(scAch),3);
-          tSc = clamp01(scAch);
-          adjusted = true;
-        }
-      } else {
-        // dominant nesplněno, nechám cíle jak jsou
-        adjusted = false;
-      }
-    } else { // selfcons dominant
-      if (scAch + eps >= tSc){
-        if (covAch + eps < tCov){
-          $("targetCoverage").value = fmtCs(clamp01(covAch),3);
-          tCov = clamp01(covAch);
-          adjusted = true;
-        }
-      } else {
-        adjusted = false;
-      }
-    }
-  }
-
-  const cap = capexBreakdown(p, simArgs.batt, simArgs.tuv);
-  const subInfo = computeSubsidy(p, simArgs.batt, cap);
-  const capexBefore = cap.total;
-  const subsidy = subInfo.sub || 0;
-  const capexAfter = Math.max(0, capexBefore - subsidy);
-  updateSubsidyUI(p, cap, subInfo);
-
-
-  const econ={
     priceImport:num("priceImport"),
     priceExport:num("priceExport"),
     priceHeatTuv:num("priceHeatTuv"),
@@ -2660,7 +2549,7 @@ function run(){
   };
   const eco = economics(simDetail, econ);
 
-  lastResult = { p, simDetail, eco, capexBefore, capexAfter, subsidy, subsidyProgram: (subInfo.program?subInfo.program.label:null), simArgs, mode, targets: (mode==="coverage")?{cov:target,sc:null}:(mode==="selfcons")?{cov:null,sc:target}:{cov:tCov,sc:tSc}, adjusted };
+  appState.lastResult = { p, simDetail, eco, capexBefore, capexAfter, subsidy, subsidyProgram: (subInfo.program?subInfo.program.label:null), simArgs, mode, targets: (mode==="coverage")?{cov:target,sc:null}:(mode==="selfcons")?{cov:null,sc:target}:{cov:tCov,sc:tSc}, adjusted };
 
   if (mode==="both" && adjusted) setStatus("warn","⚠️ Kombinace cílů byla nesplnitelná. Držím dominantní cíl, sekundární je dopočítaný na nejlepší proveditelnou úroveň.");
   else if ($("useOpt").checked) setStatus("ok","✅ Hotovo. Optimalizace zvolila nejlepší variantu a přepočítal jsem celý výsledek.");
@@ -2668,25 +2557,20 @@ function run(){
 
   renderKPIs(p, simDetail, eco, capexBefore, capexAfter, subsidy, best);
   renderBattDiag(simDetail.battDiag, simArgs.batt);
+  renderScenarios();
 
-  drawAll(simArgs, pmax, mode, p, lastResult.targets, simDetail, eco);
+  drawAll(simArgs, pmax, mode, p, appState.lastResult.targets, simDetail, eco);
 }
 
-$("runBtn").addEventListener("click",()=>{ try{run(); if($("exportBtn")) $("exportBtn").disabled = !lastResult; }catch(e){setStatus("bad","❌ "+e.message);} });
+$("runBtn").addEventListener("click",()=>{ try{run(); if($("exportBtn")) $("exportBtn").disabled = !appState.lastResult; }catch(e){setStatus("bad","❌ "+e.message);} });
 $("exportBtn")?.addEventListener("click",()=>{ try{exportExcel();}catch(e){setStatus("bad","❌ "+e.message);} });
 
 
 
-function xmlEsc(s){
-  return String(s)
-    .replace(/&/g,"&amp;")
-    .replace(/</g,"&lt;")
-    .replace(/>/g,"&gt;")
-    .replace(/"/g,"&quot;");
-}
-function buildExcelXml(){
-  if (!lastResult) throw new Error("Nejdřív spusť výpočet.");
-  const m = lastResult.simDetail;
+function exportExcel(){
+  if (typeof XLSX === "undefined") throw new Error("SheetJS se nenačetlo. Zkontroluj připojení k internetu.");
+  if (!appState.lastResult) throw new Error("Nejdřív spusť výpočet.");
+  const m = appState.lastResult.simDetail;
   const A = m?.arrays;
   if (!A || !A.loadA) throw new Error("Chybí detailní hodinová data. Nejdřív spusť výpočet.");
   const n = A.loadA.length;
@@ -2694,150 +2578,87 @@ function buildExcelXml(){
   const priceImport = num("priceImport");
   const priceExport = num("priceExport");
   const priceHeat   = num("priceHeatTuv");
+  const tuvOn   = appState.lastResult.simArgs?.tuv?.enabled;
+  const tuvMode = (tuvOn && $("tuvSource")) ? $("tuvSource").value : "electric";
+  const cop     = num("tuvCop") || 1;
+  const tuvProf = (tuvOn && appState.lastResult.simArgs?.tuv?.profileTh) ? appState.lastResult.simArgs.tuv.profileTh : null;
 
-  const tuvOn = lastResult.simArgs?.tuv?.enabled;
-  const tuvMode = (tuvOn && $("tuvSource")) ? $("tuvSource").value : "electric"; // electric | gas | dh
-  const cop = num("tuvCop") || 1;
-
-  // Hourly thermal demand profile (kWh_t/h)
-  const tuvProf = (tuvOn && lastResult.simArgs?.tuv?.profileTh) ? lastResult.simArgs.tuv.profileTh : null;
-
-  const rows = [];
-  // Header
-  rows.push(["Hodina","Spotřeba (kWh)","Výroba (kWh)","Vlastní spotřeba (kWh)","Přetok (kWh)",
-             "Nabití baterie (kWh)","Vybití baterie (kWh)","Nabití akumulace TUV (kWh_t)","Vybití akumulace TUV (kWh_t)",
-             "Náklady před (Kč)","Náklady po (Kč)","Úspora (Kč)"]);
-
-  for (let i=0;i<n;i++){
-    const load = A.loadA[i];
-    const pv   = A.pvA[i];
-    const exp  = A.expA[i];
-    const self = pv - exp;
-    const battCh = A.battChA[i];
-    const battDis= A.battDisA[i];
-
-    const demandTh = tuvProf ? (tuvProf[i]||0) : 0;
-    const backupTh = tuvOn ? (A.tuvBackupThA[i]||0) : 0;
-    const tuvDisTh = Math.max(0, demandTh - backupTh);
-    const tuvChTh  = tuvOn ? (A.tuvChElA[i]||0) * cop : 0;
-
-    // baseline / after costs
-    let costBefore = 0;
-    let costAfter  = 0;
-
+  // ---- Hourly sheet ----
+  const hRows = [["Hodina","Spotřeba (kWh)","Výroba (kWh)","Vlastní spotřeba (kWh)","Přetok (kWh)",
+                  "Nabití baterie (kWh)","Vybití baterie (kWh)","Nabití TUV (kWh_t)","Vybití TUV (kWh_t)",
+                  "Náklady před (Kč)","Náklady po (Kč)","Úspora (Kč)"]];
+  for (let i = 0; i < n; i++){
+    const ld  = A.loadA[i];
+    const pv  = A.pvA[i];
+    const exp = A.expA[i];
+    const demTh  = tuvProf ? (tuvProf[i]||0) : 0;
+    const bkpTh  = tuvOn ? (A.tuvBackupThA[i]||0) : 0;
+    const tuvChTh = tuvOn ? (A.tuvChElA[i]||0) * cop : 0;
+    let costBefore = 0, costAfter = 0;
     if (tuvOn){
-      if (tuvMode==="electric"){
-        const baseImp = load + (demandTh / Math.max(cop,1e-9));
-        costBefore = baseImp * priceImport;
-        costAfter  = (A.impA[i] * priceImport) - (exp * priceExport);
+      if (tuvMode === "electric"){
+        costBefore = (ld + demTh / Math.max(cop,1e-9)) * priceImport;
       } else {
-        costBefore = (load * priceImport) + (demandTh * priceHeat);
-        costAfter  = (A.impA[i] * priceImport) - (exp * priceExport) + (backupTh * priceHeat);
+        costBefore = ld * priceImport + demTh * priceHeat;
+        costAfter  = A.impA[i] * priceImport - exp * priceExport + bkpTh * priceHeat;
       }
+      if (tuvMode === "electric") costAfter = A.impA[i] * priceImport - exp * priceExport;
     } else {
-      costBefore = load * priceImport;
-      costAfter  = (A.impA[i] * priceImport) - (exp * priceExport);
+      costBefore = ld * priceImport;
+      costAfter  = A.impA[i] * priceImport - exp * priceExport;
     }
-    const saving = costBefore - costAfter;
-
-    rows.push([i+1, load, pv, self, exp, battCh, battDis, tuvChTh, tuvDisTh, costBefore, costAfter, saving]);
+    hRows.push([i+1, ld, pv, pv-exp, exp,
+                A.battChA[i], A.battDisA[i],
+                tuvChTh, Math.max(0, demTh - bkpTh),
+                costBefore, costAfter, costBefore - costAfter]);
   }
+  const wsH = XLSX.utils.aoa_to_sheet(hRows);
+  wsH['!cols'] = [8,14,12,20,12,18,18,16,16,16,14,12].map(wch=>({wch}));
 
-  // Summary sheet
-  const s = [];
-  const p = lastResult.p || {};
-  const eco = lastResult.eco || {};
-  const capexBefore = lastResult.capexBefore ?? 0;
-  const capexAfter  = lastResult.capexAfter ?? capexBefore;
-  const subsidy     = lastResult.subsidy ?? 0;
-  const capex = capexAfter;
+  // ---- Summary sheet ----
+  const p   = appState.lastResult.p ?? 0;
+  const eco = appState.lastResult.eco ?? {};
+  const sRows = [
+    ["Parametr","Hodnota"],
+    ["",""],
+    ["--- VSTUPY ---",""],
+    ["Roční diskontní sazba (% p.a.)", num("discount")],
+    ["Horizont NPV (roky)",            num("years")],
+    ["Degradace (% p.a.)",             num("degradation")],
+    ["Cena nakupované elektřiny (Kč/kWh)", priceImport],
+    ["Výnos z přetoku (Kč/kWh)",      priceExport],
+    ["Cena tepla pro TUV (Kč/kWh)",   priceHeat],
+    ["",""],
+    ["--- VÝSLEDKY ---",""],
+    ["Doporučený výkon FVE (kWp)",     p],
+    ["CAPEX před dotací (Kč)",         appState.lastResult.capexBefore ?? 0],
+    ["Dotace (Kč)",                    appState.lastResult.subsidy ?? 0],
+    ["CAPEX po dotaci (Kč)",           appState.lastResult.capexAfter ?? 0],
+    ["Úspora elektřiny (Kč/rok)",      eco.savingsElec ?? 0],
+    ["Výnos z prodeje přetoků (Kč/rok)", eco.exportRev ?? 0],
+    ["Úspora nákladů na přípravu TUV (Kč/rok)", eco.savingsHeat ?? 0],
+    ["Celkový roční přínos (Kč/rok)",  eco.benefit1 ?? 0],
+    ["Prostá návratnost (roky)",       isFinite(eco.payback) ? eco.payback : ""],
+    ["Čistá současná hodnota (Kč)",    eco.npv ?? 0],
+    ["Pokrytí spotřeby (%)",           (m.coverage ?? 0) * 100],
+    ["Využití výroby (%)",             (m.selfcons ?? 0) * 100],
+    ["Vlastní spotřeba (kWh/rok)",     m.ePvUsed ?? 0],
+    ["Přetoky (kWh/rok)",              m.eExp ?? 0],
+    ["Dovoz ze sítě (kWh/rok)",        m.eImp ?? 0],
+  ];
+  const wsS = XLSX.utils.aoa_to_sheet(sRows);
+  wsS['!cols'] = [{wch:44},{wch:20}];
 
-  s.push(["Souhrn a parametry",""]);
-  s.push(["",""]);
-  s.push(["Vstupy",""]);
-  s.push(["Roční diskontní sazba (% p.a.)", num("discount")]);
-  s.push(["Horizont NPV (roky)", num("years")]);
-  s.push(["Degradace (% p.a.)", num("degradation")]);
-  s.push(["Cena nakupované elektřiny (Kč/kWh)", priceImport]);
-  s.push(["Výnos z přetoku (Kč/kWh)", priceExport]);
-  s.push(["Cena tepla pro TUV (Kč/kWh)", priceHeat]);
-  s.push(["",""]);
-  s.push(["Výsledky",""]);
-  s.push(["Doporučený výkon FVE (kWp)", p.pvKwp||0]);
-  s.push(["Doporučená velikost baterie (kWh)", p.battKwh||0]);
-  s.push(["Doporučená velikost akumulace TUV (l)", p.tuvLiters||0]);
-  s.push(["CAPEX před dotací (Kč)", capexBefore]);
-  s.push(["Dotace (Kč)", subsidy]);
-  s.push(["CAPEX po dotaci (Kč)", capexAfter]);
-  s.push(["Úspora elektřiny (Kč/rok)", eco.savingsElec||0]);
-  s.push(["Výnos z prodeje přetoků (Kč/rok)", eco.exportRev||0]);
-  s.push(["Úspora nákladů na přípravu TUV (Kč/rok)", eco.savingsHeat||0]);
-  s.push(["Celkový roční přínos (Kč/rok)", eco.benefit1||0]);
-  s.push(["Prostá návratnost (roky)", eco.payback||0]);
-  s.push(["Čistá současná hodnota (Kč)", eco.npv||0]);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, wsS, "Souhrn a parametry");
+  XLSX.utils.book_append_sheet(wb, wsH, "Hodinové průběhy");
 
-  // SpreadsheetML
-  const ns = 'urn:schemas-microsoft-com:office:spreadsheet';
-  const out=[];
-  out.push('<?xml version="1.0"?>');
-  out.push('<?mso-application progid="Excel.Sheet"?>');
-  out.push('<Workbook xmlns="'+ns+'" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns:ss="'+ns+'" xmlns:html="http://www.w3.org/TR/REC-html40">');
-  out.push('<Styles>');
-  out.push('<Style ss:ID="sHeader"><Font ss:Bold="1"/><Interior ss:Color="#C8D6EA" ss:Pattern="Solid"/></Style>');
-  out.push('<Style ss:ID="sInt"><NumberFormat ss:Format="0"/></Style>');
-  out.push('<Style ss:ID="sKwh"><NumberFormat ss:Format="0.0"/></Style>');
-  out.push('<Style ss:ID="sKc"><NumberFormat ss:Format="0.00"/></Style>');
-  out.push('<Style ss:ID="sText"><NumberFormat ss:Format="@"/></Style>');
-  out.push('</Styles>');
-
-  function sheet(name, data, colStyles){
-    out.push('<Worksheet ss:Name="'+xmlEsc(name)+'"><Table>');
-    for (let r=0;r<data.length;r++){
-      out.push('<Row>');
-      for (let c=0;c<data[r].length;c++){
-        const v=data[r][c];
-        let style = colStyles && colStyles[c] ? colStyles[c] : null;
-        if (r===0) style="sHeader";
-        let type="String";
-        let valStr="";
-        if (typeof v==="number"){
-          type="Number";
-          valStr = (Number.isFinite(v) ? String(v) : "0");
-        } else {
-          valStr = xmlEsc(v==null?"":v);
-        }
-        const styleAttr = style ? ' ss:StyleID="'+style+'"' : '';
-        out.push('<Cell'+styleAttr+'><Data ss:Type="'+type+'">'+valStr+'</Data></Cell>');
-      }
-      out.push('</Row>');
-    }
-    out.push('</Table></Worksheet>');
-  }
-
-  // Column styles for hourly sheet
-  const hourlyStyles = ["sInt","sKwh","sKwh","sKwh","sKwh","sKwh","sKwh","sKwh","sKwh","sKc","sKc","sKc"];
-  sheet("Hodinové průběhy", rows, hourlyStyles);
-
-  // Summary styles: second column numeric with mix
-  const sumStyles = ["sText","sKc"];
-  sheet("Souhrn a parametry", s, ["sText","sKc"]);
-
-  out.push('</Workbook>');
-  return out.join("");
-}
-function exportExcel(){
-  const xml = buildExcelXml();
-  const blob = new Blob([xml], {type:"application/vnd.ms-excel"});
-  const a = document.createElement("a");
   const dt = new Date();
-  const pad = (n)=>String(n).padStart(2,"0");
-  const name = "pv_sizer_export_"+dt.getFullYear()+pad(dt.getMonth()+1)+pad(dt.getDate())+"_"+pad(dt.getHours())+pad(dt.getMinutes())+".xls";
-  a.href = URL.createObjectURL(blob);
-  a.download = name;
-  document.body.appendChild(a);
-  a.click();
-  setTimeout(()=>{URL.revokeObjectURL(a.href); a.remove();}, 2500);
+  const pad = x => String(x).padStart(2,"0");
+  const fname = `pv_sizer_${dt.getFullYear()}${pad(dt.getMonth()+1)}${pad(dt.getDate())}_${pad(dt.getHours())}${pad(dt.getMinutes())}.xlsx`;
+  XLSX.writeFile(wb, fname);
 }
+
 
 // Live update of fixed CAPEX sum
 const CAPEX_FIXED_WIRES = ["costLightning","costFall","costDispatch","capexUnit"];
@@ -2852,16 +2673,29 @@ updateSubsidyUI(null,null,{sub:0,intensText:'—',note:''});
 
 // subsidy UI
 if ($("useSubsidy")){
-  $("useSubsidy").addEventListener("change", ()=>{ updateSubsidyUI(lastResult?.p ?? null, null, computeSubsidy(lastResult?.p ?? 0, lastResult?.simArgs?.batt, capexBreakdown(lastResult?.p ?? 0, lastResult?.simArgs?.batt, lastResult?.simArgs?.tuv))); });
-  $("subsidyProgram").addEventListener("change", ()=>{ if (lastResult) run(); });
+  $("useSubsidy").addEventListener("change", ()=>{ updateSubsidyUI(appState.lastResult?.p ?? null, null, computeSubsidy(appState.lastResult?.p ?? 0, appState.lastResult?.simArgs?.batt, capexBreakdown(appState.lastResult?.p ?? 0, appState.lastResult?.simArgs?.batt, appState.lastResult?.simArgs?.tuv))); });
+  $("subsidyProgram").addEventListener("change", ()=>{ if (appState.lastResult) run(); });
 }
 
-$("daySelect").addEventListener("change",()=>{ if (!lastResult) return; drawDay(lastResult.simDetail, lastResult.p, Number($("daySelect").value||"1")); });
+$("dayPicker").addEventListener("change",()=>{
+  if (!appState.lastResult) return;
+  const val=$("dayPicker").value; if (!val) return;
+  const year=appState.dataYear||2021;
+  const base=new Date(Date.UTC(year,0,1)).getTime();
+  const day=Math.round((new Date(val+"T00:00:00Z").getTime()-base)/86400000)+1;
+  const nDays=appState.dayNav?.nDays||365;
+  gotoDay(Math.max(1,Math.min(day,nDays)));
+});
+$("dataYear").addEventListener("change",()=>{
+  const y=num("dataYear"); if(!(y>=2000&&y<=2099)) return;
+  appState.dataYear=y;
+  if (appState.lastResult) { setupDayNav(); gotoDay(appState.currentDay||1); }
+});
 
 let resizeTimer=null;
 window.addEventListener("resize",()=>{
   if (resizeTimer) clearTimeout(resizeTimer);
-  resizeTimer=setTimeout(()=>{ if (lastResult) { try{run();}catch(_){ } } },150);
+  resizeTimer=setTimeout(()=>{ if (appState.lastResult) { try{run();}catch(_){ } } },150);
 });
 // v6.3 UI wiring
 function syncSizingUI(){

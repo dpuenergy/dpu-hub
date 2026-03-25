@@ -107,6 +107,18 @@
     }
   } catch (e) {}
 
+  // ── Dark mode ─────────────────────────────────────────────────────────────
+  function applyNavTheme(dark) {
+    document.body.classList.toggle('dark', dark);
+    var btn = document.getElementById('dpu-theme-btn');
+    if (btn) btn.textContent = dark ? '\u2600' : '\uD83C\uDF19';
+  }
+  function toggleNavTheme() {
+    var dark = !document.body.classList.contains('dark');
+    try { localStorage.setItem('dpu_theme', dark ? 'dark' : 'light'); } catch(e) {}
+    applyNavTheme(dark);
+  }
+
   // ── Styles ────────────────────────────────────────────────────────────────
   var css = document.createElement('style');
   css.textContent = [
@@ -125,13 +137,26 @@
       'font-weight:800;font-size:11px;letter-spacing:-.5px;flex-shrink:0;}',
     '#dpu-nav .dpu-name{font-weight:600;letter-spacing:-.2px;',
       'white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}',
-    '#dpu-nav .dpu-user{margin-left:auto;font-size:12px;opacity:.60;',
-      'white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:220px;}',
-    '#dpu-nav-sp{height:48px;}'
+    '#dpu-nav .dpu-user{font-size:12px;opacity:.60;',
+      'white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:200px;}',
+    '#dpu-nav .dpu-right{margin-left:auto;display:flex;align-items:center;gap:8px;}',
+    '#dpu-theme-btn{background:transparent;border:1px solid rgba(255,255,255,.30);',
+      'color:#fff;border-radius:6px;padding:3px 8px;cursor:pointer;font-size:13px;',
+      'line-height:1.4;flex-shrink:0;}',
+    '#dpu-theme-btn:hover{background:rgba(255,255,255,.15);}',
+    '#dpu-nav-sp{height:48px;}',
+    // Dark mode proměnné — přepíší :root hodnoty pro všechny subtools
+    'body.dark{--bg:#0f1624;--card:#1a2235;--text:#e8edf8;--muted:#8899bb;',
+      '--line:rgba(100,140,255,.15);--border:rgba(100,140,255,.15);',
+      '--ink:#e8edf8;--code-bg:#1e2d4a;--shadow:0 2px 12px rgba(0,0,0,.35);',
+      'color-scheme:dark;}'
   ].join('');
   document.head.appendChild(css);
 
   // ── Render ────────────────────────────────────────────────────────────────
+  var dark0 = false;
+  try { dark0 = localStorage.getItem('dpu_theme') === 'dark'; } catch(e) {}
+
   var bar = document.createElement('div');
   bar.id = 'dpu-nav';
   bar.innerHTML =
@@ -139,11 +164,22 @@
     '<span class="dpu-sep">|</span>' +
     '<div class="dpu-mark">DE</div>' +
     '<span class="dpu-name">' + toolName + '</span>' +
-    (userEmail ? '<span class="dpu-user">' + userEmail + '</span>' : '');
+    '<div class="dpu-right">' +
+    (userEmail ? '<span class="dpu-user">' + userEmail + '</span>' : '') +
+    '<button id="dpu-theme-btn" onclick="(function(){' +
+      'var d=!document.body.classList.contains(\'dark\');' +
+      'document.body.classList.toggle(\'dark\',d);' +
+      'try{localStorage.setItem(\'dpu_theme\',d?\'dark\':\'light\');}catch(e){}' +
+      'document.getElementById(\'dpu-theme-btn\').textContent=d?\'\u2600\':\'\uD83C\uDF19\';' +
+    '})()">' + (dark0 ? '\u2600' : '\uD83C\uDF19') + '</button>' +
+    '</div>';
 
   var sp = document.createElement('div');
   sp.id = 'dpu-nav-sp';
 
   document.body.insertBefore(sp, document.body.firstChild);
   document.body.insertBefore(bar, document.body.firstChild);
+
+  // Aplikuj téma (po vložení baru, aby tlačítko existovalo)
+  applyNavTheme(dark0);
 })();

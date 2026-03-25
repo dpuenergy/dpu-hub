@@ -199,9 +199,11 @@ footer a { color: var(--accent); text-decoration: none; }
   .prompt-body { padding: 16px; }
   summary { padding: 16px; }
 }
+body.dark{background:#0f1624;color:#e8edf8}body.dark .card{background:#1a2235;border-color:rgba(100,140,255,.15)}body.dark code,body.dark pre{background:#1e2d4a}
 </style>
 </head>
 <body>
+<script>if(localStorage.getItem("dpu_theme")==="dark")document.body.classList.add("dark");</script>
 
 <div class="hero">
   <div class="hero-inner">

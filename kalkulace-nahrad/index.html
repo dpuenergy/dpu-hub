@@ -257,9 +257,11 @@ tr.note-row textarea:focus { border-color: #f59e0b; }
   .card { box-shadow: none; border: 1px solid #ccc; page-break-inside: avoid; }
   .bottom-section { margin-top: 6px; gap: 6px; }
 }
+body.dark{background:#0f1624;color:#e8edf8}body.dark .card,.dark .panel{background:#1a2235;border-color:rgba(100,140,255,.15)}body.dark input,body.dark select,body.dark textarea{background:#1a2235;color:#e8edf8;border-color:rgba(100,140,255,.2)}
 </style>
 </head>
 <body>
+<script>if(localStorage.getItem("dpu_theme")==="dark")document.body.classList.add("dark");</script>
 
 <header>
   <h1>Kalkulace investičních nákladů a provozních úspor osvětlení — dle ČSN EN 12464-1</h1>

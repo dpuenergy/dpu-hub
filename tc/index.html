@@ -28,9 +28,11 @@
       .grid { grid-template-columns: 1fr; }
       .kpi { grid-template-columns: repeat(2, 1fr); }
     }
-  </style>
+  body.dark{background:#0f1624;color:#e8edf8}body.dark .card,.dark .box,.dark .panel{background:#1a2235;border-color:rgba(100,140,255,.15)}body.dark input,body.dark select{background:#1a2235;color:#e8edf8;border-color:rgba(100,140,255,.2)}
+</style>
 </head>
 <body>
+<script>if(localStorage.getItem("dpu_theme")==="dark")document.body.classList.add("dark");</script>
   <header>
     <div style="display:flex; justify-content:space-between; align-items:center; gap:10px;">
       <div>

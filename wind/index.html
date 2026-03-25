@@ -215,10 +215,12 @@
       .checkline{display:flex;align-items:center;gap:8px;white-space:nowrap;}
       .checkline input{margin:0; width:16px; height:16px;}
 
-    </style>
+    body.dark{background:#0f1624;color:#e8edf8}body.dark .card,.dark .panel{background:#1a2235;border-color:rgba(100,140,255,.15)}body.dark input,body.dark select{background:#1a2235;color:#e8edf8;border-color:rgba(100,140,255,.2)}body.dark header{background:#111827;border-color:rgba(100,140,255,.15)}
+</style>
   </head>
 
   <body>
+<script>if(localStorage.getItem("dpu_theme")==="dark")document.body.classList.add("dark");</script>
     <header>
       <div>
         <h1>DPU Wind Ideal</h1>
@@ -227,7 +229,7 @@
           (volitelně)
         </div>
       </div>
-      <div class="sub mono">localhost</div>
+      <div class="sub mono">DPU Energy</div>
     </header>
 
     <main>
