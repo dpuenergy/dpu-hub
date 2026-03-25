@@ -514,6 +514,13 @@
 
           <button id="btnOpt" class="btn" style="width:100%; margin-top:4px;">Spočítat optimum</button>
           <div id="opt_best_info" class="hint"></div>
+
+          <div id="opt_chart_wrap" style="display:none; margin-top:10px;">
+            <div class="ch-head" style="border-radius:10px 10px 0 0; border:1px solid var(--border); border-bottom:none;">Křivka nákladů vs výkon TČ</div>
+            <div class="ch-body" style="border:1px solid var(--border); border-radius:0 0 10px 10px;">
+              <canvas id="chOpt" style="height:220px;"></canvas>
+            </div>
+          </div>
         </div>
 
       </div><!-- /.card-body -->
@@ -559,15 +566,9 @@
 
       <!-- Charts -->
       <div class="charts">
-        <div class="row2" style="gap:12px;">
-          <div class="ch-wrap small">
-            <div class="ch-head">Optimum výkonu TČ</div>
-            <div class="ch-body"><canvas id="chOpt"></canvas></div>
-          </div>
-          <div class="ch-wrap small">
-            <div class="ch-head">Rozdělení tepla (ročně)</div>
-            <div class="ch-body"><canvas id="chHeatSplit"></canvas></div>
-          </div>
+        <div class="ch-wrap small">
+          <div class="ch-head">Rozdělení tepla (ročně)</div>
+          <div class="ch-body"><canvas id="chHeatSplit"></canvas></div>
         </div>
         <div class="ch-wrap">
           <div class="ch-head">Hodinové teploty venkovního vzduchu (°C)</div>

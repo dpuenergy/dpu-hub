@@ -713,6 +713,10 @@ async function optimize() {
       });
     }
 
+    // Show chart container first so canvas has proper dimensions
+    const wrapEl = document.getElementById("opt_chart_wrap");
+    if (wrapEl) wrapEl.style.display = "";
+
     destroyChart("chOpt");
     charts["chOpt"] = new Chart(document.getElementById("chOpt"), {
       type: "line",
