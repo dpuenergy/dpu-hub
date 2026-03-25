@@ -1305,13 +1305,18 @@ function economics(m,econ){
 }
 
 
+function _cssVar(v, fallback) {
+  var val = getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+  if (!val) val = getComputedStyle(document.body).getPropertyValue(v).trim();
+  return val || fallback;
+}
 const CHART_COLORS = {
-  navy:      "rgb(27,50,128)",    // --brand
-  lightBlue: "rgb(46,140,255)",   // --accent
-  yellow:    "rgb(245,185,55)",   // amber
-  teal:      "rgb(32,178,140)",   // zelená pro výrobu
-  brown:     "rgb(120,100,200)",  // fialová pro baterie (světlejší)
-  purple:    "rgb(90,80,180)"     // fialová pro baterie
+  get navy()     { return _cssVar('--brand',  '#1b3280'); },
+  get lightBlue(){ return _cssVar('--brand2', '#2e8cff'); },
+  yellow:  '#f5b937',
+  teal:    '#20b28c',
+  brown:   '#7864c8',
+  purple:  '#5a50b4'
 };
 
 function rgba(color,a){
@@ -1324,7 +1329,7 @@ function ceilToTens(x){ return Math.ceil(x/10)*10; }
 // ── Chart.js setup ────────────────────────────────────────────────────────────
 Chart.defaults.font.family = 'system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,sans-serif';
 Chart.defaults.font.size = 11;
-Chart.defaults.color = 'rgba(27,50,128,.75)';
+Chart.defaults.color = _cssVar('--muted', 'rgba(27,50,128,.75)');
 
 const _charts = {};
 function _mkChart(canvas, config){
