@@ -1082,15 +1082,27 @@ async function adminInvite() {
       headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
       body: JSON.stringify({ email: email })
     });
+    var data = await res.json().catch(function(){ return {}; });
     if (res.ok) {
-      msg.className = 'admin-msg ok';
-      msg.textContent = 'Pozvánka odeslána na ' + email;
       document.getElementById('admin-invite-email').value = '';
       adminLoadUsers();
+      // Build invite link from confirmation_token if present
+      var inviteToken = data.confirmation_token;
+      if (inviteToken) {
+        var inviteUrl = 'https://calm-cocada-79e019.netlify.app/#invite_token=' + inviteToken;
+        msg.className = 'admin-msg ok';
+        msg.innerHTML =
+          'Uživatel vytvořen. Pokud email nedorazí, pošlete odkaz ručně:<br>' +
+          '<input type="text" readonly value="' + inviteUrl + '" ' +
+          'style="width:100%;margin-top:6px;font-size:11px;padding:4px 6px;border-radius:4px;border:1px solid #86efac;background:#f0fdf4;color:#166534;" ' +
+          'onclick="this.select()" />';
+      } else {
+        msg.className = 'admin-msg ok';
+        msg.textContent = 'Pozvánka odeslána na ' + email + ' (email by měl přijít za chvíli).';
+      }
     } else {
-      var err = await res.json().catch(function(){ return {}; });
       msg.className = 'admin-msg err';
-      msg.textContent = 'Chyba: ' + (err.msg || err.error_description || res.status);
+      msg.textContent = 'Chyba: ' + (data.msg || data.error_description || data.error || res.status);
     }
   } catch(e) {
     msg.className = 'admin-msg err';
@@ -1108,6 +1120,32 @@ async function adminResetPassword(email) {
     });
     alert(res.ok ? 'E-mail odeslán.' : 'Chyba ' + res.status);
   } catch(e) { alert('Síťová chyba.'); }
+}
+
+async function adminGetInviteLink(userId) {
+  var token = _getAdminToken();
+  if (!token) { alert('Nejste přihlášeni.'); return; }
+  try {
+    var res = await fetch('/.netlify/functions/admin-users?userId=' + encodeURIComponent(userId), {
+      headers: { 'Authorization': 'Bearer ' + token }
+    });
+    var data = await res.json().catch(function(){ return {}; });
+    var invToken = data.confirmation_token;
+    if (invToken) {
+      var url = 'https://calm-cocada-79e019.netlify.app/#invite_token=' + invToken;
+      var box = document.createElement('div');
+      box.style.cssText = 'position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;';
+      box.innerHTML = '<div style="background:#fff;border-radius:12px;padding:24px;max-width:500px;width:90%;box-shadow:0 8px 40px rgba(0,0,0,.3);">' +
+        '<div style="font-weight:700;font-size:15px;margin-bottom:8px;">Pozvánkový odkaz</div>' +
+        '<div style="font-size:12px;color:#64748b;margin-bottom:10px;">Zkopírujte a pošlete uživateli (email, Teams, atd.):</div>' +
+        '<input type="text" readonly value="' + url + '" style="width:100%;padding:8px;border:1px solid #86efac;border-radius:6px;font-size:11px;background:#f0fdf4;color:#166534;" onclick="this.select()" />' +
+        '<div style="margin-top:14px;text-align:right;"><button onclick="this.closest(\'div\').parentElement.remove()" style="padding:7px 16px;background:#1b3280;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:600;">Zavřít</button></div>' +
+        '</div>';
+      document.body.appendChild(box);
+    } else {
+      alert('Token nenalezen v odpovědi API. Uživatel mohl být již potvrzen nebo token expiroval.');
+    }
+  } catch(e) { alert('Chyba: ' + e.message); }
 }
 
 async function adminDeleteUser(userId, email) {
@@ -1149,11 +1187,14 @@ async function adminLoadUsers() {
       var statusClass = confirmed ? 'confirmed' : 'pending';
       var eid = u.email.replace(/"/g, '&quot;');
       var uid = u.id;
+      var actionBtn = confirmed
+        ? '<button class="user-btn" onclick="adminResetPassword(\'' + eid + '\')">Reset hesla</button>'
+        : '<button class="user-btn" onclick="adminGetInviteLink(\'' + uid + '\')">Pozvánkový odkaz</button>';
       return '<div class="user-row">' +
         '<span class="user-email">' + u.email + '</span>' +
         '<span class="user-status ' + statusClass + '">' + statusLabel + '</span>' +
         '<div class="user-actions">' +
-        '<button class="user-btn" onclick="adminResetPassword(\'' + eid + '\')">Reset hesla</button>' +
+        actionBtn +
         '<button class="user-btn danger" onclick="adminDeleteUser(\'' + uid + '\',\'' + eid + '\')">Smazat</button>' +
         '</div>' +
         '</div>';

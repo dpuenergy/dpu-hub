@@ -6,7 +6,7 @@ const IDENTITY_URL  = 'https://calm-cocada-79e019.netlify.app/.netlify/identity'
 
 const CORS = {
   'Access-Control-Allow-Origin':  'https://calm-cocada-79e019.netlify.app',
-  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+  'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS',
   'Access-Control-Allow-Headers': 'Authorization, Content-Type',
   'Content-Type': 'application/json',
 };
@@ -53,11 +53,15 @@ export async function handler(event, context) {
     'Content-Type': 'application/json',
   };
 
-  // GET — seznam uživatelů
+  // GET — seznam uživatelů, nebo jeden uživatel (?userId=...)
   if (event.httpMethod === 'GET') {
-    const res = await fetch(serviceUrl + '/admin/users?per_page=100', { headers: adminHeaders });
+    const userId = (event.queryStringParameters || {}).userId;
+    const url = userId
+      ? serviceUrl + '/admin/users/' + userId
+      : serviceUrl + '/admin/users?per_page=100';
+    const res = await fetch(url, { headers: adminHeaders });
     const text = await res.text();
-    console.log('GET admin/users:', res.status, text.slice(0, 300));
+    console.log('GET admin/users' + (userId ? '/' + userId : ''), res.status, text.slice(0, 300));
     let data;
     try { data = JSON.parse(text); } catch { data = { error: text }; }
     return json(res.status, data);
