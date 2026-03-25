@@ -53,11 +53,15 @@ export async function handler(event) {
 
   // Získej ID identity instance
   const identityRes = await fetch(`https://api.netlify.com/api/v1/sites/${SITE_ID}/identity`, { headers: netlifyHeaders });
-  const identityData = await identityRes.json();
-  console.log('Identity instance:', JSON.stringify(identityData).slice(0, 200));
-  if (!identityRes.ok) return json(identityRes.status, { error: 'Identity instance error: ' + (identityData.message || identityRes.status) });
+  const identityText = await identityRes.text();
+  console.log('Identity response:', identityRes.status, identityText.slice(0, 400));
+  if (!identityRes.ok) return json(identityRes.status, { error: 'Identity instance error ' + identityRes.status + ': ' + identityText.slice(0, 200) });
+  let identityData;
+  try { identityData = JSON.parse(identityText); } catch(e) { return json(502, { error: 'Identity response not JSON: ' + identityText.slice(0, 200) }); }
 
   const instanceId = identityData.id;
+  console.log('Instance ID:', instanceId);
+  if (!instanceId) return json(502, { error: 'Identity instance ID not found in: ' + identityText.slice(0, 200) });
   const apiBase = `https://api.netlify.com/api/v1/sites/${SITE_ID}/identity/${instanceId}`;
 
   // GET — seznam uživatelů
