@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Energetická komunita | DPU Energy</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:#f0f3f9;}
+body.dark{background:#0f1624;}
+#komunita-frame{
+  position:fixed;
+  top:48px;left:0;right:0;bottom:0;
+  width:100%;height:calc(100vh - 48px);
+  border:none;
+}
+</style>
+</head>
+<body>
+<script>if(localStorage.getItem('dpu_theme')==='dark')document.body.classList.add('dark');</script>
+
+<iframe id="komunita-frame" title="Energetická komunita"></iframe>
+
+<script src="/shared/navbar.js" data-tool="Energetická komunita"></script>
+<script>
+var STREAMLIT_BASE = 'https://dpuenergy-komunita.streamlit.app';
+
+function getStreamlitUrl() {
+  var dark = document.body.classList.contains('dark');
+  return STREAMLIT_BASE + '/?embed=true&embed_options=' + (dark ? 'dark_theme' : 'light_theme');
+}
+
+document.getElementById('komunita-frame').src = getStreamlitUrl();
+
+// Intercept theme toggle — upozornit na ztrátu dat
+document.addEventListener('click', function(e) {
+  var btn = e.target.closest('#dpu-theme-btn');
+  if (!btn) return;
+  var ok = confirm('Přepnutí tématu znovu načte aplikaci Energetická komunita.\nNeuložená data budou ztracena.\n\nPokračovat?');
+  if (!ok) {
+    e.stopImmediatePropagation();
+    e.preventDefault();
+    return;
+  }
+  // Nech onclick proběhnout, pak aktualizuj iframe se správným tématem
+  setTimeout(function() {
+    document.getElementById('komunita-frame').src = getStreamlitUrl();
+  }, 50);
+}, true);
+</script>
+</body>
+</html>
