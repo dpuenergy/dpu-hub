@@ -215,7 +215,7 @@
       .checkline{display:flex;align-items:center;gap:8px;white-space:nowrap;}
       .checkline input{margin:0; width:16px; height:16px;}
 
-    body.dark{background:#0f1624;color:#e8edf8}body.dark .card,.dark .panel{background:#1a2235;border-color:rgba(100,140,255,.15)}body.dark input,body.dark select{background:#1a2235;color:#e8edf8;border-color:rgba(100,140,255,.2)}body.dark header{background:#111827;border-color:rgba(100,140,255,.15)}
+    body.dark{--bg:#0f1624;--card:#1a2235;--text:#e8edf8;--muted:#8899bb;--line:rgba(100,140,255,.15);--shadow:0 2px 12px rgba(0,0,0,.35);background:var(--bg);color:var(--text)}body.dark .card,.dark .panel{background:var(--card);border-color:var(--line)}body.dark input,body.dark select{background:var(--card);color:var(--text);border-color:var(--line)}body.dark header{background:#111827;border-color:var(--line)}
 </style>
   </head>
 
