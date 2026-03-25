@@ -27,7 +27,7 @@ async function verifyToken(token) {
   } catch { return null; }
 }
 
-export async function handler(event) {
+export async function handler(event, context) {
   if (event.httpMethod === 'OPTIONS') {
     return { statusCode: 204, headers: CORS, body: '' };
   }
@@ -40,14 +40,22 @@ export async function handler(event) {
   if (!email) return json(401, { error: 'Neplatný token' });
   if (email !== ALLOWED_EMAIL) return json(403, { error: 'Přístup odepřen' });
 
+  // Použij service token z Netlify context (automaticky dostupný pro auth requesty)
+  const identity = context && context.clientContext && context.clientContext.identity;
+  console.log('Identity context:', identity ? 'dostupný, url=' + identity.url : 'nedostupný');
+  if (!identity || !identity.token) {
+    return json(500, { error: 'Netlify identity context není dostupný. Ujistěte se, že request obsahuje Authorization header.' });
+  }
+
+  const serviceUrl = identity.url;
   const adminHeaders = {
-    'Authorization': 'Bearer ' + token,
+    'Authorization': 'Bearer ' + identity.token,
     'Content-Type': 'application/json',
   };
 
   // GET — seznam uživatelů
   if (event.httpMethod === 'GET') {
-    const res = await fetch(IDENTITY_URL + '/admin/users?per_page=100', { headers: adminHeaders });
+    const res = await fetch(serviceUrl + '/admin/users?per_page=100', { headers: adminHeaders });
     const text = await res.text();
     console.log('GET admin/users:', res.status, text.slice(0, 300));
     let data;
@@ -59,7 +67,7 @@ export async function handler(event) {
   if (event.httpMethod === 'POST') {
     const body = JSON.parse(event.body || '{}');
     if (!body.email) return json(400, { error: 'Chybí email' });
-    const res = await fetch(IDENTITY_URL + '/admin/users', {
+    const res = await fetch(serviceUrl + '/admin/users', {
       method: 'POST',
       headers: adminHeaders,
       body: JSON.stringify({ email: body.email, send_invite: true }),
