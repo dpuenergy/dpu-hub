@@ -40,10 +40,6 @@ export async function handler(event) {
   if (!email) return json(401, { error: 'Neplatný token' });
   if (email !== ALLOWED_EMAIL) return json(403, { error: 'Přístup odepřen' });
 
-  if (!NETLIFY_TOKEN || !SITE_ID) {
-    return json(500, { error: 'Chybí environment proměnné NETLIFY_ACCESS_TOKEN nebo NETLIFY_SITE_ID' });
-  }
-
   const adminHeaders = {
     'Authorization': 'Bearer ' + token,
     'Content-Type': 'application/json',
