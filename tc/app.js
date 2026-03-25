@@ -94,6 +94,58 @@ function makeDualAxisDuration(canvasId, x, y1, y2) {
   });
 }
 
+// ── Config presets ────────────────────────────────────────────────────────────
+
+const CONFIG_PRESETS = {
+  rd: {
+    hp_type: "air_water", hp_power_kw: 12, cop_nominal: 3.5, hp_cutoff_c: -15,
+    ut_gj: 60, tuv_gj: 15, t_base_c: 20, t_heat_on_c: 14,
+    hw_slope: -1.25, hw_intercept: 42.5, hw_min_c: 45,
+    investment_kcz: 350000, depr_years: 15, hp_modulation: "inverter",
+  },
+  bytdom: {
+    hp_type: "air_water", hp_power_kw: 100, cop_nominal: 3.2, hp_cutoff_c: -15,
+    ut_gj: 600, tuv_gj: 120, t_base_c: 20, t_heat_on_c: 14,
+    hw_slope: -1.0, hw_intercept: 45, hw_min_c: 50,
+    investment_kcz: 2500000, depr_years: 15, hp_modulation: "inverter",
+  },
+  komercni: {
+    hp_type: "water_water", source_temp_c: 10, hp_power_kw: 200, cop_nominal: 4.5, hp_cutoff_c: -30,
+    ut_gj: 1500, tuv_gj: 200, t_base_c: 20, t_heat_on_c: 15,
+    hw_slope: -1.0, hw_intercept: 50, hw_min_c: 55,
+    investment_kcz: 6000000, depr_years: 20, hp_modulation: "inverter",
+  },
+  prumysl: {
+    hp_type: "water_water", source_temp_c: 10, hp_power_kw: 500, cop_nominal: 4.2, hp_cutoff_c: -30,
+    ut_gj: 4000, tuv_gj: 0, t_base_c: 18, t_heat_on_c: 15,
+    hw_slope: -0.8, hw_intercept: 55, hw_min_c: 60,
+    investment_kcz: 15000000, depr_years: 20, hp_modulation: "on_off",
+  },
+};
+
+function applyConfigPreset() {
+  const key = document.getElementById("config_preset")?.value;
+  if (!key || !CONFIG_PRESETS[key]) return;
+  const p = CONFIG_PRESETS[key];
+
+  const fields = ["hp_power_kw", "cop_nominal", "hp_cutoff_c", "ut_gj", "tuv_gj",
+    "t_base_c", "t_heat_on_c", "hw_slope", "hw_intercept", "hw_min_c",
+    "investment_kcz", "depr_years", "source_temp_c", "hp_modulation"];
+  for (const f of fields) {
+    if (p[f] !== undefined) {
+      const el = document.getElementById(f);
+      if (el) { el.value = p[f]; el._userEdited = false; }
+    }
+  }
+  if (p.hp_type) {
+    const el = document.getElementById("hp_type");
+    if (el) { el.value = p.hp_type; onHpTypeChange(); }
+  }
+  onModulationChange();
+  calcAccumulation();
+  simulate();
+}
+
 // ── HP type ───────────────────────────────────────────────────────────────────
 
 const HP_TYPE_CONFIG = {
@@ -120,6 +172,132 @@ function onHpTypeChange() {
   if (copEl && !copEl._userEdited) copEl.value = cfg.cop;
 
   calcAccumulation();
+}
+
+// ── Modulation (inverter / on-off) ────────────────────────────────────────────
+
+function onModulationChange() {
+  const mod = document.getElementById("hp_modulation")?.value || "inverter";
+  const minLoadRow    = document.getElementById("min_load_row");
+  const cyclingRow    = document.getElementById("cycling_loss_row");
+  if (minLoadRow)  minLoadRow.style.display  = mod === "inverter" ? "" : "none";
+  if (cyclingRow)  cyclingRow.style.display  = mod === "on_off"   ? "" : "none";
+}
+
+// ── Custom performance table ──────────────────────────────────────────────────
+
+let customPerfTable = null;
+
+function parseCustomTable() {
+  const csv = document.getElementById("custom_perf_csv")?.value || "";
+  const rows = csv.trim().split(/[\r\n]+/).filter(l => l.trim());
+  const table = [];
+  for (const row of rows) {
+    const cols = row.split(/[,;\t]/).map(c => parseFloat(c.trim().replace(",", ".")));
+    if (cols.length < 4 || cols.some(isNaN)) {
+      document.getElementById("custom_perf_status").textContent = `Chyba na řádku: ${row}`;
+      return;
+    }
+    table.push(cols);
+  }
+  if (table.length < 2) {
+    document.getElementById("custom_perf_status").textContent = "Minimálně 2 body jsou potřeba.";
+    return;
+  }
+  customPerfTable = table;
+  document.getElementById("custom_perf_status").textContent = `✓ ${table.length} bodů načteno. Tabulka aktivní.`;
+}
+
+function clearCustomTable() {
+  customPerfTable = null;
+  const statusEl = document.getElementById("custom_perf_status");
+  if (statusEl) statusEl.textContent = "Vlastní tabulka zrušena — používá se vestavěná.";
+}
+
+// ── Custom heat demand profile (CSV) ─────────────────────────────────────────
+
+let customDemandKwh = null;
+
+function loadCustomDemand(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const lines = e.target.result.split(/[\r\n]+/).filter(l => l.trim() !== "");
+    const vals  = lines.map(l => parseFloat(l.trim().replace(",", ".")));
+    const statusEl = document.getElementById("custom_demand_status");
+    if (vals.some(isNaN)) {
+      if (statusEl) statusEl.textContent = "Chyba: soubor obsahuje nečíselné hodnoty.";
+      customDemandKwh = null;
+      return;
+    }
+    customDemandKwh = vals;
+    const total = vals.reduce((a, b) => a + b, 0);
+    if (statusEl) statusEl.textContent = `✓ Načteno ${vals.length} hodin, celkem ${(total / 1000).toFixed(1)} MWh/rok`;
+  };
+  reader.readAsText(file);
+}
+
+// ── Reversible HP (cooling) ───────────────────────────────────────────────────
+
+function toggleCooling() {
+  const enabled = document.getElementById("cooling_enabled")?.checked;
+  const params  = document.getElementById("cooling_params");
+  if (params) params.style.display = enabled ? "" : "none";
+}
+
+// ── NPV / IRR ─────────────────────────────────────────────────────────────────
+
+let _lastSavingsKcz    = null;
+let _lastInvestmentKcz = null;
+
+function calcNPV() {
+  const savings = _lastSavingsKcz;
+  const invest  = _lastInvestmentKcz ?? parseFloat(document.getElementById("investment_kcz")?.value || 0);
+  const r       = parseFloat(document.getElementById("discount_rate")?.value || 5) / 100;
+  const years   = parseInt(document.getElementById("npv_years")?.value || 20);
+  const el      = document.getElementById("npv_result");
+  if (!el) return;
+
+  if (!savings || savings <= 0 || !invest || invest <= 0) {
+    el.innerHTML = '<div class="hint">Zadejte investici a spusťte simulaci pro výpočet.</div>';
+    return;
+  }
+
+  const payback = invest / savings;
+
+  let npv = -invest;
+  for (let t = 1; t <= years; t++) npv += savings / Math.pow(1 + r, t);
+
+  // IRR: binary search
+  let irr = null;
+  let lo = 0, hi = 2;
+  for (let iter = 0; iter < 60; iter++) {
+    const mid = (lo + hi) / 2;
+    let npvMid = -invest;
+    for (let t = 1; t <= years; t++) npvMid += savings / Math.pow(1 + mid, t);
+    if (npvMid > 0) lo = mid; else hi = mid;
+  }
+  irr = (lo + hi) / 2;
+  if (irr >= 1.99 || irr < 0) irr = null;
+
+  const fmt = v => Math.round(v).toLocaleString("cs-CZ");
+  const npvColor = npv >= 0 ? "var(--brand)" : "#dc2626";
+  el.innerHTML = `
+    <div class="row" style="gap:8px; flex-wrap:wrap;">
+      <div class="card" style="flex:1; min-width:100px; text-align:center; padding:10px 6px;">
+        <div style="font-size:11px; color:var(--muted);">Prostá návratnost</div>
+        <div style="font-size:18px; font-weight:800;">${payback.toFixed(1)} let</div>
+      </div>
+      <div class="card" style="flex:1; min-width:120px; text-align:center; padding:10px 6px;">
+        <div style="font-size:11px; color:var(--muted);">NPV (${years} let, ${(r * 100).toFixed(1)} %)</div>
+        <div style="font-size:18px; font-weight:800; color:${npvColor};">${fmt(npv)} Kč</div>
+      </div>
+      <div class="card" style="flex:1; min-width:90px; text-align:center; padding:10px 6px;">
+        <div style="font-size:11px; color:var(--muted);">IRR</div>
+        <div style="font-size:18px; font-weight:800;">${irr != null ? (irr * 100).toFixed(1) + " %" : "—"}</div>
+      </div>
+    </div>`;
 }
 
 // ── Accumulation tank sizing ──────────────────────────────────────────────────
@@ -152,7 +330,7 @@ function populateYearSelect() {
   }
 }
 
-function applyPreset() {
+function applyCityPreset() {
   const val = document.getElementById("city_preset")?.value;
   if (!val) return;
   const [lat, lon] = val.split(",").map(Number);
@@ -198,6 +376,17 @@ function getInputs() {
   const inp = {
     dataset_id: document.getElementById("dataset").value,
     hp_type: hpType,
+    hp_modulation:      document.getElementById("hp_modulation")?.value || "inverter",
+    hp_min_load_pct:    parseFloat(document.getElementById("hp_min_load_pct")?.value || 25),
+    hp_cycling_loss_pct: parseFloat(document.getElementById("hp_cycling_loss_pct")?.value || 5),
+
+    tuv_profile:   document.getElementById("tuv_profile")?.value || "uniform",
+    tuv_min_temp_c: parseFloat(document.getElementById("tuv_min_temp_c")?.value || 55),
+
+    cooling_enabled:     document.getElementById("cooling_enabled")?.checked || false,
+    cooling_gj:          parseFloat(document.getElementById("cooling_gj")?.value || 0),
+    cooling_threshold_c: parseFloat(document.getElementById("cooling_threshold_c")?.value || 18),
+    eer_cooling:         parseFloat(document.getElementById("eer_cooling")?.value || 0),
 
     ut_gj:  parseFloat(document.getElementById("ut_gj").value  || "0"),
     tuv_gj: parseFloat(document.getElementById("tuv_gj").value || "0"),
@@ -239,6 +428,16 @@ function getInputs() {
     if (!isNaN(srcTemp)) inp.source_temp_c = srcTemp;
   }
 
+  // Custom performance table
+  if (customPerfTable && customPerfTable.length >= 2) {
+    inp.custom_perf_table = customPerfTable;
+  }
+
+  // Custom heat demand profile
+  if (customDemandKwh && customDemandKwh.length >= 100) {
+    inp.heat_demand_kwh = customDemandKwh;
+  }
+
   // Pass fetched climate temps directly – backend skips dataset_id lookup when present
   if (currentTemps && currentTemps.length >= 100) {
     inp.temps_c = currentTemps;
@@ -250,6 +449,10 @@ function getInputs() {
 // ── KPIs ──────────────────────────────────────────────────────────────────────
 
 function updateKpis(summary) {
+  _lastSavingsKcz    = summary.savings_kcz    || null;
+  _lastInvestmentKcz = parseFloat(document.getElementById("investment_kcz")?.value || 0) || null;
+  calcNPV();
+
   document.getElementById("kpi_el").textContent   = fmtMwh(summary.electricity_mwh);
   const bivalStr = summary.bivalent_point_c != null
     ? `${summary.bivalent_point_c.toFixed(1)} °C`
@@ -550,8 +753,12 @@ document.getElementById("btnExport")?.addEventListener("click", exportCurve);
 document.getElementById("customer_type")?.addEventListener("change", () => { syncTariff(); simulate(); });
 document.getElementById("supplier_key")?.addEventListener("change", async () => { await onSupplierChange(); simulate(); });
 document.getElementById("electricity_tariff")?.addEventListener("change", () => { onSupplierChange(); });
-document.getElementById("city_preset")?.addEventListener("change", applyPreset);
+document.getElementById("city_preset")?.addEventListener("change", applyCityPreset);
 document.getElementById("btnFetchClimate")?.addEventListener("click", fetchClimate);
+document.getElementById("config_preset")?.addEventListener("change", applyConfigPreset);
+document.getElementById("hp_modulation")?.addEventListener("change", () => { onModulationChange(); simulate(); });
+document.getElementById("cooling_enabled")?.addEventListener("change", toggleCooling);
+document.getElementById("custom_demand_file")?.addEventListener("change", loadCustomDemand);
 
 // Custom price recalculation on any input change
 ["custom_vt_kcz", "custom_nt_kcz", "custom_vt_share_pct"].forEach(id => {
@@ -568,6 +775,7 @@ document.getElementById("btnFetchClimate")?.addEventListener("click", fetchClima
 populateYearSelect();
 syncTariff();
 onHpTypeChange();
+onModulationChange();
 
 (async function init() {
   await loadDatasets();

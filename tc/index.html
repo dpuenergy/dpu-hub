@@ -103,6 +103,17 @@
             </select>
           </div>
 
+          <div>
+            <label>Předvolba (rychlý start)</label>
+            <select id="config_preset">
+              <option value="">— vybrat předvolbu —</option>
+              <option value="rd">Rodinný dům 12 kW (vzduch-voda)</option>
+              <option value="bytdom">Bytový dům 100 kW (vzduch-voda)</option>
+              <option value="komercni">Komerční objekt 200 kW (voda-voda)</option>
+              <option value="prumysl">Průmyslový objekt 500 kW (voda-voda)</option>
+            </select>
+          </div>
+
           <div id="source_temp_row" style="display:none;">
             <label id="source_temp_label">Teplota zdroje (°C)</label>
             <input id="source_temp_c" type="number" step="0.5" value="10" />
@@ -167,6 +178,29 @@
 
           <div class="row">
             <div style="flex:1; min-width:140px;">
+              <label>Profil TUV</label>
+              <select id="tuv_profile">
+                <option value="uniform">Rovnoměrný (celý rok)</option>
+                <option value="daily_peaks">Denní špičky (ráno + večer)</option>
+              </select>
+            </div>
+            <div style="flex:1; min-width:140px;">
+              <label>Min. teplota TUV (°C)</label>
+              <input id="tuv_min_temp_c" type="number" value="55" step="1" min="40" max="80" />
+            </div>
+          </div>
+
+          <details style="margin-top:4px;">
+            <summary style="cursor:pointer; font-size:12px; color:var(--accent); font-weight:600;">Vlastní hodinový profil spotřeby tepla (CSV) ▸</summary>
+            <div style="margin-top:8px; display:grid; gap:8px;">
+              <div class="hint">CSV soubor s hodnotami v kWh — jeden sloupec, bez záhlaví, ideálně 8 760 řádků. Pokud je nahraný, pole ÚT+TUV se ignorují.</div>
+              <input type="file" id="custom_demand_file" accept=".csv,.txt" />
+              <div id="custom_demand_status" class="hint">Nenahráno</div>
+            </div>
+          </details>
+
+          <div class="row">
+            <div style="flex:1; min-width:140px;">
               <label id="hp_power_label">Výkon TČ při A7/W45 (kW)</label>
               <input id="hp_power_kw" type="number" step="0.1" value="120" oninput="calcAccumulation()" />
             </div>
@@ -180,8 +214,25 @@
             <summary style="cursor:pointer; font-size:12px; color:var(--accent); font-weight:600;">Parametry modelu TČ a topné soustavy ▸</summary>
             <div style="margin-top:8px; display:grid; gap:8px;">
               <div class="row">
+                <div style="flex:1; min-width:140px;">
+                  <label>Typ regulace</label>
+                  <select id="hp_modulation">
+                    <option value="inverter">Inverter (proměnlivý výkon)</option>
+                    <option value="on_off">On/Off (plný výkon nebo stop)</option>
+                  </select>
+                </div>
+                <div style="flex:1; min-width:120px;" id="min_load_row">
+                  <label>Min. výkon invertoru (%)</label>
+                  <input id="hp_min_load_pct" type="number" value="25" step="5" min="5" max="60" />
+                </div>
+                <div style="flex:1; min-width:120px; display:none;" id="cycling_loss_row">
+                  <label>Ztráta cyklováním (%)</label>
+                  <input id="hp_cycling_loss_pct" type="number" value="5" step="1" min="0" max="20" />
+                </div>
+              </div>
+              <div class="row">
                 <div style="flex:1; min-width:120px;">
-                  <label>Jmenovitý COP při A7/W45</label>
+                  <label id="cop_label">Jmenovitý COP při A7/W45</label>
                   <input id="cop_nominal" type="number" step="0.1" value="3.2" />
                 </div>
                 <div style="flex:1; min-width:120px;">
@@ -208,7 +259,49 @@
                   <input id="hw_min_c" type="number" step="0.5" value="45" />
                 </div>
               </div>
-              <div class="hint">Výkonová tabulka: normalizována na A7/W45 = 1,0. Výkon a COP se interpolují bilineárně pro každou hodinu dle T_venku a T_vody.</div>
+              <div class="hint">Výkonová tabulka: normalizována na A7/W45 = 1,0. Výkon a COP se interpolují bilineárně pro každou hodinu dle T_zdroje a T_vody.</div>
+
+              <details style="margin-top:4px;">
+                <summary style="cursor:pointer; font-size:12px; color:var(--accent); font-weight:600;">Vlastní výkonová tabulka TČ (přepíše vestavěnou) ▸</summary>
+                <div style="margin-top:8px; display:grid; gap:6px;">
+                  <div class="hint">Formát CSV: T_zdroj,T_voda,COP,Výkon_kW (bez záhlaví). Minimálně 4 body pro bilineární interpolaci. COP a výkon jsou absolutní hodnoty.</div>
+                  <textarea id="custom_perf_csv" rows="5" style="width:100%; font-family:monospace; font-size:12px; padding:6px; border:1px solid var(--border); border-radius:8px; background:var(--bg); color:var(--text);" placeholder="7,45,3.2,120&#10;2,45,2.9,115&#10;-7,45,2.5,108&#10;7,55,2.8,118&#10;2,55,2.5,113&#10;-7,55,2.2,105"></textarea>
+                  <div style="display:flex; gap:8px; align-items:center;">
+                    <button class="btn" style="font-size:12px; padding:6px 12px;" onclick="parseCustomTable()">Ověřit a použít tabulku</button>
+                    <button class="btn" style="font-size:12px; padding:6px 12px; background:var(--muted);" onclick="clearCustomTable()">Zrušit vlastní tabulku</button>
+                  </div>
+                  <div id="custom_perf_status" class="hint"></div>
+                </div>
+              </details>
+            </div>
+          </details>
+
+          <details style="margin-top:6px;">
+            <summary style="cursor:pointer; font-size:12px; color:var(--accent); font-weight:600;">Reverzibilní TČ – chlazení ▸</summary>
+            <div style="margin-top:8px; display:grid; gap:8px;">
+              <div>
+                <label style="display:flex; align-items:center; gap:6px; cursor:pointer;">
+                  <input type="checkbox" id="cooling_enabled" />
+                  Zahrnout chlazení do simulace
+                </label>
+              </div>
+              <div id="cooling_params" style="display:none; display:grid; gap:8px;">
+                <div class="row">
+                  <div style="flex:1; min-width:130px;">
+                    <label>Roční potřeba chlazení (GJ/rok)</label>
+                    <input id="cooling_gj" type="number" value="0" step="1" min="0" />
+                  </div>
+                  <div style="flex:1; min-width:130px;">
+                    <label>Práh ven. teploty pro chlazení (°C)</label>
+                    <input id="cooling_threshold_c" type="number" value="18" step="1" />
+                  </div>
+                </div>
+                <div style="flex:1; min-width:130px;">
+                  <label>EER chlazení (0 = auto: COP−1)</label>
+                  <input id="eer_cooling" type="number" value="0" step="0.1" min="0" />
+                  <div class="hint">Automaticky EER = COP_topení − 1 (přibližný vztah pro reverzibilní TČ).</div>
+                </div>
+              </div>
             </div>
           </details>
 
@@ -426,6 +519,21 @@
           <div class="card" style="margin-top:12px;">
             <div style="font-weight:800;" id="kpi_cost">Elektřina: —</div>
             <div class="hint" id="kpi_cost2">Odpisy: — | Celkem: —</div>
+          </div>
+
+          <div class="card" style="margin-top:12px;">
+            <h3>Finanční analýza</h3>
+            <div class="row" style="margin-bottom:8px;">
+              <div style="flex:1; min-width:110px;">
+                <label>Diskontní sazba (%/rok)</label>
+                <input id="discount_rate" type="number" value="5" step="0.5" min="0" max="30" oninput="calcNPV()" />
+              </div>
+              <div style="flex:1; min-width:110px;">
+                <label>Horizont hodnocení (roky)</label>
+                <input id="npv_years" type="number" value="20" step="1" min="1" max="50" oninput="calcNPV()" />
+              </div>
+            </div>
+            <div id="npv_result"><div class="hint">Zadejte investici a spusťte simulaci.</div></div>
           </div>
         </div>
 
