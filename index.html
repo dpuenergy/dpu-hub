@@ -1209,41 +1209,13 @@ async function adminInvite() {
   }
 }
 
-async function adminGenerateResetLink(userId, email) {
-  var token = _getAdminToken();
-  if (!token) { alert('Nejste přihlášeni.'); return; }
-  try {
-    var res = await fetch('/.netlify/functions/reset-token', {
-      method: 'POST',
-      headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userId: userId })
-    });
-    var data = await res.json().catch(function(){ return {}; });
-    if (res.ok && data.url) {
-      var box = document.createElement('div');
-      box.style.cssText = 'position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;';
-      box.innerHTML = '<div style="background:#fff;border-radius:12px;padding:24px;max-width:440px;width:90%;box-shadow:0 8px 40px rgba(0,0,0,.3);">' +
-        '<div style="font-weight:700;font-size:15px;margin-bottom:4px;">Odkaz pro reset hesla</div>' +
-        '<div style="font-size:12px;color:#64748b;margin-bottom:12px;">Pošlete odkaz uživateli <strong>' + email + '</strong> (platí 24 hodin):</div>' +
-        '<input type="text" readonly value="' + data.url + '" ' +
-        'style="width:100%;font-size:11px;padding:5px 7px;border-radius:5px;border:1px solid #bfdbfe;background:#eff6ff;color:#1e40af;cursor:pointer;margin-bottom:14px;" ' +
-        'onclick="this.select()" />' +
-        '<button onclick="this.closest(\'div\').parentElement.remove()" style="width:100%;padding:9px;background:#1b3280;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:600;font-size:14px;">Zavřít</button>' +
-        '</div>';
-      document.body.appendChild(box);
-    } else {
-      alert('Chyba: ' + (data.error || res.status));
-    }
-  } catch(e) { alert('Síťová chyba: ' + e.message); }
-}
 
 async function adminSetTempPassword(userId, email) {
   var token = _getAdminToken();
   if (!token) { alert('Nejste přihlášeni.'); return; }
-  // Generuj náhodné heslo: 3 slova + číslo (snadno čitelné)
   var words = ['Slunce','Morava','Praha','Energie','Teplo','Zima','Jaro','Voda','Hora','Les'];
   var pw = words[Math.floor(Math.random()*words.length)] + words[Math.floor(Math.random()*words.length)] + Math.floor(10+Math.random()*90);
-  if (!confirm('Nastavit dočasné heslo pro ' + email + '?\n\nHeslo: ' + pw + '\n\nUživateli ho sdělte ručně. Po přihlášení si ho může resetovat přes "Zapomněl jsem heslo".')) return;
+  if (!confirm('Nastavit heslo pro ' + email + '?\n\nHeslo: ' + pw)) return;
   try {
     var res = await fetch('/.netlify/functions/admin-users?userId=' + encodeURIComponent(userId), {
       method: 'PUT',
@@ -1252,16 +1224,21 @@ async function adminSetTempPassword(userId, email) {
     });
     var data = await res.json().catch(function(){ return {}; });
     if (res.ok) {
+      var emailText =
+        'Dobrý den,\n\n' +
+        'níže naleznete přihlašovací údaje do Energy Hub (DPU Energy — interní nástroje).\n\n' +
+        'Přihlašovací stránka: https://dpuhub.netlify.app/\n' +
+        'E-mail: ' + email + '\n' +
+        'Heslo: ' + pw + '\n\n' +
+        'Po přihlášení doporučujeme heslo změnit: klikněte na tlačítko „Změnit heslo" v pravém horním rohu.\n\n' +
+        'S pozdravem\nDPU Energy';
       var box = document.createElement('div');
       box.style.cssText = 'position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;';
-      box.innerHTML = '<div style="background:#fff;border-radius:12px;padding:24px;max-width:420px;width:90%;box-shadow:0 8px 40px rgba(0,0,0,.3);">' +
-        '<div style="font-weight:700;font-size:15px;margin-bottom:4px;">Dočasné heslo nastaveno</div>' +
-        '<div style="font-size:12px;color:#64748b;margin-bottom:12px;">Sdělte uživateli <strong>' + email + '</strong> tyto přihlašovací údaje:</div>' +
-        '<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:12px;margin-bottom:12px;">' +
-        '<div style="font-size:11px;color:#64748b;">Email</div><div style="font-weight:600;">' + email + '</div>' +
-        '<div style="font-size:11px;color:#64748b;margin-top:8px;">Heslo</div>' +
-        '<div style="font-size:20px;font-weight:800;letter-spacing:2px;color:#1b3280;">' + pw + '</div></div>' +
-        '<div style="font-size:11px;color:#64748b;margin-bottom:14px;">Po přihlášení může heslo změnit přes "Zapomněl jsem heslo" na přihlašovací stránce.</div>' +
+      box.innerHTML =
+        '<div style="background:#fff;border-radius:12px;padding:24px;max-width:480px;width:90%;box-shadow:0 8px 40px rgba(0,0,0,.3);">' +
+        '<div style="font-weight:700;font-size:15px;margin-bottom:4px;">Heslo nastaveno</div>' +
+        '<div style="font-size:12px;color:#64748b;margin-bottom:10px;">Zkopírujte a odešlete uživateli <strong>' + email + '</strong>:</div>' +
+        '<textarea readonly rows="10" onclick="this.select()" style="width:100%;font-size:12px;font-family:inherit;padding:10px;border:1px solid #cbd5e1;border-radius:8px;resize:none;background:#f8fafc;color:#0d1b3e;line-height:1.6;margin-bottom:12px;">' + emailText + '</textarea>' +
         '<button onclick="this.closest(\'div\').parentElement.remove()" style="width:100%;padding:9px;background:#1b3280;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:600;font-size:14px;">Zavřít</button>' +
         '</div>';
       document.body.appendChild(box);
@@ -1311,9 +1288,7 @@ async function adminLoadUsers() {
       var statusClass = confirmed ? 'confirmed' : 'pending';
       var eid = u.email.replace(/"/g, '&quot;');
       var uid = u.id;
-      var actionBtn = confirmed
-        ? '<button class="user-btn" onclick="adminGenerateResetLink(\'' + uid + '\',\'' + eid + '\')">Reset hesla</button>'
-        : '<button class="user-btn" onclick="adminSetTempPassword(\'' + uid + '\',\'' + eid + '\')">Dočasné heslo</button>';
+      var actionBtn = '<button class="user-btn" onclick="adminSetTempPassword(\'' + uid + '\',\'' + eid + '\')">' + (confirmed ? 'Nové heslo' : 'Dočasné heslo') + '</button>';
       return '<div class="user-row">' +
         '<span class="user-email">' + u.email + '</span>' +
         '<span class="user-status ' + statusClass + '">' + statusLabel + '</span>' +
