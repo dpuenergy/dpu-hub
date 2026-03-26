@@ -4,6 +4,35 @@ const API_BASE = "https://dpuenergy-dpu-tc.hf.space";
 let currentTemps = null;
 let currentClimateLabel = null;
 
+// ── Jednotky potřeby tepla ─────────────────────────────────────────────────
+const HEAT_TO_GJ = { GJ: 1, MWh: 3.6, kWh: 0.0036 };
+let prevHeatUnit = "GJ";
+
+function onHeatUnitChange() {
+  const newUnit = document.getElementById("heat_unit").value;
+  const factor  = HEAT_TO_GJ[prevHeatUnit] / HEAT_TO_GJ[newUnit];
+  const dec     = newUnit === "kWh" ? 0 : 1;
+  ["ut_gj", "tuv_gj", "cooling_gj"].forEach(function(id) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const newVal = parseFloat(el.value || 0) * factor;
+    el.value = newVal.toFixed(dec);
+    el.step  = newUnit === "kWh" ? "100" : newUnit === "MWh" ? "0.1" : "1";
+  });
+  const suffix = newUnit + "/rok";
+  const lbls = { lbl_ut_gj: "Roční ÚT", lbl_tuv_gj: "Roční TUV", lbl_cooling_gj: "Roční chlazení" };
+  Object.entries(lbls).forEach(function([id, name]) {
+    const el = document.getElementById(id);
+    if (el) el.textContent = name + " (" + suffix + ")";
+  });
+  prevHeatUnit = newUnit;
+}
+
+function onEerAutoChange() {
+  const auto = document.getElementById("eer_auto").checked;
+  document.getElementById("eer_manual_row").style.display = auto ? "none" : "block";
+}
+
 // ── API helpers ───────────────────────────────────────────────────────────────
 
 async function apiGet(path) {
@@ -485,12 +514,12 @@ function getInputs() {
     tuv_min_temp_c: parseFloat(document.getElementById("tuv_min_temp_c")?.value || 55),
 
     cooling_enabled:     document.getElementById("cooling_enabled")?.checked || false,
-    cooling_gj:          parseFloat(document.getElementById("cooling_gj")?.value || 0),
+    cooling_gj:          parseFloat(document.getElementById("cooling_gj")?.value || 0) * (HEAT_TO_GJ[document.getElementById("heat_unit")?.value || "GJ"] || 1),
     cooling_threshold_c: parseFloat(document.getElementById("cooling_threshold_c")?.value || 18),
-    eer_cooling:         parseFloat(document.getElementById("eer_cooling")?.value || 0),
+    eer_cooling:         document.getElementById("eer_auto")?.checked ? 0 : parseFloat(document.getElementById("eer_cooling")?.value || 2.2),
 
-    ut_gj:  parseFloat(document.getElementById("ut_gj").value  || "0"),
-    tuv_gj: parseFloat(document.getElementById("tuv_gj").value || "0"),
+    ut_gj:  parseFloat(document.getElementById("ut_gj").value  || "0") * (HEAT_TO_GJ[document.getElementById("heat_unit")?.value || "GJ"] || 1),
+    tuv_gj: parseFloat(document.getElementById("tuv_gj").value || "0") * (HEAT_TO_GJ[document.getElementById("heat_unit")?.value || "GJ"] || 1),
 
     hp_power_kw:   parseFloat(document.getElementById("hp_power_kw").value   || "0"),
     hp_cutoff_c:   parseFloat(document.getElementById("hp_cutoff_c").value   || "-15"),

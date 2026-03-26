@@ -260,10 +260,17 @@
             </div>
           </div>
 
-          <div class="section-title">Potřeba tepla</div>
+          <div class="section-title" style="display:flex;justify-content:space-between;align-items:center;">
+            Potřeba tepla
+            <select id="heat_unit" style="width:auto;font-size:11px;padding:3px 6px;border-radius:6px;" onchange="onHeatUnitChange()">
+              <option value="GJ">GJ/rok</option>
+              <option value="MWh">MWh/rok</option>
+              <option value="kWh">kWh/rok</option>
+            </select>
+          </div>
           <div class="row2">
-            <div><label>Roční ÚT (GJ/rok)</label><input id="ut_gj" type="number" step="0.1" value="800" /></div>
-            <div><label>Roční TUV (GJ/rok)</label><input id="tuv_gj" type="number" step="0.1" value="120" /></div>
+            <div><label id="lbl_ut_gj">Roční ÚT (GJ/rok)</label><input id="ut_gj" type="number" step="1" value="800" /></div>
+            <div><label id="lbl_tuv_gj">Roční TUV (GJ/rok)</label><input id="tuv_gj" type="number" step="1" value="120" /></div>
           </div>
           <div class="row2">
             <div>
@@ -282,7 +289,7 @@
             <div>
               <label>ΔT zásobníku (°C)</label>
               <input id="acc_dt" type="number" value="5" step="0.5" min="1" oninput="calcAccumulation()" />
-              <div class="hint">Rozdíl max − min teploty vody v zásobníku (typicky 5–10 °C).</div>
+              <div class="hint">Teplotní rozkmit vody v nádrži (max − min). Větší ΔT = menší zásobník. Typicky 5–10 °C.</div>
             </div>
           </div>
           <div id="acc_result" style="font-size:13px; font-weight:700; color:var(--brand); margin-top:4px;">—</div>
@@ -310,7 +317,7 @@
               <div class="row3">
                 <div><label id="cop_label">COP (A7/W45)</label><input id="cop_nominal" type="number" step="0.1" value="3.2" /></div>
                 <div><label>Vnitřní teplota (°C)</label><input id="t_base_c" type="number" step="0.5" value="20" /></div>
-                <div><label>Mez topení (°C)</label><input id="t_heat_on_c" type="number" step="0.5" value="14" /></div>
+                <div><label>Zahájení vytápění (°C)</label><input id="t_heat_on_c" type="number" step="0.5" value="14" /></div>
               </div>
               <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
                 <div style="font-size:11px; font-weight:600; color:var(--muted);">Topná křivka</div>
@@ -334,7 +341,7 @@
               </div>
               <div class="row2">
                 <div>
-                  <label>T_venku mez topení (°C)</label>
+                  <label>Zahájení vytápění — T_venku (°C)</label>
                   <input id="hw_t_limit" type="number" step="0.5" value="14" oninput="calcHeatingCurve()" />
                 </div>
                 <div>
@@ -369,10 +376,18 @@
               </label>
               <div id="cooling_params" style="display:none;" class="fg">
                 <div class="row2">
-                  <div><label>Roční chlazení (GJ/rok)</label><input id="cooling_gj" type="number" value="0" step="1" min="0" /></div>
-                  <div><label>Práh venk. teploty (°C)</label><input id="cooling_threshold_c" type="number" value="18" step="1" /></div>
+                  <div><label id="lbl_cooling_gj">Roční chlazení (GJ/rok)</label><input id="cooling_gj" type="number" value="0" step="1" min="0" /></div>
+                  <div><label>Zahájení chlazení — T_venku (°C)</label><input id="cooling_threshold_c" type="number" value="18" step="1" /></div>
                 </div>
-                <div><label>EER (0 = auto: COP − 1)</label><input id="eer_cooling" type="number" value="0" step="0.1" min="0" /></div>
+                <div>
+                  <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;color:var(--text);margin-bottom:0;">
+                    <input type="checkbox" id="eer_auto" checked onchange="onEerAutoChange()" /> EER — automatický výpočet (COP − 1)
+                  </label>
+                  <div id="eer_manual_row" style="display:none;margin-top:6px;">
+                    <label>EER</label>
+                    <input id="eer_cooling" type="number" value="2.2" step="0.1" min="0.1" />
+                  </div>
+                </div>
               </div>
             </div>
           </details>
