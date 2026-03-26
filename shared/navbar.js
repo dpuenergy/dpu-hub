@@ -1,5 +1,5 @@
 (function () {
-  var HUB = 'https://calm-cocada-79e019.netlify.app';
+  var HUB = 'https://dpuhub.netlify.app';
   var SECRET = 'DPU2025int';
   var TOKEN_EXPIRY_MIN = 480; // token platný 8 hodin (celý pracovní den)
 

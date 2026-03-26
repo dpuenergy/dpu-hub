@@ -745,7 +745,7 @@ body.dark .card-icon.rose   { background: #2a0a18; }
 
 
 <script>
-const IDENTITY_URL = 'https://calm-cocada-79e019.netlify.app/.netlify/identity';
+const IDENTITY_URL = 'https://dpuhub.netlify.app/.netlify/identity';
 var ADMIN_EMAIL = 'hridel@dpuenergy.cz';
 
 // Parse token from URL hash (invite or recovery link)
@@ -755,6 +755,7 @@ window.location.hash.replace(/^#/, '').split('&').forEach(function(p) {
 });
 var inviteToken   = hashParams['invite_token']   || null;
 var recoveryToken = hashParams['recovery_token'] || null;
+var resetToken    = hashParams['reset_token']    || null;
 var specialToken  = inviteToken || recoveryToken;
 
 function b64d(s) {
@@ -845,7 +846,7 @@ async function refreshSession() {
 }
 
 // Hide overlay if already logged in + spusť auto-refresh
-if (!specialToken) {
+if (!specialToken && !resetToken) {
   try {
     var stored = JSON.parse(localStorage.getItem('dpu_user') || 'null');
     if (stored && stored.expires_at > Date.now()) {
@@ -879,7 +880,7 @@ async function sendRecovery() {
   var msg = document.getElementById('recover-msg');
   if (!email) { msg.style.cssText = 'font-size:13px;margin:8px 0 0;display:block;color:#e11d48;'; msg.textContent = 'Zadejte email.'; return; }
   try {
-    await fetch('https://calm-cocada-79e019.netlify.app/.netlify/identity/recover', {
+    await fetch('https://dpuhub.netlify.app/.netlify/identity/recover', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email: email })
@@ -897,6 +898,13 @@ if (specialToken) {
   document.getElementById('auth-subtitle').textContent = inviteToken
     ? 'Nastavte sve heslo pro pristup do Energy Hubu'
     : 'Zadejte nove heslo';
+  document.getElementById('login-email').style.display = 'none';
+  document.getElementById('login-email').required = false;
+  document.getElementById('login-password2').style.display = 'block';
+  document.querySelector('#login-form button').textContent = 'Nastavit heslo';
+}
+if (resetToken) {
+  document.getElementById('auth-subtitle').textContent = 'Nastavte nové heslo';
   document.getElementById('login-email').style.display = 'none';
   document.getElementById('login-email').required = false;
   document.getElementById('login-password2').style.display = 'block';
@@ -958,6 +966,42 @@ document.getElementById('login-form').addEventListener('submit', async function(
       document.getElementById('auth-overlay').style.display = 'none';
     } catch(e) {
       err.textContent = 'Chyba (' + e.message + ') — požádejte o nový recovery e-mail v Netlify.';
+      err.style.display = 'block';
+      btn.textContent = 'Nastavit heslo';
+      btn.disabled = false;
+    }
+    return;
+  }
+
+  // Reset hesla přes vlastní token (obchází Netlify email)
+  if (resetToken) {
+    if (password !== password2) {
+      err.textContent = 'Hesla se neshoduji.';
+      err.style.display = 'block';
+      btn.disabled = false;
+      return;
+    }
+    btn.textContent = 'Ukládám...';
+    try {
+      var resetRes = await fetch('/.netlify/functions/reset-token', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: resetToken, password: password })
+      });
+      var resetData = await resetRes.json().catch(function(){ return {}; });
+      if (!resetRes.ok) throw new Error(resetData.error || resetRes.status);
+      // Heslo nastaveno — vyčisti hash a zobraz přihlašovací formulář
+      history.replaceState(null, '', '/');
+      document.getElementById('auth-subtitle').textContent = 'Heslo nastaveno — přihlaste se';
+      document.getElementById('login-email').style.display = '';
+      document.getElementById('login-email').required = true;
+      document.getElementById('login-password2').style.display = 'none';
+      document.getElementById('login-password').value = '';
+      document.getElementById('login-password2').value = '';
+      btn.textContent = 'Přihlásit se';
+      btn.disabled = false;
+    } catch(e) {
+      err.textContent = 'Chyba: ' + e.message;
       err.style.display = 'block';
       btn.textContent = 'Nastavit heslo';
       btn.disabled = false;
@@ -1139,7 +1183,7 @@ async function adminInvite() {
           var u = await r2.json().catch(function(){ return {}; });
           var invToken = u.confirmation_token;
           if (invToken) {
-            var inviteUrl = 'https://calm-cocada-79e019.netlify.app/#invite_token=' + invToken;
+            var inviteUrl = 'https://dpuhub.netlify.app/#invite_token=' + invToken;
             msg.innerHTML =
               '<strong>Uživatel vytvořen.</strong> Pošlete odkaz ručně (email, Teams…):<br>' +
               '<input type="text" readonly value="' + inviteUrl + '" ' +
@@ -1164,16 +1208,32 @@ async function adminInvite() {
   }
 }
 
-async function adminResetPassword(email) {
-  if (!confirm('Odeslat e-mail pro reset hesla uživateli ' + email + '?')) return;
+async function adminGenerateResetLink(userId, email) {
+  var token = _getAdminToken();
+  if (!token) { alert('Nejste přihlášeni.'); return; }
   try {
-    var res = await fetch(IDENTITY_URL + '/recover', {
+    var res = await fetch('/.netlify/functions/reset-token', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: email })
+      headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId: userId })
     });
-    alert(res.ok ? 'E-mail odeslán.' : 'Chyba ' + res.status);
-  } catch(e) { alert('Síťová chyba.'); }
+    var data = await res.json().catch(function(){ return {}; });
+    if (res.ok && data.url) {
+      var box = document.createElement('div');
+      box.style.cssText = 'position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;';
+      box.innerHTML = '<div style="background:#fff;border-radius:12px;padding:24px;max-width:440px;width:90%;box-shadow:0 8px 40px rgba(0,0,0,.3);">' +
+        '<div style="font-weight:700;font-size:15px;margin-bottom:4px;">Odkaz pro reset hesla</div>' +
+        '<div style="font-size:12px;color:#64748b;margin-bottom:12px;">Pošlete odkaz uživateli <strong>' + email + '</strong> (platí 24 hodin):</div>' +
+        '<input type="text" readonly value="' + data.url + '" ' +
+        'style="width:100%;font-size:11px;padding:5px 7px;border-radius:5px;border:1px solid #bfdbfe;background:#eff6ff;color:#1e40af;cursor:pointer;margin-bottom:14px;" ' +
+        'onclick="this.select()" />' +
+        '<button onclick="this.closest(\'div\').parentElement.remove()" style="width:100%;padding:9px;background:#1b3280;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:600;font-size:14px;">Zavřít</button>' +
+        '</div>';
+      document.body.appendChild(box);
+    } else {
+      alert('Chyba: ' + (data.error || res.status));
+    }
+  } catch(e) { alert('Síťová chyba: ' + e.message); }
 }
 
 async function adminSetTempPassword(userId, email) {
@@ -1251,7 +1311,7 @@ async function adminLoadUsers() {
       var eid = u.email.replace(/"/g, '&quot;');
       var uid = u.id;
       var actionBtn = confirmed
-        ? '<button class="user-btn" onclick="adminResetPassword(\'' + eid + '\')">Reset hesla</button>'
+        ? '<button class="user-btn" onclick="adminGenerateResetLink(\'' + uid + '\',\'' + eid + '\')">Reset hesla</button>'
         : '<button class="user-btn" onclick="adminSetTempPassword(\'' + uid + '\',\'' + eid + '\')">Dočasné heslo</button>';
       return '<div class="user-row">' +
         '<span class="user-email">' + u.email + '</span>' +

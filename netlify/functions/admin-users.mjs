@@ -2,10 +2,10 @@
 // Proxy pro Netlify Identity admin API — přístupné jen pro ALLOWED_EMAIL
 
 const ALLOWED_EMAIL = 'hridel@dpuenergy.cz';
-const IDENTITY_URL  = 'https://calm-cocada-79e019.netlify.app/.netlify/identity';
+const IDENTITY_URL  = 'https://dpuhub.netlify.app/.netlify/identity';
 
 const CORS = {
-  'Access-Control-Allow-Origin':  'https://calm-cocada-79e019.netlify.app',
+  'Access-Control-Allow-Origin':  'https://dpuhub.netlify.app',
   'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
   'Access-Control-Allow-Headers': 'Authorization, Content-Type',
   'Content-Type': 'application/json',
