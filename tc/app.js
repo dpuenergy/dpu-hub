@@ -616,7 +616,11 @@ function updateKpis(summary) {
   const bivalStr = summary.bivalent_point_c != null
     ? `${summary.bivalent_point_c.toFixed(1)} °C`
     : "—";
-  document.getElementById("kpi_cop").textContent = `SCOP: ${fmtCop(summary.avg_cop)} | bival. bod: ${bivalStr}`;
+  const coolingEnabledKpi = document.getElementById("cooling_enabled")?.checked;
+  const copStr = coolingEnabledKpi
+    ? `SCOP topení: ${fmtCop(summary.avg_cop_heating)} | EER chlazení: ${fmtCop(summary.avg_cop_cooling)} | celkové: ${fmtCop(summary.avg_cop_total)} | bival. bod: ${bivalStr}`
+    : `SCOP: ${fmtCop(summary.avg_cop)} | bival. bod: ${bivalStr}`;
+  document.getElementById("kpi_cop").textContent = copStr;
 
   document.getElementById("kpi_hp_heat").textContent = fmtMwh(summary.heat_from_hp_mwh);
   document.getElementById("kpi_biv").textContent      = `bivalence: ${fmtMwh(summary.bivalence_mwh)}`;
@@ -633,7 +637,7 @@ function updateKpis(summary) {
   if (boxCooling) boxCooling.style.display = coolingEnabled ? "" : "none";
   if (coolingEnabled) {
     document.getElementById("kpi_cooling").textContent  = fmtMwh(summary.cooling_mwh);
-    document.getElementById("kpi_cooling2").textContent = `EER: ${fmtCop(summary.avg_eer)} | špička: ${fmtKw(summary.cooling_peak_kw)}`;
+    document.getElementById("kpi_cooling2").textContent = `EER: ${fmtCop(summary.avg_cop_cooling)} | špička: ${fmtKw(summary.cooling_peak_kw)}`;
   }
 
   document.getElementById("kpi_cost").textContent =
