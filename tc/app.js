@@ -33,6 +33,12 @@ function onEerAutoChange() {
   document.getElementById("eer_manual_row").style.display = auto ? "none" : "block";
 }
 
+function onCoolingModeChange() {
+  const mode = document.getElementById("cooling_mode").value;
+  document.getElementById("cooling_gj_row").style.display  = mode === "gj"   ? "" : "none";
+  document.getElementById("cooling_auto_row").style.display = mode === "auto" ? "" : "none";
+}
+
 // ── API helpers ───────────────────────────────────────────────────────────────
 
 async function apiGet(path) {
@@ -502,7 +508,10 @@ async function fetchClimate() {
 // ── Inputs ────────────────────────────────────────────────────────────────────
 
 function getInputs() {
-  const hpType = document.getElementById("hp_type")?.value || "air_water";
+  const hpType      = document.getElementById("hp_type")?.value || "air_water";
+  const coolingMode = document.getElementById("cooling_mode")?.value || "gj";
+  const heatUnit    = document.getElementById("heat_unit")?.value || "GJ";
+  const heatToGj    = HEAT_TO_GJ[heatUnit] || 1;
   const inp = {
     dataset_id: document.getElementById("dataset").value,
     hp_type: hpType,
@@ -513,13 +522,16 @@ function getInputs() {
     tuv_profile:   document.getElementById("tuv_profile")?.value || "uniform",
     tuv_min_temp_c: parseFloat(document.getElementById("tuv_min_temp_c")?.value || 55),
 
-    cooling_enabled:     document.getElementById("cooling_enabled")?.checked || false,
-    cooling_gj:          parseFloat(document.getElementById("cooling_gj")?.value || 0) * (HEAT_TO_GJ[document.getElementById("heat_unit")?.value || "GJ"] || 1),
-    cooling_threshold_c: parseFloat(document.getElementById("cooling_threshold_c")?.value || 18),
-    eer_cooling:         document.getElementById("eer_auto")?.checked ? 0 : parseFloat(document.getElementById("eer_cooling")?.value || 2.2),
+    cooling_enabled:      document.getElementById("cooling_enabled")?.checked || false,
+    cooling_mode:         coolingMode,
+    cooling_gj:           coolingMode === "gj" ? parseFloat(document.getElementById("cooling_gj")?.value || 0) * heatToGj : 0,
+    cooling_power_kw:     coolingMode === "auto" ? parseFloat(document.getElementById("cooling_power_kw")?.value || 0) : 0,
+    cooling_t_design_c:   coolingMode === "auto" ? parseFloat(document.getElementById("cooling_t_design_c")?.value || 32) : 32,
+    cooling_threshold_c:  parseFloat(document.getElementById("cooling_threshold_c")?.value || 18),
+    eer_cooling:          document.getElementById("eer_auto")?.checked ? 0 : parseFloat(document.getElementById("eer_cooling")?.value || 2.2),
 
-    ut_gj:  parseFloat(document.getElementById("ut_gj").value  || "0") * (HEAT_TO_GJ[document.getElementById("heat_unit")?.value || "GJ"] || 1),
-    tuv_gj: parseFloat(document.getElementById("tuv_gj").value || "0") * (HEAT_TO_GJ[document.getElementById("heat_unit")?.value || "GJ"] || 1),
+    ut_gj:  parseFloat(document.getElementById("ut_gj").value  || "0") * heatToGj,
+    tuv_gj: parseFloat(document.getElementById("tuv_gj").value || "0") * heatToGj,
 
     hp_power_kw:   parseFloat(document.getElementById("hp_power_kw").value   || "0"),
     hp_cutoff_c:   parseFloat(document.getElementById("hp_cutoff_c").value   || "-15"),

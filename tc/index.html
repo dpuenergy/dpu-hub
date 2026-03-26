@@ -376,8 +376,22 @@
               </label>
               <div id="cooling_params" style="display:none;" class="fg">
                 <div class="row2">
-                  <div><label id="lbl_cooling_gj">Roční chlazení (GJ/rok)</label><input id="cooling_gj" type="number" value="0" step="1" min="0" /></div>
+                  <div>
+                    <label>Způsob zadání chlazení</label>
+                    <select id="cooling_mode" onchange="onCoolingModeChange()">
+                      <option value="gj">Roční potřeba (GJ / MWh / kWh)</option>
+                      <option value="auto">Výpočet z venkovní teploty</option>
+                    </select>
+                  </div>
                   <div><label>Zahájení chlazení — T_venku (°C)</label><input id="cooling_threshold_c" type="number" value="18" step="1" /></div>
+                </div>
+                <div id="cooling_gj_row">
+                  <label id="lbl_cooling_gj">Roční chlazení (GJ/rok)</label>
+                  <input id="cooling_gj" type="number" value="0" step="1" min="0" />
+                </div>
+                <div id="cooling_auto_row" style="display:none;" class="row2">
+                  <div><label>Výkon chlazení — návrh. (kW)</label><input id="cooling_power_kw" type="number" value="50" step="1" min="0" /></div>
+                  <div><label>T_venku návrh. chlazení (°C)</label><input id="cooling_t_design_c" type="number" value="32" step="1" /></div>
                 </div>
                 <div>
                   <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;color:var(--text);margin-bottom:0;">
