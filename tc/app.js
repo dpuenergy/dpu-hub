@@ -634,7 +634,7 @@ function updateKpis(summary) {
   document.getElementById("kpi_peak").textContent  = fmtKw(summary.heat_need_peak_kw);
   document.getElementById("kpi_peak2").textContent = `TČ max / bivalence max: ${fmtKw(summary.hp_power_peak_kw)} / ${fmtKw(summary.bivalence_peak_kw)}`;
 
-  document.getElementById("kpi_tout").textContent  = "—";
+  document.getElementById("kpi_tout").textContent  = summary.t_out_avg_c != null ? `${summary.t_out_avg_c.toFixed(1)} °C` : "—";
   document.getElementById("kpi_tout2").textContent = `min / max: ${fmtMinMax(summary.t_out_min_c, summary.t_out_max_c)}`;
 
   // Cooling KPI — show whenever cooling is enabled
@@ -699,11 +699,15 @@ function buildCharts(result) {
     );
   }
 
-  // Duration curve: sort hours by descending heat need
-  const idx     = s.heat_need_kw.map((v, i) => ({ v, i })).sort((a, b) => b.v - a.v).map(o => o.i);
+  // Duration curve: sort heating hours only (exclude summer zero-demand hours)
+  const idx     = s.heat_need_kw.map((v, i) => ({ v, i }))
+                    .filter(o => o.v > 0.1)
+                    .sort((a, b) => b.v - a.v)
+                    .map(o => o.i);
+  const durLabels = idx.map((_, i) => i);
   const dur_kw  = idx.map(i => s.heat_need_kw[i]);
   const dur_cop = idx.map(i => s.cop[i] || null);
-  makeDualAxisDuration("chDurationCop", labels, dur_kw, dur_cop);
+  makeDualAxisDuration("chDurationCop", durLabels, dur_kw, dur_cop);
 
   // Cooling chart — shown when cooling is enabled; graph rendered only if series data present
   const coolingWrap = document.getElementById("ch_cooling_wrap");
@@ -756,17 +760,6 @@ function buildCharts(result) {
 
 // ── Main actions ──────────────────────────────────────────────────────────────
 
-async function loadDatasets() {
-  const ds  = await apiGet("/api/datasets");
-  const sel = document.getElementById("dataset");
-  sel.innerHTML = "";
-  for (const d of ds) {
-    const opt = document.createElement("option");
-    opt.value   = d.id;
-    opt.textContent = d.name;
-    sel.appendChild(opt);
-  }
-}
 
 async function simulate() {
   const btn = document.getElementById("btnSim");
@@ -1011,8 +1004,6 @@ onBaseSourceTypeChange();
 calcHeatingCurve();
 
 (async function init() {
-  await loadDatasets();
   await onSupplierChange();
-  await simulate();
   calcAccumulation();
 })();
