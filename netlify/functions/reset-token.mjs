@@ -18,15 +18,8 @@ function json(status, body) {
 }
 
 async function hmacSign(secret, data) {
-  const key = await crypto.subtle.importKey(
-    'raw',
-    new TextEncoder().encode(secret),
-    { name: 'HMAC', hash: 'SHA-256' },
-    false,
-    ['sign']
-  );
-  const buf = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(data));
-  return [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, '0')).join('');
+  const { createHmac } = await import('crypto');
+  return createHmac('sha256', secret).update(data).digest('hex');
 }
 
 function toBase64url(str) {
