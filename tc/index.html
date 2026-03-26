@@ -367,9 +367,13 @@
                 <div class="fg">
                   <div class="hint">CSV: T_zdroj,T_voda,COP,Výkon_kW — bez záhlaví, min. 2 body, absolutní hodnoty.</div>
                   <textarea id="custom_perf_csv" rows="5" placeholder="7,45,3.2,120&#10;2,45,2.9,115&#10;-7,45,2.5,108&#10;7,55,2.8,118"></textarea>
-                  <div style="display:flex; gap:6px;">
+                  <div style="display:flex; gap:6px; flex-wrap:wrap;">
                     <button class="btn btn-sm" onclick="parseCustomTable()">Ověřit a použít</button>
                     <button class="btn btn-sm btn-ghost" onclick="clearCustomTable()">Zrušit</button>
+                    <label class="btn btn-sm" style="cursor:pointer;" title="Nahraj screenshot tabulky výkonu TČ — Claude Vision extrahuje data automaticky">
+                      Načíst z obrázku (OCR)
+                      <input type="file" id="perf_ocr_file" accept="image/*" style="display:none;" onchange="ocrPerfTable(this)" />
+                    </label>
                   </div>
                   <div id="custom_perf_status" class="hint"></div>
                 </div>

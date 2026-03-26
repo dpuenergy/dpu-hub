@@ -253,6 +253,32 @@ function clearCustomTable() {
   if (statusEl) statusEl.textContent = "Vlastní tabulka zrušena — používá se vestavěná.";
 }
 
+async function ocrPerfTable(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const statusEl = document.getElementById("custom_perf_status");
+  statusEl.textContent = "Odesílám obrázek Claudovi…";
+  const formData = new FormData();
+  formData.append("file", file);
+  try {
+    const r = await fetch(`${API_BASE}/api/parse-perf-table`, { method: "POST", body: formData });
+    if (!r.ok) {
+      const err = await r.json().catch(() => ({ detail: r.statusText }));
+      statusEl.textContent = `Chyba: ${err.detail || r.statusText}`;
+      return;
+    }
+    const { perf_table, count } = await r.json();
+    // Fill the textarea as CSV for user review
+    const csv = perf_table.map(row => row.join(",")).join("\n");
+    document.getElementById("custom_perf_csv").value = csv;
+    statusEl.textContent = `OCR: ${count} bodů extrahováno. Zkontroluj a klikni "Ověřit a použít".`;
+  } catch (e) {
+    statusEl.textContent = `Chyba sítě: ${e.message}`;
+  }
+  // Reset file input so the same file can be re-uploaded
+  input.value = "";
+}
+
 // ── Custom heat demand profile (CSV) ─────────────────────────────────────────
 
 let customDemandKwh = null;
