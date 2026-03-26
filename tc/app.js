@@ -477,18 +477,36 @@ function onBaseSourceTypeChange() {
   if (isGas) calcGasPrice("base");
 }
 
-// ── Climate (Open-Meteo) ──────────────────────────────────────────────────────
+// ── Climate ───────────────────────────────────────────────────────────────────
+
+function onClimateSourceChange() {
+  const src = document.getElementById("climate_source")?.value || "openmeteo";
+  document.getElementById("panel_openmeteo").style.display = src === "openmeteo" ? "" : "none";
+  document.getElementById("panel_pvgis").style.display     = src === "pvgis"     ? "" : "none";
+  document.getElementById("panel_chmi").style.display      = src === "chmi"      ? "" : "none";
+}
 
 function populateYearSelect() {
-  const sel = document.getElementById("climate_year");
-  if (!sel) return;
   const lastFull = new Date().getFullYear() - 1;
-  for (let y = lastFull; y >= 2010; y--) {
-    const opt = document.createElement("option");
-    opt.value = y;
-    opt.textContent = y;
-    if (y === lastFull) opt.selected = true;
-    sel.appendChild(opt);
+  // Open-Meteo year select
+  const sel = document.getElementById("climate_year");
+  if (sel) {
+    for (let y = lastFull; y >= 2010; y--) {
+      const opt = document.createElement("option");
+      opt.value = y; opt.textContent = y;
+      if (y === lastFull) opt.selected = true;
+      sel.appendChild(opt);
+    }
+  }
+  // CHMI year select
+  const selC = document.getElementById("chmi_year");
+  if (selC) {
+    for (let y = lastFull; y >= 2010; y--) {
+      const opt = document.createElement("option");
+      opt.value = y; opt.textContent = y;
+      if (y === lastFull) opt.selected = true;
+      selC.appendChild(opt);
+    }
   }
 }
 
@@ -500,6 +518,23 @@ function applyCityPreset() {
   const lonEl = document.getElementById("climate_lon");
   if (latEl) latEl.value = lat;
   if (lonEl) lonEl.value = lon;
+}
+
+function applyPvgisPreset() {
+  const val = document.getElementById("city_preset_pvgis")?.value;
+  if (!val) return;
+  const [lat, lon] = val.split(",").map(Number);
+  const latEl = document.getElementById("pvgis_lat");
+  const lonEl = document.getElementById("pvgis_lon");
+  if (latEl) latEl.value = lat;
+  if (lonEl) lonEl.value = lon;
+}
+
+function _setClimateStatus(msg, ok = true) {
+  const el = document.getElementById("climateStatus");
+  if (!el) return;
+  el.textContent = (ok ? "✓ Načteno: " : "⚠ ") + msg;
+  el.style.color = ok ? "#1b7a4a" : "#e07b00";
 }
 
 async function fetchClimate() {
@@ -519,8 +554,7 @@ async function fetchClimate() {
     const res = await apiGet(`/api/fetch-climate?lat=${lat}&lon=${lon}&year=${year}`);
     currentTemps = res.temps_c;
     currentClimateLabel = `${cityName} ${year} (${res.count} h, T min ${res.t_min}°C / max ${res.t_max}°C)`;
-    if (statusEl) statusEl.textContent = `✓ Načteno: ${currentClimateLabel}`;
-    // Rerun simulation with the new data
+    _setClimateStatus(currentClimateLabel);
     await simulate();
   } catch (e) {
     alert("Chyba při načítání klimadat:\n" + (e?.message || e));
@@ -528,6 +562,76 @@ async function fetchClimate() {
   } finally {
     btn.disabled = false;
     btn.textContent = "Načíst z Open-Meteo";
+  }
+}
+
+async function fetchPvgisTmy() {
+  const statusEl = document.getElementById("climateStatus");
+  const btn = event?.target;
+  if (btn) { btn.disabled = true; btn.textContent = "Načítám…"; }
+  try {
+    const lat = parseFloat(document.getElementById("pvgis_lat").value);
+    const lon = parseFloat(document.getElementById("pvgis_lon").value);
+    const presetSel = document.getElementById("city_preset_pvgis");
+    const cityName = (presetSel?.selectedIndex > 0)
+      ? presetSel.options[presetSel.selectedIndex].text
+      : `${lat.toFixed(4)}, ${lon.toFixed(4)}`;
+
+    const res = await apiGet(`/api/fetch-pvgis-tmy?lat=${lat}&lon=${lon}`);
+    currentTemps = res.temps_c;
+    currentClimateLabel = `${cityName} TMY (${res.count} h, T min ${res.t_min}°C / max ${res.t_max}°C)`;
+    _setClimateStatus(currentClimateLabel);
+    await simulate();
+  } catch (e) {
+    alert("Chyba při načítání PVGIS TMY:\n" + (e?.message || e));
+    console.error(e);
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = "Načíst TMY z PVGIS"; }
+  }
+}
+
+async function loadChmiStations() {
+  const sel = document.getElementById("chmi_station");
+  const btn = event?.target;
+  if (btn) { btn.disabled = true; btn.textContent = "Načítám…"; }
+  try {
+    const res = await apiGet("/api/chmi-stations");
+    sel.innerHTML = '<option value="">-- vybrat stanici --</option>';
+    for (const s of res.stations) {
+      const opt = document.createElement("option");
+      opt.value = s.wsi;
+      opt.textContent = `${s.name} (${s.lat.toFixed(3)}, ${s.lon.toFixed(3)})`;
+      sel.appendChild(opt);
+    }
+  } catch (e) {
+    alert("Chyba při načítání stanic ČHMÚ:\n" + (e?.message || e));
+    console.error(e);
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = "Načíst stanice"; }
+  }
+}
+
+async function fetchChmiData() {
+  const btn = event?.target;
+  if (btn) { btn.disabled = true; btn.textContent = "Načítám…"; }
+  try {
+    const wsi  = document.getElementById("chmi_station").value;
+    const year = parseInt(document.getElementById("chmi_year").value);
+    if (!wsi) { alert("Nejprve vyber stanici."); return; }
+
+    const stationSel = document.getElementById("chmi_station");
+    const stationName = stationSel.options[stationSel.selectedIndex]?.text?.split(" (")[0] || wsi;
+
+    const res = await apiGet(`/api/fetch-chmi?wsi=${encodeURIComponent(wsi)}&year=${year}`);
+    currentTemps = res.temps_c;
+    currentClimateLabel = `ČHMÚ ${stationName} ${year} (${res.count} h, T min ${res.t_min}°C / max ${res.t_max}°C)`;
+    _setClimateStatus(currentClimateLabel);
+    await simulate();
+  } catch (e) {
+    alert("Chyba při načítání dat ČHMÚ:\n" + (e?.message || e));
+    console.error(e);
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = "Načíst data z ČHMÚ"; }
   }
 }
 
@@ -1002,8 +1106,8 @@ document.getElementById("btnExport")?.addEventListener("click", exportCurve);
 document.getElementById("customer_type")?.addEventListener("change", () => { syncTariff(); simulate(); });
 document.getElementById("supplier_key")?.addEventListener("change", async () => { await onSupplierChange(); simulate(); });
 document.getElementById("electricity_tariff")?.addEventListener("change", () => { onSupplierChange(); });
-document.getElementById("city_preset")?.addEventListener("change", applyCityPreset);
-document.getElementById("btnFetchClimate")?.addEventListener("click", fetchClimate);
+// city_preset uses onchange directly in HTML
+// btnFetchClimate uses onclick directly in HTML
 document.getElementById("config_preset")?.addEventListener("change", applyConfigPreset);
 document.getElementById("hp_modulation")?.addEventListener("change", () => { onModulationChange(); simulate(); });
 document.getElementById("cooling_enabled")?.addEventListener("change", toggleCooling);

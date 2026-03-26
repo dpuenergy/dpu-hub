@@ -208,30 +208,91 @@
 
           <div class="section-title">Klimatická data</div>
           <div class="fg">
+            <!-- Source selector -->
             <div>
-              <label>Město</label>
-              <select id="city_preset">
-                <option value="">-- vybrat --</option>
-                <option value="50.0755,14.4378">Praha</option>
-                <option value="49.1951,16.6068">Brno</option>
-                <option value="49.8209,18.2625">Ostrava</option>
-                <option value="49.7477,13.3776">Plzeň</option>
-                <option value="48.9745,14.4747">České Budějovice</option>
-                <option value="50.7663,15.0543">Liberec</option>
-                <option value="50.2092,15.8327">Hradec Králové</option>
-                <option value="49.5938,17.2509">Olomouc</option>
-                <option value="49.2241,17.6638">Zlín</option>
-                <option value="50.2304,12.8711">Karlovy Vary</option>
-                <option value="50.6607,14.0323">Ústí nad Labem</option>
-                <option value="49.9450,17.9070">Opava</option>
+              <label>Zdroj klimatických dat</label>
+              <select id="climate_source" onchange="onClimateSourceChange()">
+                <option value="openmeteo">Open-Meteo (historický archiv)</option>
+                <option value="pvgis">PVGIS TMY (typický rok)</option>
+                <option value="chmi">ČHMÚ (měřená stanice)</option>
               </select>
             </div>
-            <div class="row3">
-              <div><label>Lat</label><input id="climate_lat" type="number" step="0.0001" value="50.0755" /></div>
-              <div><label>Lon</label><input id="climate_lon" type="number" step="0.0001" value="14.4378" /></div>
-              <div><label>Rok</label><select id="climate_year"></select></div>
+
+            <!-- Open-Meteo panel -->
+            <div id="panel_openmeteo" class="fg">
+              <div>
+                <label>Město</label>
+                <select id="city_preset" onchange="applyCityPreset()">
+                  <option value="">-- vybrat --</option>
+                  <option value="50.0755,14.4378">Praha</option>
+                  <option value="49.1951,16.6068">Brno</option>
+                  <option value="49.8209,18.2625">Ostrava</option>
+                  <option value="49.7477,13.3776">Plzeň</option>
+                  <option value="48.9745,14.4747">České Budějovice</option>
+                  <option value="50.7663,15.0543">Liberec</option>
+                  <option value="50.2092,15.8327">Hradec Králové</option>
+                  <option value="49.5938,17.2509">Olomouc</option>
+                  <option value="49.2241,17.6638">Zlín</option>
+                  <option value="50.2304,12.8711">Karlovy Vary</option>
+                  <option value="50.6607,14.0323">Ústí nad Labem</option>
+                  <option value="49.9450,17.9070">Opava</option>
+                </select>
+              </div>
+              <div class="row3">
+                <div><label>Lat</label><input id="climate_lat" type="number" step="0.0001" value="50.0755" /></div>
+                <div><label>Lon</label><input id="climate_lon" type="number" step="0.0001" value="14.4378" /></div>
+                <div><label>Rok</label><select id="climate_year"></select></div>
+              </div>
+              <button id="btnFetchClimate" class="btn" onclick="fetchClimate()">Načíst data z Open-Meteo</button>
             </div>
-            <button id="btnFetchClimate" class="btn">Načíst data z Open-Meteo</button>
+
+            <!-- PVGIS TMY panel -->
+            <div id="panel_pvgis" class="fg" style="display:none;">
+              <div>
+                <label>Město</label>
+                <select id="city_preset_pvgis" onchange="applyPvgisPreset()">
+                  <option value="">-- vybrat --</option>
+                  <option value="50.0755,14.4378">Praha</option>
+                  <option value="49.1951,16.6068">Brno</option>
+                  <option value="49.8209,18.2625">Ostrava</option>
+                  <option value="49.7477,13.3776">Plzeň</option>
+                  <option value="48.9745,14.4747">České Budějovice</option>
+                  <option value="50.7663,15.0543">Liberec</option>
+                  <option value="50.2092,15.8327">Hradec Králové</option>
+                  <option value="49.5938,17.2509">Olomouc</option>
+                  <option value="49.2241,17.6638">Zlín</option>
+                  <option value="50.2304,12.8711">Karlovy Vary</option>
+                  <option value="50.6607,14.0323">Ústí nad Labem</option>
+                  <option value="49.9450,17.9070">Opava</option>
+                </select>
+              </div>
+              <div class="row2">
+                <div><label>Lat</label><input id="pvgis_lat" type="number" step="0.0001" value="50.0755" /></div>
+                <div><label>Lon</label><input id="pvgis_lon" type="number" step="0.0001" value="14.4378" /></div>
+              </div>
+              <button class="btn" onclick="fetchPvgisTmy()">Načíst TMY z PVGIS</button>
+            </div>
+
+            <!-- CHMI panel -->
+            <div id="panel_chmi" class="fg" style="display:none;">
+              <div>
+                <label>Meteorologická stanice</label>
+                <select id="chmi_station">
+                  <option value="">-- nejprve klikni Načíst stanice --</option>
+                </select>
+              </div>
+              <div class="row2">
+                <div>
+                  <label>Rok</label>
+                  <select id="chmi_year"></select>
+                </div>
+                <div style="display:flex;align-items:flex-end;">
+                  <button class="btn btn-sm btn-ghost" onclick="loadChmiStations()" style="width:100%;">Načíst stanice</button>
+                </div>
+              </div>
+              <button class="btn" onclick="fetchChmiData()">Načíst data z ČHMÚ</button>
+            </div>
+
             <div id="climateStatus" class="hint" style="color:#e07b00;">Nejprve načtěte klimatická data.</div>
           </div>
         </div>
