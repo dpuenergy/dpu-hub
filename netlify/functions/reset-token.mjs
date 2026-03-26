@@ -1,7 +1,7 @@
 // Netlify Function: reset-token
 // Generuje podepsaný reset odkaz (admin) a zpracovává změnu hesla (uživatel bez auth)
 
-import { createHmac } from 'crypto';
+import { createHmac } from 'node:crypto';
 
 const ALLOWED_EMAIL = 'hridel@dpuenergy.cz';
 const IDENTITY_URL  = 'https://dpuhub.netlify.app/.netlify/identity';
