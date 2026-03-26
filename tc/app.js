@@ -619,10 +619,9 @@ function updateKpis(summary) {
   _boxClass(document.getElementById("box_peak"), null);
 
   document.getElementById("kpi_el").textContent   = fmtMwh(summary.electricity_mwh);
-  const hasBivalHeat = summary.bivalence_mwh > 0.01;
   const bivalStr = summary.bivalent_point_c != null
     ? `${summary.bivalent_point_c.toFixed(1)} °C`
-    : hasBivalHeat ? "< min. teploty dat" : "—";
+    : "—";
   const coolingEnabledKpi = document.getElementById("cooling_enabled")?.checked;
   const copStr = coolingEnabledKpi
     ? `SCOP topení: ${fmtCop(summary.avg_cop_heating)} | EER chlazení: ${fmtCop(summary.avg_cop_cooling)} | celkové: ${fmtCop(summary.avg_cop_total)} | bival. bod: ${bivalStr}`
@@ -633,10 +632,7 @@ function updateKpis(summary) {
   document.getElementById("kpi_biv").textContent      = `bivalence: ${fmtMwh(summary.bivalence_mwh)}`;
 
   document.getElementById("kpi_peak").textContent  = fmtKw(summary.heat_need_peak_kw);
-  const bivalPeakStr = summary.bivalent_point_c != null
-    ? `/ bivalence max: ${fmtKw(summary.bivalence_peak_kw)}`
-    : summary.bivalence_mwh > 0.01 ? `(min. modul. bival.: ${fmtMwh(summary.bivalence_mwh)})` : "";
-  document.getElementById("kpi_peak2").textContent = `TČ max: ${fmtKw(summary.hp_power_peak_kw)} ${bivalPeakStr}`;
+  document.getElementById("kpi_peak2").textContent = `TČ max / bivalence max: ${fmtKw(summary.hp_power_peak_kw)} / ${fmtKw(summary.bivalence_peak_kw)}`;
 
   document.getElementById("kpi_tout").textContent  = "—";
   document.getElementById("kpi_tout2").textContent = `min / max: ${fmtMinMax(summary.t_out_min_c, summary.t_out_max_c)}`;
