@@ -642,7 +642,11 @@ function updateKpis(summary) {
   const boxCooling = document.getElementById("box_cooling");
   if (boxCooling) boxCooling.style.display = coolingEnabled ? "" : "none";
   if (coolingEnabled) {
-    document.getElementById("kpi_cooling").textContent  = fmtMwh(summary.cooling_mwh);
+    const cov = summary.cooling_coverage_pct ?? 100;
+    const covStr = cov < 99.5
+      ? ` ⚠ pokryto ${cov.toFixed(0)} % poptávky (${fmtMwh(summary.cooling_demand_mwh)})`
+      : "";
+    document.getElementById("kpi_cooling").textContent  = fmtMwh(summary.cooling_mwh) + covStr;
     document.getElementById("kpi_cooling2").textContent = `EER: ${fmtCop(summary.avg_cop_cooling)} | špička: ${fmtKw(summary.cooling_peak_kw)}`;
   }
 
