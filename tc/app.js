@@ -522,6 +522,12 @@ function getInputs() {
     tuv_profile:   document.getElementById("tuv_profile")?.value || "uniform",
     tuv_min_temp_c: parseFloat(document.getElementById("tuv_min_temp_c")?.value || 55),
 
+    tuv_tank_liters:  parseFloat(document.getElementById("tuv_tank_liters")?.value  || 300),
+    tuv_tank_t_max:   parseFloat(document.getElementById("tuv_tank_t_max")?.value   || 65),
+    cool_tank_liters: parseFloat(document.getElementById("cool_tank_liters")?.value || 500),
+    cool_tank_t_min:  parseFloat(document.getElementById("cool_tank_t_min")?.value  || 6),
+    cool_tank_t_max:  parseFloat(document.getElementById("cool_tank_t_max")?.value  || 14),
+
     cooling_enabled:      document.getElementById("cooling_enabled")?.checked || false,
     cooling_mode:         coolingMode,
     cooling_gj:           coolingMode === "gj" ? parseFloat(document.getElementById("cooling_gj")?.value || 0) * heatToGj : 0,
@@ -702,6 +708,23 @@ function buildCharts(result) {
     makeLineChart("chCooling", labels, s.cooling_kw, "Výkon chlazení (kW)");
   } else {
     destroyChart("chCooling");
+  }
+
+  // Tank SOC chart — two lines: TUV and cold tank
+  destroyChart("chTankSoc");
+  if (s.tuv_soc || s.cool_soc) {
+    const datasets = [];
+    if (s.tuv_soc)  datasets.push({ label: "TUV zásobník (%)",      data: s.tuv_soc.map(v => v * 100),  pointRadius: 0, borderWidth: 1 });
+    if (s.cool_soc) datasets.push({ label: "Chlazený zásobník (%)", data: s.cool_soc.map(v => v * 100), pointRadius: 0, borderWidth: 1 });
+    charts["chTankSoc"] = new Chart(document.getElementById("chTankSoc"), {
+      type: "line",
+      data: { labels, datasets },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: true }, decimation: { enabled: true, algorithm: "min-max" } },
+        scales: { x: { display: false }, y: { min: 0, max: 100, title: { display: true, text: "% kapacity" } } },
+      },
+    });
   }
 
   // Heating curve scatter (sampled every 12 hours for clarity)

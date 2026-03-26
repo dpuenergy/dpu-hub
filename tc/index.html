@@ -283,7 +283,7 @@
             <div><label>Min. teplota TUV (°C)</label><input id="tuv_min_temp_c" type="number" value="55" step="1" /></div>
           </div>
 
-          <div class="section-title">Akumulace</div>
+          <div class="section-title">Akumulace — hydraulický zásobník TČ</div>
           <div class="row2">
             <div><label>Min. doba chodu TČ (min)</label><input id="acc_t_min" type="number" value="5" step="1" min="1" oninput="calcAccumulation()" /></div>
             <div>
@@ -293,6 +293,24 @@
             </div>
           </div>
           <div id="acc_result" style="font-size:13px; font-weight:700; color:var(--brand); margin-top:4px;">—</div>
+
+          <div class="section-title" style="margin-top:12px;">Zásobník TUV</div>
+          <div class="row2">
+            <div><label>Objem (l)</label><input id="tuv_tank_liters" type="number" value="300" step="50" min="50" /></div>
+            <div><label>Max. teplota (°C)</label><input id="tuv_tank_t_max" type="number" value="65" step="1" min="55" max="90" /></div>
+          </div>
+
+          <div class="section-title" style="margin-top:12px;">Zásobník chlazené vody</div>
+          <div class="row2">
+            <div><label>Objem (l)</label><input id="cool_tank_liters" type="number" value="500" step="50" min="50" /></div>
+            <div><label>Teplotní rozsah (°C)</label>
+              <div style="display:flex; gap:6px; align-items:center;">
+                <input id="cool_tank_t_min" type="number" value="6"  step="1" min="2" max="15" style="width:70px;" />
+                <span>–</span>
+                <input id="cool_tank_t_max" type="number" value="14" step="1" min="8" max="20" style="width:70px;" />
+              </div>
+            </div>
+          </div>
 
           <details>
             <summary>Parametry modelu TČ a topné soustavy ▸</summary>
@@ -628,6 +646,10 @@
         <div class="ch-wrap small">
           <div class="ch-head">Topná křivka (T voda vs T venku)</div>
           <div class="ch-body"><canvas id="chHeatingCurve"></canvas></div>
+        </div>
+        <div class="ch-wrap">
+          <div class="ch-head">Stav zásobníků — TUV a chlazení (% kapacity)</div>
+          <div class="ch-body"><canvas id="chTankSoc"></canvas></div>
         </div>
       </div>
 
