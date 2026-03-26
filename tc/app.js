@@ -627,6 +627,15 @@ function updateKpis(summary) {
   document.getElementById("kpi_tout").textContent  = "—";
   document.getElementById("kpi_tout2").textContent = `min / max: ${fmtMinMax(summary.t_out_min_c, summary.t_out_max_c)}`;
 
+  // Cooling KPI — show whenever cooling is enabled
+  const coolingEnabled = document.getElementById("cooling_enabled")?.checked;
+  const boxCooling = document.getElementById("box_cooling");
+  if (boxCooling) boxCooling.style.display = coolingEnabled ? "" : "none";
+  if (coolingEnabled) {
+    document.getElementById("kpi_cooling").textContent  = fmtMwh(summary.cooling_mwh);
+    document.getElementById("kpi_cooling2").textContent = `EER: ${fmtCop(summary.avg_eer)} | špička: ${fmtKw(summary.cooling_peak_kw)}`;
+  }
+
   document.getElementById("kpi_cost").textContent =
     `Elektřina (${summary.electricity_tariff || "tarif"} / ${summary.supplier_key || "dodavatel"}): ${fmtKcz(summary.electricity_cost_kcz)}`;
   document.getElementById("kpi_cost2").textContent =
@@ -661,17 +670,35 @@ function buildCharts(result) {
     },
   });
 
-  makeBarChart("chHeatSplit",
-    ["TČ", "Bivalence"],
-    [summary.heat_from_hp_mwh, summary.bivalence_mwh],
-    "Vyrobené teplo (MWh/rok)"
-  );
+  const coolingActive = document.getElementById("cooling_enabled")?.checked;
+  if (coolingActive && summary.cooling_mwh != null) {
+    makeBarChart("chHeatSplit",
+      ["TČ", "Bivalence", "Chlazení"],
+      [summary.heat_from_hp_mwh, summary.bivalence_mwh, summary.cooling_mwh],
+      "Energie (MWh/rok)"
+    );
+  } else {
+    makeBarChart("chHeatSplit",
+      ["TČ", "Bivalence"],
+      [summary.heat_from_hp_mwh, summary.bivalence_mwh],
+      "Vyrobené teplo (MWh/rok)"
+    );
+  }
 
   // Duration curve: sort hours by descending heat need
   const idx     = s.heat_need_kw.map((v, i) => ({ v, i })).sort((a, b) => b.v - a.v).map(o => o.i);
   const dur_kw  = idx.map(i => s.heat_need_kw[i]);
   const dur_cop = idx.map(i => s.cop[i] || null);
   makeDualAxisDuration("chDurationCop", labels, dur_kw, dur_cop);
+
+  // Cooling chart — shown when cooling is enabled; graph rendered only if series data present
+  const coolingWrap = document.getElementById("ch_cooling_wrap");
+  if (coolingWrap) coolingWrap.style.display = coolingActive ? "" : "none";
+  if (coolingActive && s.cooling_kw) {
+    makeLineChart("chCooling", labels, s.cooling_kw, "Výkon chlazení (kW)");
+  } else {
+    destroyChart("chCooling");
+  }
 
   // Heating curve scatter (sampled every 12 hours for clarity)
   const pts = [];

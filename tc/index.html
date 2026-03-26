@@ -372,7 +372,7 @@
             <summary>Reverzibilní TČ – chlazení ▸</summary>
             <div class="fg">
               <label style="display:flex; align-items:center; gap:6px; cursor:pointer; font-size:13px; color:var(--text);">
-                <input type="checkbox" id="cooling_enabled" /> Zahrnout chlazení do simulace
+                <input type="checkbox" id="cooling_enabled" onchange="toggleCooling()" /> Zahrnout chlazení do simulace
               </label>
               <div id="cooling_params" style="display:none;" class="fg">
                 <div class="row2">
@@ -588,6 +588,11 @@
               <div class="box-val" id="kpi_tout">—</div>
               <div class="box-sub" id="kpi_tout2">min / max: —</div>
             </div>
+            <div class="box" id="box_cooling" style="display:none;">
+              <div class="box-label">Dodávka chladu</div>
+              <div class="box-val" id="kpi_cooling">—</div>
+              <div class="box-sub" id="kpi_cooling2">EER: —</div>
+            </div>
           </div>
           <div style="margin-top:10px; padding:10px 12px; border-radius:10px; border:1px solid var(--border); background:var(--bg);">
             <div style="font-weight:800; font-size:14px;" id="kpi_cost">Náklady: —</div>
@@ -611,6 +616,10 @@
         <div class="ch-wrap">
           <div class="ch-head">Hodinové výkony (kW)</div>
           <div class="ch-body"><canvas id="chPower"></canvas></div>
+        </div>
+        <div class="ch-wrap" id="ch_cooling_wrap" style="display:none;">
+          <div class="ch-head">Hodinový výkon chlazení (kW)</div>
+          <div class="ch-body"><canvas id="chCooling"></canvas></div>
         </div>
         <div class="ch-wrap">
           <div class="ch-head">Křivka trvání výkonu + COP</div>
