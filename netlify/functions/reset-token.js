@@ -1,5 +1,5 @@
-// Netlify Function: reset-token
-// Bez importů — používá Web Crypto API (globální crypto v Node 18) a Buffer
+// Netlify Function: reset-token (CommonJS)
+const crypto = require('crypto');
 
 const ALLOWED_EMAIL = 'hridel@dpuenergy.cz';
 const IDENTITY_URL  = 'https://dpuhub.netlify.app/.netlify/identity';
@@ -17,9 +17,8 @@ function json(status, body) {
   return { statusCode: status, headers: CORS, body: JSON.stringify(body) };
 }
 
-async function hmacSign(secret, data) {
-  const { createHmac } = await import('crypto');
-  return createHmac('sha256', secret).update(data).digest('hex');
+function hmacSign(secret, data) {
+  return crypto.createHmac('sha256', secret).update(data).digest('hex');
 }
 
 function toBase64url(str) {
@@ -43,7 +42,7 @@ async function verifyAdminToken(token) {
   } catch { return null; }
 }
 
-export async function handler(event) {
+exports.handler = async function(event) {
   if (event.httpMethod === 'OPTIONS') {
     return { statusCode: 204, headers: CORS, body: '' };
   }
@@ -63,7 +62,7 @@ export async function handler(event) {
     const secret  = process.env.NETLIFY_ACCESS_TOKEN;
     const expiry  = Date.now() + TOKEN_TTL;
     const payload = body.userId + ':' + expiry;
-    const sig     = await hmacSign(secret, payload);
+    const sig     = hmacSign(secret, payload);
     const resetToken = toBase64url(payload + ':' + sig);
     const url = SITE_URL + '/#reset_token=' + resetToken;
 
@@ -78,7 +77,7 @@ export async function handler(event) {
     let decoded;
     try {
       decoded = fromBase64url(body.token);
-    } catch {
+    } catch(e) {
       return json(400, { error: 'Neplatný token' });
     }
 
@@ -92,8 +91,7 @@ export async function handler(event) {
     const userId = decoded.slice(0, secondLastColon);
 
     const secret      = process.env.NETLIFY_ACCESS_TOKEN;
-    const payload     = userId + ':' + expiry;
-    const expectedSig = await hmacSign(secret, payload);
+    const expectedSig = hmacSign(secret, userId + ':' + expiry);
     if (sig !== expectedSig) return json(401, { error: 'Neplatný token' });
 
     if (Date.now() > parseInt(expiry)) return json(401, { error: 'Token vypršel (platnost 24 hodin)' });
@@ -124,4 +122,4 @@ export async function handler(event) {
   }
 
   return json(405, { error: 'Nepodporovaná metoda' });
-}
+};
