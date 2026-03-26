@@ -475,6 +475,7 @@ body.dark .card-icon.rose   { background: #2a0a18; }
     <div class="header-user">
       <span class="header-email" id="header-email"></span>
       <button class="btn-admin" id="btn-admin" onclick="openAdmin()" style="display:none" title="Správa uživatelů">&#9881; Admin</button>
+      <button class="btn-logout" onclick="openChangePassword()">Změnit heslo</button>
       <button class="btn-logout" id="theme-toggle" onclick="toggleTheme()" title="Přepnout tmavý režim">🌙</button>
       <button class="btn-logout" onclick="logout()">Odhlásit</button>
     </div>
@@ -1324,6 +1325,73 @@ async function adminLoadUsers() {
     }).join('');
   } catch(e) {
     list.innerHTML = '<div class="user-list-empty">Síťová chyba.</div>';
+  }
+}
+</script>
+
+<!-- ── Změna hesla modal ─────────────────────────────────────────────────── -->
+<div id="chpw-modal" onclick="if(event.target===this)closeChangePassword()" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.5);display:none;align-items:center;justify-content:center;">
+  <div style="background:#fff;border-radius:14px;padding:28px;max-width:380px;width:90%;box-shadow:0 8px 40px rgba(0,0,0,.25);">
+    <div style="font-weight:700;font-size:16px;margin-bottom:16px;">Změna hesla</div>
+    <div style="margin-bottom:10px;">
+      <label style="font-size:12px;color:#64748b;display:block;margin-bottom:4px;">Nové heslo</label>
+      <input type="password" id="chpw-pw1" placeholder="Nové heslo" style="width:100%;padding:8px 10px;border:1px solid #cbd5e1;border-radius:8px;font-size:14px;" />
+    </div>
+    <div style="margin-bottom:16px;">
+      <label style="font-size:12px;color:#64748b;display:block;margin-bottom:4px;">Potvrdit heslo</label>
+      <input type="password" id="chpw-pw2" placeholder="Zopakujte heslo" style="width:100%;padding:8px 10px;border:1px solid #cbd5e1;border-radius:8px;font-size:14px;" />
+    </div>
+    <div id="chpw-msg" style="display:none;font-size:13px;margin-bottom:12px;"></div>
+    <div style="display:flex;gap:8px;">
+      <button onclick="closeChangePassword()" style="flex:1;padding:9px;border:1px solid #cbd5e1;background:#fff;border-radius:8px;cursor:pointer;font-size:14px;">Zrušit</button>
+      <button onclick="submitChangePassword()" style="flex:1;padding:9px;background:#1b3280;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:600;font-size:14px;">Uložit</button>
+    </div>
+  </div>
+</div>
+
+<script>
+function openChangePassword() {
+  var m = document.getElementById('chpw-modal');
+  m.style.display = 'flex';
+  document.getElementById('chpw-pw1').value = '';
+  document.getElementById('chpw-pw2').value = '';
+  document.getElementById('chpw-msg').style.display = 'none';
+  document.getElementById('chpw-pw1').focus();
+}
+function closeChangePassword() {
+  document.getElementById('chpw-modal').style.display = 'none';
+}
+async function submitChangePassword() {
+  var pw1 = document.getElementById('chpw-pw1').value;
+  var pw2 = document.getElementById('chpw-pw2').value;
+  var msg = document.getElementById('chpw-msg');
+  msg.style.display = 'none';
+
+  if (!pw1) { msg.style.cssText = 'display:block;color:#e11d48;font-size:13px;margin-bottom:12px;'; msg.textContent = 'Zadejte nové heslo.'; return; }
+  if (pw1 !== pw2) { msg.style.cssText = 'display:block;color:#e11d48;font-size:13px;margin-bottom:12px;'; msg.textContent = 'Hesla se neshodují.'; return; }
+
+  var sess = null;
+  try { sess = JSON.parse(localStorage.getItem('dpu_user') || 'null'); } catch(e) {}
+  if (!sess || !sess.access_token) { msg.style.cssText = 'display:block;color:#e11d48;font-size:13px;margin-bottom:12px;'; msg.textContent = 'Nejste přihlášeni.'; return; }
+
+  try {
+    var res = await fetch(IDENTITY_URL + '/user', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + sess.access_token },
+      body: JSON.stringify({ password: pw1 })
+    });
+    if (res.ok) {
+      msg.style.cssText = 'display:block;color:#16a34a;font-size:13px;margin-bottom:12px;';
+      msg.textContent = 'Heslo bylo změněno.';
+      setTimeout(closeChangePassword, 1500);
+    } else {
+      var d = await res.json().catch(function(){ return {}; });
+      msg.style.cssText = 'display:block;color:#e11d48;font-size:13px;margin-bottom:12px;';
+      msg.textContent = 'Chyba: ' + (d.msg || d.error || res.status);
+    }
+  } catch(e) {
+    msg.style.cssText = 'display:block;color:#e11d48;font-size:13px;margin-bottom:12px;';
+    msg.textContent = 'Síťová chyba: ' + e.message;
   }
 }
 </script>
