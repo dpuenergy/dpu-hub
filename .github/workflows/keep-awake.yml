@@ -2,7 +2,7 @@ name: Keep Streamlit apps awake
 
 on:
   schedule:
-    - cron: '0 6,12,18 * * *'   # 3x denně: 6:00, 12:00, 18:00 UTC
+    - cron: '0 * * * *'          # každou hodinu
   workflow_dispatch:              # možnost spustit ručně
 
 jobs:
