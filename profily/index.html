@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Profily spotřeby | DPU Energy</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:#f0f3f9;}
+body.dark{background:#0f1624;}
+#profily-frame{
+  position:fixed;
+  top:48px;left:0;right:0;bottom:0;
+  width:100%;height:calc(100vh - 48px);
+  border:none;
+}
+</style>
+</head>
+<body>
+<script>if(localStorage.getItem('dpu_theme')==='dark')document.body.classList.add('dark');</script>
+
+<iframe id="profily-frame" title="Profily spotřeby"></iframe>
+
+<script src="/shared/navbar.js" data-tool="Profily spotřeby"></script>
+<script>
+var APP_BASE = 'https://profily-13vt-5btc9taff-dpuenergys-projects.vercel.app';
+
+function b64d(s) {
+  s = s.replace(/-/g, '+').replace(/_/g, '/');
+  while (s.length % 4) s += '=';
+  return atob(s);
+}
+
+function getAppUrl() {
+  var url = new URL(APP_BASE + '/');
+  try {
+    var sess = JSON.parse(localStorage.getItem('dpu_user') || 'null');
+    if (sess && sess.access_token) {
+      var pl = JSON.parse(b64d(sess.access_token.split('.')[1]));
+      var email = pl.email || '';
+      if (email) {
+        var ts = Math.floor(Date.now() / 60000);
+        url.searchParams.set('access_token', btoa(email + ':DPU2025int:' + ts));
+        url.searchParams.set('dpu_user', email);
+      }
+    }
+  } catch(e) {}
+  return url.toString();
+}
+
+document.getElementById('profily-frame').src = getAppUrl();
+</script>
+</body>
+</html>

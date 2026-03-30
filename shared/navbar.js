@@ -126,7 +126,7 @@
       'background:#1b3280;color:#fff;',
       'display:flex;align-items:center;padding:0 20px;gap:10px;',
       'z-index:999999;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;',
-      'font-size:14px;box-shadow:0 2px 12px rgba(0,0,0,.28);}',
+      'font-size:14px;box-shadow:0 2px 12px rgba(0,0,0,.28);color-scheme:dark;}',
     '#dpu-nav a{color:#fff;text-decoration:none;}',
     '#dpu-nav .dpu-back{display:flex;align-items:center;gap:5px;opacity:.70;',
       'transition:opacity .15s;white-space:nowrap;}',
