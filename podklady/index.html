@@ -25,9 +25,31 @@ body.dark{background:#0f1624;}
 <script>
 var STREAMLIT_BASE = 'https://dpuenergy-podklady.streamlit.app';
 
+function b64d(s) {
+  s = s.replace(/-/g, '+').replace(/_/g, '/');
+  while (s.length % 4) s += '=';
+  return atob(s);
+}
+
 function getStreamlitUrl() {
   var dark = document.body.classList.contains('dark');
-  return STREAMLIT_BASE + '/?embed=true&embed_options=' + (dark ? 'dark_theme' : 'light_theme');
+  var theme = dark ? 'dark_theme' : 'light_theme';
+  var url = new URL(STREAMLIT_BASE + '/');
+  url.searchParams.set('embed', 'true');
+  url.searchParams.set('embed_options', theme);
+  try {
+    var sess = JSON.parse(localStorage.getItem('dpu_user') || 'null');
+    if (sess && sess.access_token) {
+      var pl = JSON.parse(b64d(sess.access_token.split('.')[1]));
+      var email = pl.email || '';
+      if (email) {
+        var ts = Math.floor(Date.now() / 60000);
+        url.searchParams.set('access_token', btoa(email + ':DPU2025int:' + ts));
+        url.searchParams.set('dpu_user', email);
+      }
+    }
+  } catch(e) {}
+  return url.toString();
 }
 
 document.getElementById('podklady-frame').src = getStreamlitUrl();
