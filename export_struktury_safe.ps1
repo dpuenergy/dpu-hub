@@ -124,11 +124,16 @@ try {
         } catch { return }
 
         for ($i = 0; $i -lt $items.Count; $i++) {
-            $last      = ($i -eq $items.Count - 1)
-            $connector = if ($last) { '\-- ' } else { '+-- ' }
+            $isLast = ($i -eq $items.Count - 1)
+            if ($isLast) {
+                $connector   = '\-- '
+                $childPrefix = $Prefix + '    '
+            } else {
+                $connector   = '+-- '
+                $childPrefix = $Prefix + '|   '
+            }
             $Lines.Add($Prefix + $connector + $items[$i].Name)
             if ($items[$i].PSIsContainer) {
-                $childPrefix = $Prefix + (if ($last) { '    ' } else { '|   ' })
                 Write-PSTree -Path $items[$i].FullName -Prefix $childPrefix -Lines $Lines
             }
         }
