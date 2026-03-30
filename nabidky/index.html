@@ -1,0 +1,1424 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Caflou Generator — DPU ENERGY</title>
+<style>
+  :root {
+    --purple: #2D2558;
+    --purple-mid: #3d3275;
+    --purple-light: #f5f3fb;
+    --purple-border: #d6d0f0;
+    --gray: #6B6C6E;
+    --gray-light: #f4f4f5;
+    --gray-border: #e2e2e4;
+    --red: #c0392b;
+    --green: #27ae60;
+    --white: #ffffff;
+    --sidebar-w: 440px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 13px;
+    color: #1a1a1a;
+    background: #eceef2;
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  /* ── Top bar ── */
+  .topbar {
+    background: var(--purple);
+    color: #fff;
+    padding: 0 16px;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+    z-index: 10;
+  }
+  .topbar-title { font-size: 15px; font-weight: 700; letter-spacing: .3px; }
+  .topbar-sub { font-size: 11px; opacity: .65; margin-top: 1px; }
+  .topbar-back {
+    font-size: 12px; color: rgba(255,255,255,.75); text-decoration: none;
+    border: 1px solid rgba(255,255,255,.3); border-radius: 5px;
+    padding: 4px 10px; transition: background .15s;
+  }
+  .topbar-back:hover { background: rgba(255,255,255,.15); color: #fff; }
+
+  /* ── API key bar ── */
+  .apibar {
+    background: #fff;
+    border-bottom: 1px solid var(--gray-border);
+    padding: 8px 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+  .apibar label { font-size: 11px; font-weight: 600; color: var(--gray); white-space: nowrap; }
+  .apibar input {
+    flex: 1;
+    border: 1px solid var(--gray-border);
+    border-radius: 5px;
+    padding: 5px 8px;
+    font-size: 12px;
+    font-family: monospace;
+    outline: none;
+    min-width: 0;
+  }
+  .apibar input:focus { border-color: var(--purple); }
+  .api-dot {
+    width: 9px; height: 9px;
+    border-radius: 50%;
+    background: var(--red);
+    flex-shrink: 0;
+    transition: background .2s;
+  }
+  .api-dot.set { background: var(--green); }
+  .btn-save-api {
+    background: var(--purple);
+    color: #fff;
+    border: none;
+    border-radius: 5px;
+    padding: 5px 12px;
+    font-size: 12px;
+    cursor: pointer;
+    white-space: nowrap;
+    font-family: Arial, Helvetica, sans-serif;
+  }
+  .btn-save-api:hover { background: var(--purple-mid); }
+
+  /* ── Main layout ── */
+  .main {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+  }
+
+  /* ── Sidebar ── */
+  .sidebar {
+    width: var(--sidebar-w);
+    flex-shrink: 0;
+    background: #fff;
+    border-right: 1px solid var(--gray-border);
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .sidebar-inner { padding: 14px; display: flex; flex-direction: column; gap: 14px; }
+
+  .section-title {
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--gray);
+    text-transform: uppercase;
+    letter-spacing: .6px;
+    margin-bottom: 6px;
+  }
+
+  /* ── Upload zone ── */
+  .upload-zone {
+    border: 2px dashed var(--purple-border);
+    border-radius: 8px;
+    background: var(--purple-light);
+    padding: 14px 12px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color .2s, background .2s;
+    position: relative;
+  }
+  .upload-zone:hover, .upload-zone.drag-over {
+    border-color: var(--purple);
+    background: #ede9f8;
+  }
+  .upload-zone input[type=file] {
+    position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%;
+  }
+  .upload-icon { font-size: 22px; margin-bottom: 4px; }
+  .upload-text { font-size: 12px; color: var(--purple); font-weight: 600; }
+  .upload-sub { font-size: 11px; color: var(--gray); margin-top: 2px; }
+  .upload-status { margin-top: 8px; font-size: 12px; min-height: 16px; }
+  .upload-status.ok { color: var(--green); font-weight: 600; }
+  .upload-status.err { color: var(--red); }
+
+  /* ── Form fields ── */
+  .field { display: flex; flex-direction: column; gap: 3px; }
+  .field label { font-size: 11px; font-weight: 600; color: #444; }
+  .field input[type=text],
+  .field input[type=date],
+  .field textarea,
+  .field select {
+    border: 1px solid var(--gray-border);
+    border-radius: 5px;
+    padding: 6px 8px;
+    font-size: 13px;
+    font-family: Arial, Helvetica, sans-serif;
+    outline: none;
+    resize: vertical;
+    background: #fff;
+    color: #1a1a1a;
+  }
+  .field input:focus,
+  .field textarea:focus,
+  .field select:focus { border-color: var(--purple); }
+
+  .toggle-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 0;
+  }
+  .toggle-row label { font-size: 12px; font-weight: 600; cursor: pointer; }
+
+  /* toggle switch */
+  .toggle { position: relative; display: inline-block; width: 32px; height: 18px; flex-shrink: 0; }
+  .toggle input { opacity: 0; width: 0; height: 0; }
+  .toggle-slider {
+    position: absolute; cursor: pointer; inset: 0;
+    background: #ccc; border-radius: 18px; transition: .2s;
+  }
+  .toggle-slider:before {
+    content: ""; position: absolute;
+    height: 12px; width: 12px; left: 3px; bottom: 3px;
+    background: white; border-radius: 50%; transition: .2s;
+  }
+  .toggle input:checked + .toggle-slider { background: var(--purple); }
+  .toggle input:checked + .toggle-slider:before { transform: translateX(14px); }
+
+  .sub-fields { padding-left: 8px; display: flex; flex-direction: column; gap: 8px; }
+
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+
+  /* ── Objects table ── */
+  .objects-table { width: 100%; border-collapse: collapse; }
+  .objects-table th {
+    font-size: 10px; font-weight: 700; color: var(--gray);
+    text-transform: uppercase; letter-spacing: .4px;
+    padding: 4px 5px; border-bottom: 2px solid var(--gray-border);
+    text-align: left;
+  }
+  .objects-table td { padding: 3px 2px; vertical-align: middle; }
+  .objects-table input, .objects-table select {
+    width: 100%; border: 1px solid var(--gray-border);
+    border-radius: 4px; padding: 4px 5px;
+    font-size: 12px; font-family: Arial, Helvetica, sans-serif;
+    outline: none; background: #fff;
+  }
+  .objects-table input:focus, .objects-table select:focus { border-color: var(--purple); }
+  .objects-table .col-name { width: auto; }
+  .objects-table .col-price { width: 90px; }
+  .objects-table .col-dph { width: 58px; }
+  .objects-table .col-del { width: 26px; text-align: center; }
+
+  .btn-del {
+    background: none; border: none; cursor: pointer;
+    color: #bbb; font-size: 15px; padding: 2px 4px;
+    line-height: 1; border-radius: 3px;
+  }
+  .btn-del:hover { color: var(--red); background: #fdecea; }
+
+  .btn-add-row {
+    margin-top: 6px;
+    background: none; border: 1px dashed var(--purple-border);
+    color: var(--purple); border-radius: 5px;
+    padding: 5px 10px; font-size: 12px; cursor: pointer;
+    width: 100%; font-family: Arial, Helvetica, sans-serif;
+    font-weight: 600;
+  }
+  .btn-add-row:hover { background: var(--purple-light); }
+
+  /* ── Fakturace ── */
+  .row3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+
+  /* ── Output column ── */
+  .output-col {
+    flex: 1;
+    overflow-y: auto;
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    min-width: 0;
+  }
+
+  .output-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .output-header-title { font-size: 13px; font-weight: 700; color: var(--purple); }
+
+  /* ── AI button ── */
+  .btn-ai {
+    background: #4a3580;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    padding: 8px 16px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-family: Arial, Helvetica, sans-serif;
+    transition: background .2s;
+  }
+  .btn-ai:hover { background: var(--purple); }
+  .btn-ai:disabled { background: #9b8ec4; cursor: not-allowed; }
+  .btn-ai .sparkle { font-size: 14px; }
+
+  /* ── Cards ── */
+  .card {
+    background: #fff;
+    border: 1px solid var(--gray-border);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  .card-header {
+    background: var(--gray-light);
+    padding: 8px 12px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--gray-border);
+  }
+  .card-title { font-size: 12px; font-weight: 700; color: #333; display: flex; align-items: center; gap: 6px; }
+  .card-actions { display: flex; align-items: center; gap: 6px; }
+
+  /* AI badge + toggle */
+  .ai-badge {
+    display: none;
+    font-size: 10px;
+    background: #ede9f8;
+    color: #4a3580;
+    border-radius: 4px;
+    padding: 2px 6px;
+    font-weight: 700;
+    letter-spacing: .3px;
+  }
+  .ai-badge.visible { display: inline-block; }
+  .btn-toggle-version {
+    font-size: 10px;
+    background: none;
+    border: 1px solid #c8bfed;
+    border-radius: 4px;
+    padding: 2px 7px;
+    cursor: pointer;
+    color: #4a3580;
+    font-weight: 600;
+    display: none;
+    font-family: Arial, Helvetica, sans-serif;
+  }
+  .btn-toggle-version.visible { display: inline-block; }
+  .btn-toggle-version:hover { background: var(--purple-light); }
+
+  .tab-btns { display: flex; gap: 4px; }
+  .tab-btn {
+    background: none; border: 1px solid var(--gray-border);
+    border-radius: 4px; padding: 3px 9px;
+    font-size: 11px; cursor: pointer; color: var(--gray);
+    font-family: Arial, Helvetica, sans-serif;
+  }
+  .tab-btn.active {
+    background: var(--purple); border-color: var(--purple); color: #fff;
+  }
+
+  .btn-copy {
+    background: none; border: 1px solid var(--gray-border);
+    border-radius: 4px; padding: 3px 9px;
+    font-size: 11px; cursor: pointer; color: var(--gray);
+    font-family: Arial, Helvetica, sans-serif;
+  }
+  .btn-copy:hover { background: var(--gray-light); color: #333; }
+  .btn-copy.copied { color: var(--green); border-color: var(--green); }
+
+  .card-body { padding: 12px; }
+
+  .tab-pane { display: none; }
+  .tab-pane.active { display: block; }
+
+  /* Preview pane */
+  .preview-content {
+    font-size: 13px;
+    line-height: 1.6;
+    color: #222;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+
+  /* HTML pane */
+  .html-content {
+    font-family: monospace;
+    font-size: 11px;
+    background: #f8f8f8;
+    border-radius: 4px;
+    padding: 10px;
+    overflow-x: auto;
+    white-space: pre-wrap;
+    word-break: break-all;
+    color: #333;
+    max-height: 360px;
+    overflow-y: auto;
+  }
+
+  /* Souhrn table preview */
+  .souhrn-preview {
+    font-size: 13px;
+    color: #222;
+    line-height: 1.5;
+  }
+
+  /* Spinner */
+  .spinner {
+    display: inline-block;
+    width: 14px; height: 14px;
+    border: 2px solid rgba(255,255,255,.3);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: spin .6s linear infinite;
+    flex-shrink: 0;
+  }
+  .spinner-dark {
+    border-color: rgba(45,37,88,.2);
+    border-top-color: var(--purple);
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .hidden { display: none !important; }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #ccc; border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: #aaa; }
+
+  /* ── Cenový souhrn styles (in output) ── */
+  .souhrn-row {
+    display: flex; align-items: baseline; gap: 0;
+    padding: 3px 0;
+    border-bottom: 1px solid #f0f0f0;
+    font-size: 13px;
+  }
+  .souhrn-row:last-child { border-bottom: none; }
+  .s-name { flex: 1; color: #222; }
+  .s-price { width: 94px; text-align: right; font-variant-numeric: tabular-nums; }
+  .s-dph-rate { width: 50px; text-align: right; color: var(--gray); }
+  .s-dph-label { font-size: 11px; color: var(--gray); }
+  .s-total { width: 84px; text-align: right; font-variant-numeric: tabular-nums; }
+  .s-kc { font-size: 11px; color: var(--gray); }
+
+  .souhrn-header-row {
+    display: flex; align-items: baseline;
+    padding: 0 0 4px 0;
+    border-bottom: 2px solid #ddd;
+    margin-bottom: 2px;
+    font-size: 10px; font-weight: 700;
+    color: var(--gray); text-transform: uppercase; letter-spacing: .4px;
+  }
+  .sh-name { flex: 1; }
+  .sh-price { width: 94px; text-align: right; }
+  .sh-dph { width: 50px; text-align: right; }
+  .sh-total { width: 84px; text-align: right; }
+
+  .souhrn-sum-block {
+    margin-top: 8px;
+    text-align: right;
+    border-top: 2px solid #ddd;
+    padding-top: 6px;
+  }
+  .sum-line { font-size: 12px; color: var(--gray); margin-bottom: 2px; }
+  .sum-line strong { color: #222; font-size: 13px; }
+  .sum-total-line { font-size: 15px; font-weight: 700; color: var(--purple); margin-top: 3px; }
+
+  /* ── AI status message ── */
+  .ai-status {
+    font-size: 12px;
+    padding: 6px 10px;
+    border-radius: 5px;
+    display: none;
+  }
+  .ai-status.ok { background: #eafaf1; color: var(--green); display: block; }
+  .ai-status.err { background: #fdecea; color: var(--red); display: block; }
+  .ai-status.loading { background: var(--purple-light); color: var(--purple); display: flex; align-items: center; gap: 8px; }
+</style>
+</head>
+<body>
+
+<!-- Top bar -->
+<div class="topbar">
+  <div>
+    <div class="topbar-title">Caflou Generator</div>
+    <div class="topbar-sub">DPU ENERGY s.r.o. — nabídkový generátor</div>
+  </div>
+  <a href="/" class="topbar-back">← Hub</a>
+</div>
+
+<!-- API key bar -->
+<div class="apibar">
+  <label>Anthropic API klíč</label>
+  <input type="password" id="apiKeyInput" placeholder="sk-ant-..." autocomplete="off">
+  <div class="api-dot" id="apiDot"></div>
+  <button class="btn-save-api" onclick="saveApiKey()">Uložit</button>
+</div>
+
+<!-- Main layout -->
+<div class="main">
+
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <div class="sidebar-inner">
+
+      <!-- Caflou import -->
+      <div>
+        <div class="section-title">Import z Caflou</div>
+        <div class="upload-zone" id="uploadZone"
+             ondragover="handleDragOver(event)"
+             ondragleave="handleDragLeave(event)"
+             ondrop="handleDrop(event)">
+          <input type="file" id="fileInput" accept=".png,.jpg,.jpeg,.webp,.pdf"
+                 onchange="handleFileInputChange(event)">
+          <div class="upload-icon">📎</div>
+          <div class="upload-text">Přetáhni nebo klikni pro nahrání</div>
+          <div class="upload-sub">Podporuje: PNG, JPG, WebP, PDF</div>
+          <div class="upload-status" id="uploadStatus"></div>
+        </div>
+      </div>
+
+      <!-- Základní info -->
+      <div>
+        <div class="section-title">Základní informace</div>
+        <div style="display:flex;flex-direction:column;gap:8px;">
+          <div class="field">
+            <label>Název nabídky / projektu</label>
+            <input type="text" id="nazev" placeholder="např. Energetická studie OÚ Příbor" oninput="generate()">
+          </div>
+          <div class="field">
+            <label>Klient</label>
+            <input type="text" id="klient" placeholder="např. Obec Příbor" oninput="generate()">
+          </div>
+          <div class="field">
+            <label>Rozsah / popis prací</label>
+            <textarea id="rozsah" rows="2" placeholder="Stručný popis co je předmětem nabídky..." oninput="generate()"></textarea>
+          </div>
+        </div>
+      </div>
+
+      <!-- OPŽP toggle -->
+      <div>
+        <div class="toggle-row">
+          <label class="toggle">
+            <input type="checkbox" id="opzpToggle" onchange="toggleOpzp()">
+            <span class="toggle-slider"></span>
+          </label>
+          <label for="opzpToggle" style="cursor:pointer;">Výzva OPŽP</label>
+        </div>
+        <div id="opzpFields" class="sub-fields hidden">
+          <div class="row2">
+            <div class="field">
+              <label>Deadline podání žádosti</label>
+              <input type="date" id="deadline" oninput="generate()">
+            </div>
+            <div class="field">
+              <label>Program / výzva</label>
+              <input type="text" id="program" placeholder="např. OPŽP 1.3" oninput="generate()">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Dotace toggle -->
+      <div>
+        <div class="toggle-row">
+          <label class="toggle">
+            <input type="checkbox" id="dotaceToggle" onchange="toggleDotace()">
+            <span class="toggle-slider"></span>
+          </label>
+          <label for="dotaceToggle" style="cursor:pointer;">Předpokládaná dotace</label>
+        </div>
+        <div id="dotaceFields" class="sub-fields hidden">
+          <div class="field">
+            <input type="text" id="dotace" placeholder="např. až 85 % způsobilých nákladů" oninput="generate()">
+          </div>
+        </div>
+      </div>
+
+      <!-- Předmět nabídky — objekty -->
+      <div>
+        <div class="section-title">Předmět nabídky — objekty / skupiny</div>
+        <table class="objects-table">
+          <thead>
+            <tr>
+              <th class="col-name">Název skupiny</th>
+              <th class="col-price">Cena bez DPH</th>
+              <th class="col-dph">DPH %</th>
+              <th class="col-del"></th>
+            </tr>
+          </thead>
+          <tbody id="rowsBody"></tbody>
+        </table>
+        <button class="btn-add-row" onclick="addRow()">+ Přidat řádek</button>
+      </div>
+
+      <!-- Fakturace -->
+      <div>
+        <div class="section-title">Podmínky</div>
+        <div class="row3">
+          <div class="field">
+            <label>Fakturace</label>
+            <input type="text" id="fakturace" placeholder="např. po etapách" oninput="generate()">
+          </div>
+          <div class="field">
+            <label>Splatnost</label>
+            <input type="text" id="splatnost" placeholder="např. 14 dní" oninput="generate()">
+          </div>
+          <div class="field">
+            <label>Přijetí nabídky</label>
+            <input type="text" id="prijeti" placeholder="např. do 30 dnů" oninput="generate()">
+          </div>
+        </div>
+      </div>
+
+      <!-- Další info toggle -->
+      <div>
+        <div class="toggle-row">
+          <label class="toggle">
+            <input type="checkbox" id="dalsiToggle" onchange="toggleDalsi()">
+            <span class="toggle-slider"></span>
+          </label>
+          <label for="dalsiToggle" style="cursor:pointer;">Další informace</label>
+        </div>
+        <div id="dalsiFields" class="sub-fields hidden">
+          <div class="field">
+            <textarea id="dalsiText" rows="3" placeholder="Poznámky, specifika projektu, zvláštní podmínky..." oninput="generate()"></textarea>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /sidebar-inner -->
+  </div><!-- /sidebar -->
+
+  <!-- OUTPUT COLUMN -->
+  <div class="output-col">
+
+    <div class="output-header">
+      <div class="output-header-title">Náhled nabídky</div>
+      <button class="btn-ai" id="btnAI" onclick="improveWithAI()">
+        <span class="sparkle">✦</span>
+        Vylepšit texty s AI (DPU styl)
+      </button>
+    </div>
+
+    <div id="aiStatus" class="ai-status"></div>
+
+    <!-- Card: PŘED -->
+    <div class="card" id="cardPred">
+      <div class="card-header">
+        <div class="card-title">
+          Úvodní text (před souhrnem)
+          <span class="ai-badge" id="badgePred">AI verze</span>
+        </div>
+        <div class="card-actions">
+          <button class="btn-toggle-version" id="togglePred" onclick="toggleVersion('pred')">Šablona</button>
+          <div class="tab-btns">
+            <button class="tab-btn active" onclick="switchTab('pred','preview',this)">Náhled</button>
+            <button class="tab-btn" onclick="switchTab('pred','html',this)">HTML</button>
+          </div>
+          <button class="btn-copy" id="copyPred" onclick="copyHtml('pred')">Kopírovat</button>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="tab-pane active" id="pred-preview">
+          <div class="preview-content" id="predPreview"></div>
+        </div>
+        <div class="tab-pane" id="pred-html">
+          <div class="html-content" id="predHtml"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Card: SOUHRN -->
+    <div class="card" id="cardSouhrn">
+      <div class="card-header">
+        <div class="card-title">Cenový souhrn</div>
+        <div class="card-actions">
+          <div class="tab-btns">
+            <button class="tab-btn active" onclick="switchTab('souhrn','preview',this)">Náhled</button>
+            <button class="tab-btn" onclick="switchTab('souhrn','html',this)">HTML</button>
+          </div>
+          <button class="btn-copy" id="copySouhrn" onclick="copyHtml('souhrn')">Kopírovat</button>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="tab-pane active" id="souhrn-preview">
+          <div id="sournPreview"></div>
+        </div>
+        <div class="tab-pane" id="souhrn-html">
+          <div class="html-content" id="sournHtml"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Card: ZA -->
+    <div class="card" id="cardZa">
+      <div class="card-header">
+        <div class="card-title">
+          Závěrečný text (za souhrnem)
+          <span class="ai-badge" id="badgeZa">AI verze</span>
+        </div>
+        <div class="card-actions">
+          <button class="btn-toggle-version" id="toggleZa" onclick="toggleVersion('za')">Šablona</button>
+          <div class="tab-btns">
+            <button class="tab-btn active" onclick="switchTab('za','preview',this)">Náhled</button>
+            <button class="tab-btn" onclick="switchTab('za','html',this)">HTML</button>
+          </div>
+          <button class="btn-copy" id="copyZa" onclick="copyHtml('za')">Kopírovat</button>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="tab-pane active" id="za-preview">
+          <div class="preview-content" id="zaPreview"></div>
+        </div>
+        <div class="tab-pane" id="za-html">
+          <div class="html-content" id="zaHtml"></div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /output-col -->
+</div><!-- /main -->
+
+<script>
+// ── DPU system prompt (mirrors backend.py) ─────────────────────────────────
+const DPU_SYSTEM_PROMPT = `Jsi copywriter pro DPU ENERGY s.r.o. — českou firmu na energetické poradenství a dotační management.
+
+TONE OF VOICE (povinně dodržuj):
+- Píšeš jako zkušený partner, NE jako poradce který přednáší
+- Fakta a čísla potvrzují expertízu; přístup a jazyk budují důvěru
+- VYHÝBEJ se žargonu EU fondů a technickému newspeaku
+- Mluv jazykem starostů: rozpočet, zastupitelstvo, výsledek, termín
+- Špatně: „Implementujeme komplexní energetická opatření v souladu s EPBD III."
+- Správně: „Postaráme se o celý proces — od studie po výběrové řízení. Vy víte co podepsat a kdy, zbytek je na nás."
+
+KLÍČOVÉ CLAIMY (použij kde se hodí):
+- „Jeden partner. Celý proces. Plná odpovědnost."
+- „97 % dotačních žádostí schváleno."
+- „400+ projektů v oblasti energetických úspor."
+
+CO NEDĚLAT:
+- Nestavěj na ekologii a zeleném jazyce — část starostů je skeptická
+- Nepoužívej jazyk CFO ani technický newspeak
+- Nezavázej klienta k získání dotace — informuj o riziku převisu žádostí
+
+CÍLOVÁ SKUPINA: starostové a úředníci obcí, jazyk zastupitelstev a obecních rozpočtů
+
+STYL: stručně a jistě, krátké věty, formální ale ne strnulé (forma „Vy"), čeština`;
+
+// ── State ──────────────────────────────────────────────────────────────────
+const state = {
+  rows: [],
+  ai_pred: null,
+  ai_za: null,
+  use_ai_pred: false,
+  use_ai_za: false,
+  html: { pred: '', souhrn: '', za: '' }
+};
+
+let rowIdCounter = 0;
+
+// ── Init ───────────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  loadApiKey();
+  addRow();
+  generate();
+});
+
+// ── API Key ────────────────────────────────────────────────────────────────
+function saveApiKey() {
+  const val = document.getElementById('apiKeyInput').value.trim();
+  if (val) {
+    localStorage.setItem('dpu_api_key', val);
+    updateApiDot(true);
+  } else {
+    localStorage.removeItem('dpu_api_key');
+    updateApiDot(false);
+  }
+}
+
+function loadApiKey() {
+  const saved = localStorage.getItem('dpu_api_key');
+  if (saved) {
+    document.getElementById('apiKeyInput').value = saved;
+    updateApiDot(true);
+  } else {
+    updateApiDot(false);
+  }
+}
+
+function getApiKey() {
+  return document.getElementById('apiKeyInput').value.trim()
+    || localStorage.getItem('dpu_api_key')
+    || '';
+}
+
+function updateApiDot(isSet) {
+  document.getElementById('apiDot').classList.toggle('set', isSet);
+}
+
+// ── Toggle sections ────────────────────────────────────────────────────────
+function toggleOpzp() {
+  const on = document.getElementById('opzpToggle').checked;
+  document.getElementById('opzpFields').classList.toggle('hidden', !on);
+  generate();
+}
+function toggleDotace() {
+  const on = document.getElementById('dotaceToggle').checked;
+  document.getElementById('dotaceFields').classList.toggle('hidden', !on);
+  generate();
+}
+function toggleDalsi() {
+  const on = document.getElementById('dalsiToggle').checked;
+  document.getElementById('dalsiFields').classList.toggle('hidden', !on);
+  generate();
+}
+
+// ── Rows ───────────────────────────────────────────────────────────────────
+function addRow(name = '', price = '', dph = '21') {
+  const id = ++rowIdCounter;
+  state.rows.push({ id, name, price, dph });
+  renderRows();
+  generate();
+}
+
+function removeRow(id) {
+  state.rows = state.rows.filter(r => r.id !== id);
+  renderRows();
+  generate();
+}
+
+function renderRows() {
+  const tbody = document.getElementById('rowsBody');
+  tbody.innerHTML = '';
+  state.rows.forEach(row => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td class="col-name">
+        <input type="text" value="${escAttr(row.name)}" placeholder="Název skupiny"
+               onchange="updateRow(${row.id},'name',this.value)" oninput="updateRow(${row.id},'name',this.value)">
+      </td>
+      <td class="col-price">
+        <input type="text" value="${escAttr(row.price)}" placeholder="0"
+               onchange="updateRow(${row.id},'price',this.value)" oninput="updateRow(${row.id},'price',this.value)">
+      </td>
+      <td class="col-dph">
+        <select onchange="updateRow(${row.id},'dph',this.value)">
+          ${['0','10','15','21'].map(v =>
+            `<option value="${v}"${row.dph===v?' selected':''}>${v} %</option>`
+          ).join('')}
+        </select>
+      </td>
+      <td class="col-del">
+        <button class="btn-del" onclick="removeRow(${row.id})" title="Odstranit">✕</button>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+function updateRow(id, field, value) {
+  const row = state.rows.find(r => r.id === id);
+  if (row) { row[field] = value; generate(); }
+}
+
+// ── Number formatting ──────────────────────────────────────────────────────
+function parseNum(s) {
+  if (!s) return 0;
+  const cleaned = String(s).replace(/\s/g, '').replace(',', '.');
+  return parseFloat(cleaned) || 0;
+}
+
+function formatNum(n) {
+  if (n === 0) return '0';
+  return n.toLocaleString('cs-CZ', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+}
+
+// ── Escape helpers ─────────────────────────────────────────────────────────
+function escAttr(s) {
+  return String(s || '').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+function escHtml(s) {
+  return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ── Plain text → HTML ──────────────────────────────────────────────────────
+function plainToHtml(text) {
+  if (!text) return '';
+  const paras = text.split(/\n\n+/);
+  return paras.map(p => {
+    const lines = p.split('\n');
+    const bullets = lines.filter(l => l.trimStart().startsWith('•'));
+    const nonBullets = lines.filter(l => !l.trimStart().startsWith('•'));
+    let html = '';
+    if (nonBullets.length > 0) {
+      html += `<p style="margin:0 0 6px 0;">${escHtml(nonBullets.join('\n'))}</p>`;
+    }
+    if (bullets.length > 0) {
+      html += `<ul style="margin:4px 0 6px 16px;padding:0;">`;
+      bullets.forEach(b => {
+        const content = b.replace(/^\s*•\s*/, '');
+        html += `<li style="margin-bottom:3px;">${escHtml(content)}</li>`;
+      });
+      html += `</ul>`;
+    }
+    return html;
+  }).join('');
+}
+
+// ── Build souhrn HTML ──────────────────────────────────────────────────────
+// Proven inline-block span layout, fixed px widths: 78+382+74+94+50+84 = 762px
+function buildSourhnHtml(rows) {
+  let grandBez = 0, grandDph = 0, grandS = 0;
+  const validRows = rows.filter(r => r.name || r.price);
+
+  function fmtNbsp(n) {
+    return Math.round(n).toLocaleString('cs-CZ').replace(/\s/g, '\u00A0');
+  }
+
+  let rowsHtml = '';
+  validRows.forEach((r, i) => {
+    const bez = parseNum(r.price);
+    const dphRate = parseInt(r.dph) || 21;
+    const dphAmt = bez * dphRate / 100;
+    const sDph = bez + dphAmt;
+    grandBez += bez; grandDph += dphAmt; grandS += sDph;
+
+    rowsHtml += `
+  <div style="border-bottom:1px solid #b7b7b7;padding:8px 0;white-space:nowrap;">
+    <span style="display:inline-block;width:78px;color:#6B6C6E;">Objekt ${i + 1}</span>
+    <span style="display:inline-block;width:382px;color:#000;">${escHtml(r.name || '—')}</span>
+    <span style="display:inline-block;width:74px;text-align:right;color:#000;">&nbsp;</span>
+    <span style="display:inline-block;width:94px;text-align:right;color:#000;">${fmtNbsp(bez)}&nbsp;<span style="color:#6B6C6E;">Kč</span></span>
+    <span style="display:inline-block;width:50px;text-align:right;color:#000;">${dphRate}%</span>
+    <span style="display:inline-block;width:84px;text-align:right;color:#000;">${fmtNbsp(sDph)}&nbsp;<span style="color:#6B6C6E;">Kč</span></span>
+  </div>`;
+  });
+
+  const html = `<div style="font-family:Arial, Helvetica, sans-serif;font-size:12px;line-height:18px;color:#000;">
+
+  <p style="margin:0 0 6px 0;font-size:14px;line-height:18px;font-weight:700;color:#2D2558;">
+    Cenový souhrn po objektech
+  </p>
+
+  <div style="border-bottom:1px solid #a9a9a9;padding:6px 0 5px 0;font-size:11px;line-height:14px;color:#6B6C6E;white-space:nowrap;">
+    <span style="display:inline-block;width:78px;">&nbsp;</span>
+    <span style="display:inline-block;width:382px;">&nbsp;</span>
+    <span style="display:inline-block;width:74px;">&nbsp;</span>
+    <span style="display:inline-block;width:94px;text-align:right;">Cena bez DPH</span>
+    <span style="display:inline-block;width:50px;text-align:right;">DPH</span>
+    <span style="display:inline-block;width:84px;text-align:right;">Celkem vč. DPH</span>
+  </div>
+${rowsHtml}
+  <div style="height:12px;line-height:12px;">&nbsp;</div>
+
+  <div style="width:255px;margin:0 0 0 auto;">
+    <div style="white-space:nowrap;margin:0 0 6px 0;">
+      <span style="display:inline-block;width:150px;text-align:right;color:#6B6C6E;">Celkem bez DPH</span>
+      <span style="display:inline-block;width:105px;text-align:right;color:#000;">${fmtNbsp(grandBez)}&nbsp;<span style="color:#6B6C6E;">Kč</span></span>
+    </div>
+    <div style="white-space:nowrap;margin:0 0 8px 0;">
+      <span style="display:inline-block;width:150px;text-align:right;color:#6B6C6E;">DPH</span>
+      <span style="display:inline-block;width:105px;text-align:right;color:#000;">${fmtNbsp(grandDph)}&nbsp;<span style="color:#6B6C6E;">Kč</span></span>
+    </div>
+    <div style="border-top:2px solid #000;padding-top:6px;white-space:nowrap;">
+      <span style="display:inline-block;width:150px;">&nbsp;</span>
+      <span style="display:inline-block;width:105px;text-align:right;color:#000;font-size:18px;line-height:22px;font-weight:700;">${fmtNbsp(grandS)}&nbsp;<span style="font-size:12px;line-height:18px;font-weight:400;color:#6B6C6E;">Kč</span></span>
+    </div>
+  </div>
+
+</div>`;
+
+  return { html, grandBez, grandS };
+}
+
+// ── Build PRED template text ───────────────────────────────────────────────
+function buildPredTemplate() {
+  const nazev = document.getElementById('nazev').value.trim();
+  const klient = document.getElementById('klient').value.trim();
+  const rozsah = document.getElementById('rozsah').value.trim();
+  const opzp = document.getElementById('opzpToggle').checked;
+  const deadline = document.getElementById('deadline').value;
+  const program = document.getElementById('program').value.trim();
+  const dotace = document.getElementById('dotaceToggle').checked
+    ? document.getElementById('dotace').value.trim() : '';
+
+  let lines = [];
+  lines.push('Vážení,');
+  lines.push('');
+
+  const subject = nazev || (klient ? `nabídku pro ${klient}` : 'naši nabídku');
+  lines.push(`dovolujeme si Vám předložit ${subject}.`);
+
+  if (rozsah) {
+    lines.push('');
+    lines.push(rozsah);
+  }
+
+  if (opzp && (deadline || program)) {
+    lines.push('');
+    let opzpLine = 'V rámci';
+    if (program) opzpLine += ` výzvy ${program}`;
+    if (deadline) {
+      const d = new Date(deadline);
+      const formatted = d.toLocaleDateString('cs-CZ');
+      opzpLine += ` je deadline pro podání žádosti ${formatted}.`;
+    } else {
+      opzpLine += ' doporučujeme nepodcenit přípravu a začít co nejdříve.';
+    }
+    lines.push(opzpLine);
+  }
+
+  if (dotace) {
+    lines.push('');
+    lines.push(`Předpokládaná výše dotace: ${dotace}.`);
+  }
+
+  lines.push('');
+  lines.push('Jsme Váš partner pro celý proces — od energetické studie po výběrové řízení a administraci dotace. 97 % dotačních žádostí, které jsme podali, bylo schváleno.');
+
+  return lines.join('\n');
+}
+
+// ── Build ZA template text ─────────────────────────────────────────────────
+function buildZaTemplate() {
+  const fakturace = document.getElementById('fakturace').value.trim();
+  const splatnost = document.getElementById('splatnost').value.trim();
+  const prijeti = document.getElementById('prijeti').value.trim();
+  const dalsi = document.getElementById('dalsiToggle').checked
+    ? document.getElementById('dalsiText').value.trim() : '';
+
+  let lines = [];
+
+  const podmiky = [];
+  if (fakturace) podmiky.push(`• Fakturace: ${fakturace}`);
+  if (splatnost) podmiky.push(`• Splatnost: ${splatnost}`);
+  if (prijeti) podmiky.push(`• Platnost nabídky: ${prijeti}`);
+
+  if (podmiky.length > 0) {
+    lines.push('Podmínky spolupráce:');
+    lines.push('');
+    lines.push(podmiky.join('\n'));
+    lines.push('');
+  }
+
+  if (dalsi) {
+    lines.push(dalsi);
+    lines.push('');
+  }
+
+  lines.push('V případě dotazů jsme Vám k dispozici. Těšíme se na spolupráci.');
+  lines.push('');
+  lines.push('S pozdravem,');
+  lines.push('DPU ENERGY s.r.o.');
+
+  return lines.join('\n');
+}
+
+// ── PRED / ZA HTML wrappers ────────────────────────────────────────────────
+function buildPredHtml(text) {
+  return `<div style="font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#222;line-height:1.7;max-width:700px;">\n${plainToHtml(text)}\n</div>`;
+}
+
+function buildZaHtml(text) {
+  return `<div style="font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#222;line-height:1.7;max-width:700px;">\n${plainToHtml(text)}\n</div>`;
+}
+
+// ── Generate all blocks ────────────────────────────────────────────────────
+function generate() {
+  const predText = (state.use_ai_pred && state.ai_pred) ? state.ai_pred : buildPredTemplate();
+  const predHtmlStr = buildPredHtml(predText);
+  document.getElementById('predPreview').textContent = predText;
+  document.getElementById('predHtml').textContent = predHtmlStr;
+  state.html.pred = predHtmlStr;
+
+  const { html: sournHtmlStr, grandBez, grandS } = buildSourhnHtml(state.rows);
+  renderSourhnPreview(state.rows, grandBez, grandS);
+  document.getElementById('sournHtml').textContent = sournHtmlStr;
+  state.html.souhrn = sournHtmlStr;
+
+  const zaText = (state.use_ai_za && state.ai_za) ? state.ai_za : buildZaTemplate();
+  const zaHtmlStr = buildZaHtml(zaText);
+  document.getElementById('zaPreview').textContent = zaText;
+  document.getElementById('zaHtml').textContent = zaHtmlStr;
+  state.html.za = zaHtmlStr;
+}
+
+// ── Render souhrn preview ──────────────────────────────────────────────────
+function renderSourhnPreview(rows, grandBez, grandS) {
+  const container = document.getElementById('sournPreview');
+  const validRows = rows.filter(r => r.name || r.price);
+
+  let html = '<div class="souhrn-header-row">';
+  html += '<div class="sh-name">Název</div>';
+  html += '<div class="sh-price">Cena bez DPH</div>';
+  html += '<div class="sh-dph">DPH</div>';
+  html += '<div class="sh-total">Celkem s DPH</div>';
+  html += '</div>';
+
+  validRows.forEach(r => {
+    const bez = parseNum(r.price);
+    const dphRate = parseInt(r.dph) || 0;
+    const sDph = bez + bez * dphRate / 100;
+    html += `<div class="souhrn-row">
+      <div class="s-name">${escHtml(r.name || '—')}</div>
+      <div class="s-price">${formatNum(bez)} <span class="s-kc">Kč</span></div>
+      <div class="s-dph-rate">${dphRate} %</div>
+      <div class="s-total">${formatNum(sDph)} <span class="s-kc">Kč</span></div>
+    </div>`;
+  });
+
+  if (validRows.length === 0) {
+    html += '<div style="color:#aaa;font-size:12px;padding:8px 0;">Zatím žádné položky.</div>';
+  }
+
+  html += `<div class="souhrn-sum-block">
+    <div class="sum-line">Celkem bez DPH: <strong>${formatNum(grandBez)} Kč</strong></div>
+    <div class="sum-total-line">Celkem s DPH: ${formatNum(grandS)} Kč</div>
+  </div>`;
+
+  container.innerHTML = html;
+}
+
+// ── Tab switching ──────────────────────────────────────────────────────────
+function switchTab(card, tab, btn) {
+  const paneId = `${card}-${tab}`;
+  const allPanes = document.querySelectorAll(`#card${cap(card)} .tab-pane`);
+  allPanes.forEach(p => p.classList.remove('active'));
+  document.getElementById(paneId).classList.add('active');
+
+  const allBtns = btn.closest('.tab-btns').querySelectorAll('.tab-btn');
+  allBtns.forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+function cap(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
+
+// ── Copy HTML ──────────────────────────────────────────────────────────────
+function copyHtml(card) {
+  const html = state.html[card] || '';
+  navigator.clipboard.writeText(html).then(() => {
+    const btn = document.getElementById(`copy${cap(card)}`);
+    btn.textContent = '✓ Zkopírováno';
+    btn.classList.add('copied');
+    setTimeout(() => {
+      btn.textContent = 'Kopírovat';
+      btn.classList.remove('copied');
+    }, 1800);
+  }).catch(() => {
+    const ta = document.createElement('textarea');
+    ta.value = html;
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+  });
+}
+
+// ── AI version toggle ──────────────────────────────────────────────────────
+function toggleVersion(which) {
+  if (which === 'pred') {
+    state.use_ai_pred = !state.use_ai_pred;
+    document.getElementById('togglePred').textContent = state.use_ai_pred ? 'Šablona' : 'AI verze';
+  } else {
+    state.use_ai_za = !state.use_ai_za;
+    document.getElementById('toggleZa').textContent = state.use_ai_za ? 'Šablona' : 'AI verze';
+  }
+  generate();
+}
+
+function setAiBadges() {
+  const bPred = document.getElementById('badgePred');
+  const bZa = document.getElementById('badgeZa');
+  const tPred = document.getElementById('togglePred');
+  const tZa = document.getElementById('toggleZa');
+  bPred.classList.toggle('visible', !!state.ai_pred);
+  bZa.classList.toggle('visible', !!state.ai_za);
+  tPred.classList.toggle('visible', !!state.ai_pred);
+  tZa.classList.toggle('visible', !!state.ai_za);
+}
+
+// ── Anthropic API helper ───────────────────────────────────────────────────
+async function callAnthropic(apiKey, payload) {
+  const resp = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': apiKey,
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-allow-browser': 'true',
+    },
+    body: JSON.stringify(payload),
+  });
+  const data = await resp.json();
+  if (!resp.ok) {
+    const errMsg = data.error?.message || `HTTP ${resp.status}`;
+    if (resp.status === 401) throw new Error('Neplatný API klíč Anthropic');
+    throw new Error(errMsg);
+  }
+  return data.content[0].text;
+}
+
+function extractJson(raw) {
+  let text = raw.trim();
+  if (text.startsWith('```')) {
+    const lines = text.split('\n');
+    text = lines.slice(1, lines[lines.length - 1].trim() === '```' ? -1 : undefined).join('\n');
+  }
+  try {
+    return JSON.parse(text);
+  } catch {
+    const start = text.indexOf('{');
+    const end = text.lastIndexOf('}') + 1;
+    if (start >= 0 && end > start) return JSON.parse(text.slice(start, end));
+    throw new Error('AI vrátila neplatný JSON');
+  }
+}
+
+// ── AI improve ─────────────────────────────────────────────────────────────
+async function improveWithAI() {
+  const apiKey = getApiKey();
+  if (!apiKey) {
+    showAiStatus('err', 'Nejdřív zadejte Anthropic API klíč v horní liště.');
+    return;
+  }
+
+  const btn = document.getElementById('btnAI');
+  btn.disabled = true;
+  btn.innerHTML = '<div class="spinner"></div> Zpracovávám…';
+  showAiStatus('loading', 'Volám Claude API…');
+
+  const nazev = document.getElementById('nazev').value.trim();
+  const klient = document.getElementById('klient').value.trim();
+  const rozsah = document.getElementById('rozsah').value.trim();
+  const opzp = document.getElementById('opzpToggle').checked;
+  const deadline = document.getElementById('deadline').value;
+  const program = document.getElementById('program').value.trim();
+  const dotace = document.getElementById('dotaceToggle').checked
+    ? document.getElementById('dotace').value.trim() : '';
+  const dalsiText = document.getElementById('dalsiToggle').checked
+    ? document.getElementById('dalsiText').value.trim() : '';
+
+  const contextParts = [`Název projektu/nabídky: ${nazev}`, `Klient: ${klient}`];
+  if (rozsah) contextParts.push(`Rozsah prací: ${rozsah}`);
+  if (opzp && deadline) contextParts.push(`OPŽP výzva — deadline podání žádosti: ${deadline}`);
+  if (program) contextParts.push(`Dotační program: ${program}`);
+  if (dotace) contextParts.push(`Předpokládaná výše dotace: ${dotace}`);
+  if (dalsiText) contextParts.push(`Další informace: ${dalsiText}`);
+
+  const userPrompt = `Na základě těchto informací o nabídce vytvoř dva textové bloky v DPU ENERGY stylu:
+
+${contextParts.join('\n')}
+
+Vrať POUZE JSON v tomto přesném formátu (žádný jiný text):
+{
+  "pred": "...",
+  "za": "..."
+}
+
+Blok "pred" = úvodní text nabídky PŘED cenovým souhrnem (2–4 odstavce):
+- Oslovení a kontext proč nabídku posíláme
+- Stručný popis co v nabídce nabízíme
+- Proč DPU ENERGY (použij relevantní klíčové claimy)
+- Pokud je uveden deadline OPŽP, zdůrazni časovou naléhavost
+
+Blok "za" = závěrečný text nabídky ZA cenovým souhrnem (1–3 odstavce):
+- Další kroky (co klient má udělat)
+- Kontaktní výzva
+- Krátká důvěrná tečka
+
+Formátování:
+- Odstavce odděluj \\n\\n
+- Odrážky vyznačuj •
+- Žádné HTML, žádný markdown, jen prostý text
+- Začni "pred" oslovením jako "Vážení," nebo "Dobrý den,"`;
+
+  try {
+    const raw = await callAnthropic(apiKey, {
+      model: 'claude-sonnet-4-6',
+      max_tokens: 2048,
+      system: DPU_SYSTEM_PROMPT,
+      messages: [{ role: 'user', content: userPrompt }],
+    });
+
+    const data = extractJson(raw);
+    state.ai_pred = data.pred || '';
+    state.ai_za = data.za || '';
+    state.use_ai_pred = true;
+    state.use_ai_za = true;
+
+    setAiBadges();
+    generate();
+    showAiStatus('ok', 'Texty vylepšeny v DPU stylu. Přepínač „Šablona / AI verze" na každé kartě umožňuje porovnat verze.');
+  } catch (err) {
+    showAiStatus('err', 'Chyba: ' + err.message);
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<span class="sparkle">✦</span> Vylepšit texty s AI (DPU styl)';
+  }
+}
+
+function showAiStatus(type, msg) {
+  const el = document.getElementById('aiStatus');
+  el.className = 'ai-status';
+  if (type === 'loading') {
+    el.classList.add('loading');
+    el.innerHTML = `<div class="spinner spinner-dark"></div> ${escHtml(msg)}`;
+  } else {
+    el.classList.add(type);
+    el.textContent = msg;
+  }
+}
+
+// ── File upload / drag & drop ──────────────────────────────────────────────
+function handleDragOver(e) {
+  e.preventDefault();
+  document.getElementById('uploadZone').classList.add('drag-over');
+}
+function handleDragLeave(e) {
+  document.getElementById('uploadZone').classList.remove('drag-over');
+}
+function handleDrop(e) {
+  e.preventDefault();
+  document.getElementById('uploadZone').classList.remove('drag-over');
+  const file = e.dataTransfer.files[0];
+  if (file) handleFileUpload(file);
+}
+function handleFileInputChange(e) {
+  const file = e.target.files[0];
+  if (file) handleFileUpload(file);
+}
+
+async function handleFileUpload(file) {
+  const apiKey = getApiKey();
+  if (!apiKey) {
+    setUploadStatus('err', 'Nejdřív zadejte Anthropic API klíč.');
+    return;
+  }
+
+  const allowedTypes = { 'image/png': true, 'image/jpeg': true, 'image/jpg': true, 'image/webp': true, 'application/pdf': true };
+  let mediaType = file.type;
+  if (mediaType === 'image/jpg') mediaType = 'image/jpeg';
+
+  if (!allowedTypes[mediaType]) {
+    setUploadStatus('err', `Nepodporovaný formát: ${file.type}`);
+    return;
+  }
+
+  setUploadStatus('loading', 'Rozpoznávám strukturu…');
+
+  try {
+    const arrayBuffer = await file.arrayBuffer();
+    const bytes = new Uint8Array(arrayBuffer);
+    let binary = '';
+    for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+    const b64 = btoa(binary);
+
+    const parsePrompt = `Analyzuj tento dokument z aplikace Caflou (nebo podobného projektového/fakturačního systému).
+
+Extrahuj skupiny položek s jejich finančními součty.
+
+Vrať POUZE JSON v tomto přesném formátu (žádný jiný text):
+{
+  "groups": [
+    {
+      "name": "Název skupiny",
+      "total_bez_dph": 12345.00,
+      "dph_rate": 21,
+      "total_s_dph": 14937.45
+    }
+  ],
+  "grand_total_bez_dph": 12345.00,
+  "grand_total_s_dph": 14937.45
+}
+
+Pravidla:
+- Každá skupina = řádek nebo sekce s názvem a cenou
+- total_bez_dph a total_s_dph jsou čísla (float), bez mezer a bez Kč
+- dph_rate je číslo (0, 10, 15, nebo 21) — pokud není jasné, použij 21
+- grand_total je součet všech skupin
+- Pokud dokument neobsahuje žádné rozpoznatelné skupiny s cenami, vrať prázdné pole groups a nuly
+- Ignoruj jednotkové ceny a počty — zajímají nás jen součty za skupinu/sekci`;
+
+    let contentBlocks;
+    if (mediaType === 'application/pdf') {
+      contentBlocks = [
+        { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: b64 } },
+        { type: 'text', text: parsePrompt },
+      ];
+    } else {
+      contentBlocks = [
+        { type: 'image', source: { type: 'base64', media_type: mediaType, data: b64 } },
+        { type: 'text', text: parsePrompt },
+      ];
+    }
+
+    const raw = await callAnthropic(apiKey, {
+      model: 'claude-sonnet-4-6',
+      max_tokens: 2048,
+      messages: [{ role: 'user', content: contentBlocks }],
+    });
+
+    const data = extractJson(raw);
+    const groups = data.groups || [];
+
+    if (groups.length === 0) {
+      setUploadStatus('err', 'Nepodařilo se rozpoznat žádné skupiny s cenami.');
+      return;
+    }
+
+    state.rows = [];
+    rowIdCounter = 0;
+    groups.forEach(g => {
+      const id = ++rowIdCounter;
+      const dphRate = String(g.dph_rate || 21);
+      state.rows.push({
+        id,
+        name: g.name || '',
+        price: String(g.total_bez_dph || 0),
+        dph: ['0','10','15','21'].includes(dphRate) ? dphRate : '21',
+      });
+    });
+
+    renderRows();
+    generate();
+    setUploadStatus('ok', `✓ Načteno ${groups.length} skupin ze souboru`);
+  } catch (err) {
+    setUploadStatus('err', 'Chyba: ' + err.message);
+  }
+}
+
+function setUploadStatus(type, msg) {
+  const el = document.getElementById('uploadStatus');
+  if (type === 'loading') {
+    el.className = 'upload-status';
+    el.innerHTML = `<span class="spinner spinner-dark" style="width:11px;height:11px;display:inline-block;"></span> ${escHtml(msg)}`;
+  } else {
+    el.className = `upload-status ${type}`;
+    el.textContent = msg;
+  }
+}
+</script>
+</body>
+</html>
