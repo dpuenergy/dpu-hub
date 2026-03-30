@@ -213,8 +213,7 @@ footer { text-align: center; padding: 24px; font-size: 12px; color: var(--muted)
       <div class="step-card">
         <ul class="ps-steps">
           <li>Stiskni klávesy <strong>Win + R</strong>, napiš <code>powershell</code> a potvrď Enterem.</li>
-          <li>Přepni se do složky, kam jsi stáhl skript – napiš <code>cd "$env:USERPROFILE\Downloads"</code> a stiskni Enter.</li>
-          <li>Vlož zkopírovaný příkaz: klikni <strong>pravým tlačítkem</strong> do okna PowerShellu (příkaz se automaticky vloží).</li>
+          <li>Vlož zkopírovaný příkaz: klikni <strong>pravým tlačítkem</strong> do okna PowerShellu – příkaz se vloží automaticky. Nemusíš přecházet do žádné složky, příkaz obsahuje plnou cestu ke skriptu.</li>
           <li>Stiskni <strong>Enter</strong>. Po skončení najdeš výsledky přímo ve své složce.</li>
         </ul>
         <button class="tip-toggle" onclick="toggleTip('tip4')" style="margin-top:12px;">❓ Kde najdu výsledné soubory?</button>
@@ -256,6 +255,8 @@ function onPathInput() {
   updateCmd();
 }
 
+var SCRIPT_PATH = '$env:USERPROFILE\\Downloads\\export_struktury_safe.ps1';
+
 function updateCmd() {
   const root = cleanPath(document.getElementById('rootPath').value);
   const box  = document.getElementById('cmdOutput');
@@ -264,7 +265,7 @@ function updateCmd() {
     return;
   }
   box.innerHTML =
-    '<span class="val">.\\export_struktury_<wbr>safe.ps1</span>' +
+    '&amp; <span class="val">"' + esc(SCRIPT_PATH) + '"</span>' +
     ' -RootPath <span class="val">"' + esc(root) + '"</span>' +
     ' -OutputFolder <span class="val">"' + esc(root) + '"</span>';
 }
@@ -272,7 +273,7 @@ function updateCmd() {
 function copyCmd() {
   const root = cleanPath(document.getElementById('rootPath').value);
   if (!root) return;
-  const cmd = '.\\export_struktury_safe.ps1 -RootPath "' + root + '" -OutputFolder "' + root + '"';
+  const cmd = '& "' + SCRIPT_PATH + '" -RootPath "' + root + '" -OutputFolder "' + root + '"';
   navigator.clipboard.writeText(cmd).then(() => {
     const m = document.getElementById('copiedMsg');
     m.classList.add('show');
@@ -284,16 +285,13 @@ async function downloadScript() {
   try {
     const res  = await fetch('/export_struktury_safe.ps1');
     const text = await res.text();
-    const date = new Date().toISOString().slice(0,10).replace(/-/g,'');
-    const hash = Math.random().toString(36).slice(2, 10);
-    const name = 'export_struktury_safe_' + date + '_' + hash + '.ps1';
     const blob = new Blob([text], { type: 'text/plain' });
     const url  = URL.createObjectURL(blob);
     const a    = document.createElement('a');
-    a.href = url; a.download = name; a.click();
+    a.href = url; a.download = 'export_struktury_safe.ps1'; a.click();
     URL.revokeObjectURL(url);
   } catch(e) {
-    alert('Stahování se nezdařilo. Zkus to znovu nebo použij přímý odkaz.');
+    alert('Stahování se nezdařilo. Zkus to znovu.');
   }
 }
 
