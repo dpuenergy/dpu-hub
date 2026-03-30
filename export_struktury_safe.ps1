@@ -99,12 +99,20 @@ $results.Add([PSCustomObject]@{
 
 Walk-Tree -CurrentPath $RootPath
 
+$utf8NoBom = [System.Text.UTF8Encoding]::new($false)
+
 $results |
     Sort-Object FullPath |
     Export-Csv -Path $csvPath -NoTypeInformation -Encoding UTF8
 
+# Přepíšeme CSV bez BOM, aby ho Excel otevřel správně bez průvodce importem
+$csvContent = [System.IO.File]::ReadAllText($csvPath, [System.Text.UTF8Encoding]::new($true))
+[System.IO.File]::WriteAllText($csvPath, $csvContent, $utf8NoBom)
+
 try {
-    cmd /c tree "$RootPath" /F /A > "$treePath"
+    # Přepneme CMD na UTF-8 (CP 65001) před spuštěním tree, jinak jsou česká písmena rozbitá
+    $treeOutput = cmd /c "chcp 65001 > nul && tree ""$RootPath"" /F /A"
+    [System.IO.File]::WriteAllLines($treePath, $treeOutput, $utf8NoBom)
 }
 catch {
     $errors.Add("TREE EXPORT SELHAL`r`n$($_.Exception.Message)`r`n")
