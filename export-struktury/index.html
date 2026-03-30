@@ -265,7 +265,8 @@ function updateCmd() {
     return;
   }
   box.innerHTML =
-    '&amp; <span class="val">"' + esc(SCRIPT_PATH) + '"</span>' +
+    'powershell <span class="val">-ExecutionPolicy Bypass</span>' +
+    ' -File <span class="val">"' + esc(SCRIPT_PATH) + '"</span>' +
     ' -RootPath <span class="val">"' + esc(root) + '"</span>' +
     ' -OutputFolder <span class="val">"' + esc(root) + '"</span>';
 }
@@ -273,7 +274,7 @@ function updateCmd() {
 function copyCmd() {
   const root = cleanPath(document.getElementById('rootPath').value);
   if (!root) return;
-  const cmd = '& "' + SCRIPT_PATH + '" -RootPath "' + root + '" -OutputFolder "' + root + '"';
+  const cmd = 'powershell -ExecutionPolicy Bypass -File "' + SCRIPT_PATH + '" -RootPath "' + root + '" -OutputFolder "' + root + '"';
   navigator.clipboard.writeText(cmd).then(() => {
     const m = document.getElementById('copiedMsg');
     m.classList.add('show');

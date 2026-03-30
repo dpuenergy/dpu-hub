@@ -440,14 +440,16 @@ function updateCmd() {
   var uncut  = parent + '\\' + leaf + '_uncut';
 
   document.getElementById('cmdPreview').innerHTML =
-    '&amp; <span class="val">"' + esc(SCRIPT_PATH) + '"</span>' +
+    'powershell <span class="val">-ExecutionPolicy Bypass</span>' +
+    ' -File <span class="val">"' + esc(SCRIPT_PATH) + '"</span>' +
     ' -RootPath <span class="val">"' + esc(root) + '"</span>' +
     ' <span class="flag">-WhatIf</span>';
 
   document.getElementById('cmdLive').innerHTML =
     'Rename-Item <span class="val">"' + esc(root) + '"</span> <span class="val">"' + esc(uncut) + '"</span>' +
     '<span style="color:#94a3b8">;</span> ' +
-    '&amp; <span class="val">"' + esc(SCRIPT_PATH) + '"</span>' +
+    'powershell <span class="val">-ExecutionPolicy Bypass</span>' +
+    ' -File <span class="val">"' + esc(SCRIPT_PATH) + '"</span>' +
     ' -RootPath <span class="val">"' + esc(uncut) + '"</span>';
 }
 
@@ -468,8 +470,8 @@ function copyCmd(phase) {
   var uncut  = parent + '\\' + leaf + '_uncut';
 
   var cmd = phase === 'preview'
-    ? '& "' + SCRIPT_PATH + '" -RootPath "' + root + '" -WhatIf'
-    : 'Rename-Item "' + root + '" "' + uncut + '"; & "' + SCRIPT_PATH + '" -RootPath "' + uncut + '"';
+    ? 'powershell -ExecutionPolicy Bypass -File "' + SCRIPT_PATH + '" -RootPath "' + root + '" -WhatIf'
+    : 'Rename-Item "' + root + '" "' + uncut + '"; powershell -ExecutionPolicy Bypass -File "' + SCRIPT_PATH + '" -RootPath "' + uncut + '"';
 
   navigator.clipboard.writeText(cmd).then(function() {
     var id = phase === 'preview' ? 'copiedPreview' : 'copiedLive';
