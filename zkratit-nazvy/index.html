@@ -1,0 +1,342 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Zkracování názvů OneDrive | DPU Energy</title>
+<style>
+:root {
+  --brand:    #1b3280;
+  --brand-dk: #122560;
+  --accent:   #2e8cff;
+  --bg:       #f0f3f9;
+  --card:     #ffffff;
+  --text:     #0d1b3e;
+  --muted:    #5a6a8a;
+  --border:   rgba(27,50,128,.12);
+  --r:        14px;
+  --shadow:   0 2px 12px rgba(27,50,128,.10);
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+}
+header {
+  background: var(--brand);
+  color: #fff;
+  box-shadow: 0 2px 16px rgba(0,0,0,.25);
+}
+.header-inner {
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 0 24px;
+  height: 60px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.logo-mark {
+  width: 32px; height: 32px;
+  background: var(--accent);
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 800; font-size: 14px; letter-spacing: -.5px; flex-shrink: 0;
+}
+.header-title { font-size: 17px; font-weight: 700; }
+.back-link {
+  margin-left: auto;
+  font-size: 13px;
+  color: rgba(255,255,255,.75);
+  text-decoration: none;
+}
+.back-link:hover { color: #fff; }
+main {
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 40px 24px 60px;
+}
+h1 { font-size: 22px; font-weight: 700; margin-bottom: 6px; }
+.subtitle { font-size: 14px; color: var(--muted); margin-bottom: 32px; line-height: 1.5; }
+.card {
+  background: var(--card);
+  border-radius: var(--r);
+  box-shadow: var(--shadow);
+  padding: 28px 32px;
+  margin-bottom: 24px;
+}
+.card h2 { font-size: 15px; font-weight: 700; margin-bottom: 20px; color: var(--brand); }
+.field { margin-bottom: 18px; }
+label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 6px;
+  color: var(--text);
+}
+label .hint {
+  font-weight: 400;
+  color: var(--muted);
+  margin-left: 6px;
+}
+input[type=text], input[type=number] {
+  width: 100%;
+  padding: 9px 12px;
+  font-size: 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #f8faff;
+  color: var(--text);
+  outline: none;
+  transition: border-color .15s;
+  font-family: inherit;
+}
+input[type=text]:focus, input[type=number]:focus {
+  border-color: var(--accent);
+  background: #fff;
+}
+.row { display: flex; gap: 16px; }
+.row .field { flex: 1; }
+.checkbox-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 0 4px;
+}
+.checkbox-row input[type=checkbox] {
+  width: 17px; height: 17px;
+  accent-color: var(--accent);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.checkbox-row label {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.checkbox-row .hint { font-weight: 400; color: var(--muted); font-size: 13px; }
+.whatif-warning {
+  background: #fff8e1;
+  border-left: 3px solid #ffc107;
+  border-radius: 0 8px 8px 0;
+  padding: 10px 14px;
+  font-size: 13px;
+  color: #7a5c00;
+  margin-top: 10px;
+  display: none;
+}
+.whatif-warning.show { display: block; }
+.danger-warning {
+  background: #fde8ef;
+  border-left: 3px solid #e0305a;
+  border-radius: 0 8px 8px 0;
+  padding: 10px 14px;
+  font-size: 13px;
+  color: #8b0024;
+  margin-top: 10px;
+  display: none;
+}
+.danger-warning.show { display: block; }
+.cmd-box {
+  background: #0d1b3e;
+  color: #7dd3fc;
+  border-radius: 10px;
+  padding: 16px 18px;
+  font-family: 'Cascadia Code', 'Fira Mono', 'Consolas', monospace;
+  font-size: 13px;
+  line-height: 1.6;
+  word-break: break-all;
+  min-height: 54px;
+  margin-bottom: 16px;
+  user-select: all;
+}
+.cmd-box .param { color: #a5f3fc; }
+.cmd-box .value { color: #fde68a; }
+.cmd-box .flag  { color: #86efac; }
+.actions { display: flex; gap: 12px; flex-wrap: wrap; }
+.btn {
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: background .15s, transform .1s;
+}
+.btn:active { transform: scale(.97); }
+.btn-primary { background: var(--accent); color: #fff; }
+.btn-primary:hover { background: #1a7ae8; }
+.btn-secondary {
+  background: transparent;
+  color: var(--accent);
+  border: 1px solid var(--accent);
+}
+.btn-secondary:hover { background: #e8f0fe; }
+.copied-msg {
+  font-size: 13px;
+  color: #28a745;
+  font-weight: 600;
+  align-self: center;
+  opacity: 0;
+  transition: opacity .3s;
+}
+.copied-msg.show { opacity: 1; }
+.info-box {
+  background: #e8f0fe;
+  border-left: 3px solid var(--accent);
+  border-radius: 0 8px 8px 0;
+  padding: 12px 16px;
+  font-size: 13px;
+  color: var(--brand);
+  line-height: 1.55;
+}
+.info-box strong { font-weight: 700; }
+footer {
+  text-align: center;
+  padding: 24px;
+  font-size: 12px;
+  color: var(--muted);
+  border-top: 1px solid var(--border);
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-inner">
+    <div class="logo-mark">DE</div>
+    <div class="header-title">Zkracování názvů OneDrive</div>
+    <a href="/" class="back-link">← Zpět na hub</a>
+  </div>
+</header>
+
+<main>
+  <h1>Zkracování názvů OneDrive</h1>
+  <p class="subtitle">
+    Přejmenuje složky a soubory, jejichž cesta překračuje limit Windows.
+    Nejprve spusť v režimu <strong>WhatIf</strong> (náhled bez změn) – zkontroluj výstup, a teprve poté spusť ostře.
+  </p>
+
+  <div class="card">
+    <h2>Parametry</h2>
+
+    <div class="field">
+      <label for="rootPath">Zdrojová složka <span class="hint">(povinné)</span></label>
+      <input type="text" id="rootPath" placeholder="C:\Users\jakub\OneDrive - DPU REVIT s.r.o" oninput="updateCmd()" />
+    </div>
+
+    <div class="row">
+      <div class="field">
+        <label for="maxLen">Max. délka cesty <span class="hint">(výchozí: 240)</span></label>
+        <input type="number" id="maxLen" value="240" min="50" max="259" oninput="updateCmd()" />
+      </div>
+      <div class="field">
+        <label for="minBase">Min. délka názvu <span class="hint">(výchozí: 8)</span></label>
+        <input type="number" id="minBase" value="8" min="1" max="50" oninput="updateCmd()" />
+      </div>
+    </div>
+
+    <div class="checkbox-row">
+      <input type="checkbox" id="whatif" checked onchange="updateCmd(); toggleWarnings()" />
+      <label for="whatif">
+        Režim WhatIf
+        <span class="hint">– jen zobrazí co by se přejmenovalo, nic nezmění</span>
+      </label>
+    </div>
+    <div class="whatif-warning show" id="whatifWarn">
+      Bezpečný náhled – žádné soubory nebudou přejmenovány.
+    </div>
+    <div class="danger-warning" id="dangerWarn">
+      Ostré spuštění – skript fyzicky přejmenuje složky a soubory. Ujisti se, že OneDrive není synchronizován nebo pozastav sync.
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Vygenerovaný příkaz</h2>
+    <div class="cmd-box" id="cmdOutput">
+      <span style="color:#5a6a8a;font-style:italic;">Vyplň zdrojovou složku výše…</span>
+    </div>
+    <div class="actions">
+      <button class="btn btn-primary" onclick="copyCmd()">Kopírovat příkaz</button>
+      <a href="/Zkratit-Dlouhe-Nazvy.ps1" download class="btn btn-secondary">Stáhnout .ps1</a>
+      <span class="copied-msg" id="copiedMsg">✓ Zkopírováno!</span>
+    </div>
+  </div>
+
+  <div class="info-box">
+    <strong>Doporučený postup:</strong>
+    1. Spusť nejprve s WhatIf – zkontroluj seznam přejmenování.
+    2. Pokud vše vypadá v pořádku, odškrtni WhatIf a spusť znovu.
+    Skript zpracovává složky od nejhlubších výš, pak soubory – takže cesty jsou konzistentní.
+  </div>
+</main>
+
+<footer>
+  <strong>DPU Energy</strong> &nbsp;|&nbsp; Interní nástroje
+</footer>
+
+<script>
+function updateCmd() {
+  const root    = document.getElementById('rootPath').value.trim();
+  const maxLen  = parseInt(document.getElementById('maxLen').value) || 240;
+  const minBase = parseInt(document.getElementById('minBase').value) || 8;
+  const whatif  = document.getElementById('whatif').checked;
+  const box     = document.getElementById('cmdOutput');
+
+  if (!root) {
+    box.innerHTML = '<span style="color:#5a6a8a;font-style:italic;">Vyplň zdrojovou složku výše…</span>';
+    return;
+  }
+
+  const scriptPath = '.\\Zkratit-Dlouhe-Nazvy.ps1';
+  let cmd = '<span class="value">' + esc(scriptPath) + '</span>';
+  cmd += ' <span class="param">-RootPath</span> <span class="value">"' + esc(root) + '"</span>';
+  if (maxLen !== 240) {
+    cmd += ' <span class="param">-MaxFullPathLength</span> <span class="value">' + maxLen + '</span>';
+  }
+  if (minBase !== 8) {
+    cmd += ' <span class="param">-MinBaseNameLength</span> <span class="value">' + minBase + '</span>';
+  }
+  if (whatif) {
+    cmd += ' <span class="flag">-WhatIf</span>';
+  }
+  box.innerHTML = cmd;
+}
+
+function toggleWarnings() {
+  const whatif = document.getElementById('whatif').checked;
+  document.getElementById('whatifWarn').classList.toggle('show', whatif);
+  document.getElementById('dangerWarn').classList.toggle('show', !whatif);
+}
+
+function copyCmd() {
+  const root    = document.getElementById('rootPath').value.trim();
+  const maxLen  = parseInt(document.getElementById('maxLen').value) || 240;
+  const minBase = parseInt(document.getElementById('minBase').value) || 8;
+  const whatif  = document.getElementById('whatif').checked;
+
+  if (!root) { alert('Nejprve vyplň zdrojovou složku.'); return; }
+
+  let cmd = '.\\Zkratit-Dlouhe-Nazvy.ps1 -RootPath "' + root + '"';
+  if (maxLen !== 240)  cmd += ' -MaxFullPathLength ' + maxLen;
+  if (minBase !== 8)   cmd += ' -MinBaseNameLength ' + minBase;
+  if (whatif)          cmd += ' -WhatIf';
+
+  navigator.clipboard.writeText(cmd).then(() => {
+    const msg = document.getElementById('copiedMsg');
+    msg.classList.add('show');
+    setTimeout(() => msg.classList.remove('show'), 2000);
+  });
+}
+
+function esc(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+updateCmd();
+</script>
+</body>
+</html>
