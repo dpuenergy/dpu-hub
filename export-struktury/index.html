@@ -213,7 +213,7 @@ footer { text-align: center; padding: 24px; font-size: 12px; color: var(--muted)
       <div class="step-card">
         <ul class="ps-steps">
           <li>Stiskni klávesy <strong>Win + R</strong>, napiš <code>powershell</code> a potvrď Enterem.</li>
-          <li>Přepni se do složky, kam jsi stáhl skript – napiš <code>cd "%USERPROFILE%\Downloads"</code> a stiskni Enter.</li>
+          <li>Přepni se do složky, kam jsi stáhl skript – napiš <code>cd "$env:USERPROFILE\Downloads"</code> a stiskni Enter.</li>
           <li>Vlož zkopírovaný příkaz: klikni <strong>pravým tlačítkem</strong> do okna PowerShellu (příkaz se automaticky vloží).</li>
           <li>Stiskni <strong>Enter</strong>. Po skončení najdeš výsledky přímo ve své složce.</li>
         </ul>
