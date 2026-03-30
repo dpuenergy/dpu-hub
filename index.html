@@ -490,7 +490,7 @@ body.dark .card-icon.rose   { background: #2a0a18; }
 </div>
 
 <div class="search-wrap">
-  <input type="search" id="tool-search" placeholder="Hledat nástroj…" autocomplete="new-password" name="tool-search-field">
+  <input type="search" id="tool-search" placeholder="Hledat nástroj…" autocomplete="off" readonly onfocus="this.removeAttribute('readonly')">
 </div>
 
 <main>
@@ -1114,14 +1114,6 @@ document.getElementById('login-form').addEventListener('submit', async function(
     btn.textContent = 'Přihlásit se';
     btn.disabled = false;
   }
-});
-
-// Prevent browser autofill from inserting login email into search field
-window.addEventListener('load', function() {
-  setTimeout(function() {
-    var s = document.getElementById('tool-search');
-    if (s) s.value = '';
-  }, 300);
 });
 
 // Search / filter
