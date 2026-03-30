@@ -111,29 +111,35 @@ $csvContent = [System.IO.File]::ReadAllText($csvPath, [System.Text.UTF8Encoding]
 
 try {
     # tree.exe ignoruje kódování konzole a láme česká písmena → čistá PS implementace
-    $treeLines = New-Object System.Collections.Generic.List[string]
-    $treeLines.Add($RootPath)
-
-    function Write-PSTree {
-        param([string]$Path, [string]$Prefix)
+    # List předáváme jako parametr, aby byl dostupný ve všech rekurzivních voláních
+    function script:Write-PSTree {
+        param(
+            [string]$Path,
+            [string]$Prefix,
+            [System.Collections.Generic.List[string]]$Lines
+        )
         try {
             $items = Get-ChildItem -LiteralPath $Path -Force -ErrorAction Stop |
-                     Sort-Object @{E={$_.PSIsContainer}; Ascending=$false}, Name
+                     Sort-Object @{E={ [int](-not $_.PSIsContainer) }}, Name
         } catch { return }
 
         for ($i = 0; $i -lt $items.Count; $i++) {
             $last      = ($i -eq $items.Count - 1)
             $connector = if ($last) { '\-- ' } else { '+-- ' }
-            $treeLines.Add($Prefix + $connector + $items[$i].Name)
+            $Lines.Add($Prefix + $connector + $items[$i].Name)
             if ($items[$i].PSIsContainer) {
                 $childPrefix = $Prefix + (if ($last) { '    ' } else { '|   ' })
-                Write-PSTree -Path $items[$i].FullName -Prefix $childPrefix
+                Write-PSTree -Path $items[$i].FullName -Prefix $childPrefix -Lines $Lines
             }
         }
     }
 
-    Write-PSTree -Path $RootPath -Prefix ''
-    [System.IO.File]::WriteAllLines($treePath, $treeLines, $utf8NoBom)
+    $treeLines = New-Object System.Collections.Generic.List[string]
+    $treeLines.Add($RootPath)
+    Write-PSTree -Path $RootPath -Prefix '' -Lines $treeLines
+
+    $treeText = [string]::Join("`r`n", $treeLines)
+    [System.IO.File]::WriteAllText($treePath, $treeText, [System.Text.UTF8Encoding]::new($false))
 }
 catch {
     $errors.Add("TREE EXPORT SELHAL`r`n$($_.Exception.Message)`r`n")
