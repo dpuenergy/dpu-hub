@@ -379,7 +379,8 @@ footer { text-align: center; padding: 24px; font-size: 12px; color: var(--muted)
 
 <script>
 var currentPhase = 'preview';
-var SCRIPT_PATH  = '$env:USERPROFILE\\Downloads\\Zkratit-Dlouhe-Nazvy.ps1';
+var SCRIPT_GLOB  = '$env:USERPROFILE\\Downloads\\Zkratit-Dlouhe-Nazvy_*.ps1';
+var SCRIPT_FIND  = '(Get-ChildItem "' + SCRIPT_GLOB + '" | Sort-Object LastWriteTime -Descending | Select-Object -First 1 -ExpandProperty FullName)';
 
 function getParent(p) {
   var norm = p.replace(/[/\\]+$/, '');
@@ -441,7 +442,7 @@ function updateCmd() {
 
   document.getElementById('cmdPreview').innerHTML =
     'powershell <span class="val">-ExecutionPolicy Bypass</span>' +
-    ' -File <span class="val">"' + esc(SCRIPT_PATH) + '"</span>' +
+    ' -File <span class="val">' + esc(SCRIPT_FIND) + '</span>' +
     ' -RootPath <span class="val">"' + esc(root) + '"</span>' +
     ' <span class="flag">-WhatIf</span>';
 
@@ -449,7 +450,7 @@ function updateCmd() {
     'Rename-Item <span class="val">"' + esc(root) + '"</span> <span class="val">"' + esc(uncut) + '"</span>' +
     '<span style="color:#94a3b8">;</span> ' +
     'powershell <span class="val">-ExecutionPolicy Bypass</span>' +
-    ' -File <span class="val">"' + esc(SCRIPT_PATH) + '"</span>' +
+    ' -File <span class="val">' + esc(SCRIPT_FIND) + '</span>' +
     ' -RootPath <span class="val">"' + esc(uncut) + '"</span>';
 }
 
@@ -470,8 +471,8 @@ function copyCmd(phase) {
   var uncut  = parent + '\\' + leaf + '_uncut';
 
   var cmd = phase === 'preview'
-    ? 'powershell -ExecutionPolicy Bypass -File "' + SCRIPT_PATH + '" -RootPath "' + root + '" -WhatIf'
-    : 'Rename-Item "' + root + '" "' + uncut + '"; powershell -ExecutionPolicy Bypass -File "' + SCRIPT_PATH + '" -RootPath "' + uncut + '"';
+    ? 'powershell -ExecutionPolicy Bypass -File ' + SCRIPT_FIND + ' -RootPath "' + root + '" -WhatIf'
+    : 'Rename-Item "' + root + '" "' + uncut + '"; powershell -ExecutionPolicy Bypass -File ' + SCRIPT_FIND + ' -RootPath "' + uncut + '"';
 
   navigator.clipboard.writeText(cmd).then(function() {
     var id = phase === 'preview' ? 'copiedPreview' : 'copiedLive';
@@ -485,10 +486,13 @@ async function downloadScript() {
   try {
     var res  = await fetch('/Zkratit-Dlouhe-Nazvy.ps1');
     var text = await res.text();
+    var date = new Date().toISOString().slice(0,10).replace(/-/g,'');
+    var hash = Math.random().toString(36).slice(2, 10);
+    var name = 'Zkratit-Dlouhe-Nazvy_' + date + '_' + hash + '.ps1';
     var blob = new Blob([text], { type: 'text/plain' });
     var url  = URL.createObjectURL(blob);
     var a    = document.createElement('a');
-    a.href = url; a.download = 'Zkratit-Dlouhe-Nazvy.ps1'; a.click();
+    a.href = url; a.download = name; a.click();
     URL.revokeObjectURL(url);
   } catch(e) {
     alert('Stahování se nezdařilo. Zkus to znovu.');
