@@ -112,7 +112,7 @@ $csvContent = [System.IO.File]::ReadAllText($csvPath, [System.Text.UTF8Encoding]
 try {
     # tree.exe ignoruje kódování konzole a láme česká písmena → čistá PS implementace
     # List předáváme jako parametr, aby byl dostupný ve všech rekurzivních voláních
-    function script:Write-PSTree {
+    function Write-PSTree {
         param(
             [string]$Path,
             [string]$Prefix,
@@ -142,7 +142,9 @@ try {
     [System.IO.File]::WriteAllText($treePath, $treeText, [System.Text.UTF8Encoding]::new($false))
 }
 catch {
-    $errors.Add("TREE EXPORT SELHAL`r`n$($_.Exception.Message)`r`n")
+    $msg = "TREE EXPORT SELHAL`r`n$($_.Exception.GetType().Name): $($_.Exception.Message)`r`n"
+    $errors.Add($msg)
+    Write-Warning $msg
 }
 
 if ($errors.Count -gt 0) {
