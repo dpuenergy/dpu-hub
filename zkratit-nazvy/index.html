@@ -392,8 +392,12 @@ function getLeaf(p) {
   return idx >= 0 ? norm.substring(idx + 1) : norm;
 }
 
+function cleanPath(raw) {
+  return raw.trim().replace(/^["']+|["']+$/g, '').trim();
+}
+
 function onPathInput() {
-  var v = document.getElementById('rootPath').value.trim();
+  var v = cleanPath(document.getElementById('rootPath').value);
   var filled = v.length > 0;
   document.getElementById('rootPath').classList.toggle('filled', filled);
   document.getElementById('copyBtnPreview').disabled = !filled;
@@ -422,7 +426,7 @@ function onPathInput() {
 }
 
 function updateCmd() {
-  var root = document.getElementById('rootPath').value.trim();
+  var root = cleanPath(document.getElementById('rootPath').value);
   var empty = '<span style="color:#5a6a8a;font-style:italic;">Nejprve vyplň cestu ke složce v kroku 1…</span>';
 
   if (!root) {
@@ -457,7 +461,7 @@ function setPhase(phase) {
 }
 
 function copyCmd(phase) {
-  var root = document.getElementById('rootPath').value.trim();
+  var root = cleanPath(document.getElementById('rootPath').value);
   if (!root) return;
   var parent = getParent(root);
   var leaf   = getLeaf(root);

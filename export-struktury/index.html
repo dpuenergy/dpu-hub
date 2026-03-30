@@ -234,8 +234,12 @@ footer { text-align: center; padding: 24px; font-size: 12px; color: var(--muted)
 </footer>
 
 <script>
+function cleanPath(raw) {
+  return raw.trim().replace(/^["']+|["']+$/g, '').trim();
+}
+
 function onPathInput() {
-  const v = document.getElementById('rootPath').value.trim();
+  const v = cleanPath(document.getElementById('rootPath').value);
   const filled = v.length > 0;
   document.getElementById('rootPath').classList.toggle('filled', filled);
   document.getElementById('copyBtn').disabled = !filled;
@@ -253,7 +257,7 @@ function onPathInput() {
 }
 
 function updateCmd() {
-  const root = document.getElementById('rootPath').value.trim();
+  const root = cleanPath(document.getElementById('rootPath').value);
   const box  = document.getElementById('cmdOutput');
   if (!root) {
     box.innerHTML = '<span style="color:#5a6a8a;font-style:italic;">Nejprve vyplň cestu ke složce v kroku 1…</span>';
@@ -266,7 +270,7 @@ function updateCmd() {
 }
 
 function copyCmd() {
-  const root = document.getElementById('rootPath').value.trim();
+  const root = cleanPath(document.getElementById('rootPath').value);
   if (!root) return;
   const cmd = '.\\export_struktury_safe.ps1 -RootPath "' + root + '" -OutputFolder "' + root + '"';
   navigator.clipboard.writeText(cmd).then(() => {
