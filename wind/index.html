@@ -1066,28 +1066,5 @@ if (hourlyChart) hourlyChart.destroy();
 
     </script>
     <script src="/shared/navbar.js" data-tool="Wind Ideal"></script>
-    <script>
-    // Fallback: pokud navbar.js nevytáhl email (timing edge-case), zkusíme po načtení
-    window.addEventListener('load', function() {
-      var userSpan = document.querySelector('#dpu-nav .dpu-user');
-      if (userSpan && userSpan.textContent) return; // email už je
-      try {
-        var sess = JSON.parse(localStorage.getItem('dpu_user') || 'null');
-        if (!sess || !sess.access_token) return;
-        var parts = sess.access_token.split('.');
-        var pad = function(s){ while(s.length%4) s+='='; return s; };
-        var pl = JSON.parse(atob(pad(parts[1].replace(/-/g,'+').replace(/_/g,'/'))));
-        if (!pl.email) return;
-        var right = document.querySelector('#dpu-nav .dpu-right');
-        if (!right) return;
-        if (!userSpan) {
-          userSpan = document.createElement('span');
-          userSpan.className = 'dpu-user';
-          right.insertBefore(userSpan, right.firstChild);
-        }
-        userSpan.textContent = pl.email;
-      } catch(e) {}
-    });
-    </script>
   </body>
 </html>

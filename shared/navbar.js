@@ -107,16 +107,14 @@
     }
   } catch (e) {}
 
+  // ── Vizuální lišta — jen na top-level stránkách (ne uvnitř iframe) ─────────
+  if (window !== window.top) return;
+
   // ── Dark mode ─────────────────────────────────────────────────────────────
   function applyNavTheme(dark) {
     document.body.classList.toggle('dark', dark);
     var btn = document.getElementById('dpu-theme-btn');
     if (btn) btn.textContent = dark ? '\u2600' : '\uD83C\uDF19';
-  }
-  function toggleNavTheme() {
-    var dark = !document.body.classList.contains('dark');
-    try { localStorage.setItem('dpu_theme', dark ? 'dark' : 'light'); } catch(e) {}
-    applyNavTheme(dark);
   }
 
   // ── Styles ────────────────────────────────────────────────────────────────
@@ -140,10 +138,12 @@
     '#dpu-nav .dpu-user{font-size:12px;opacity:.60;',
       'white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:200px;}',
     '#dpu-nav .dpu-right{margin-left:auto;display:flex;align-items:center;gap:8px;}',
-    '#dpu-theme-btn{background:transparent;border:1px solid rgba(255,255,255,.30);',
-      'color:#fff;border-radius:6px;padding:3px 8px;cursor:pointer;font-size:13px;',
-      'line-height:1.4;flex-shrink:0;}',
-    '#dpu-theme-btn:hover{background:rgba(255,255,255,.15);}',
+    // width:auto!important přebije stránkové CSS jako button{width:100%}
+    '#dpu-theme-btn{background:transparent!important;border:1px solid rgba(255,255,255,.30)!important;',
+      'color:#fff!important;border-radius:6px!important;padding:3px 8px!important;',
+      'cursor:pointer!important;font-size:13px!important;line-height:1.4!important;',
+      'width:auto!important;flex-shrink:0!important;}',
+    '#dpu-theme-btn:hover{background:rgba(255,255,255,.15)!important;}',
     '#dpu-nav-sp{height:48px;}',
     // Dark mode proměnné — přepíší :root hodnoty pro všechny subtools
     'body.dark{--bg:#0f1624;--card:#1a2235;--text:#e8edf8;--muted:#8899bb;',
