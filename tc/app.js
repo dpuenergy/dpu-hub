@@ -999,10 +999,6 @@ function buildCharts(result) {
       mBiv[m]    += (s.bivalence_kw[i] || 0) / 1000;
     }
 
-    // TUV reference line: uniform monthly average from annual TUV input
-    const tuvMwhPerMonth = inputs.tuv_gj > 0 ? (inputs.tuv_gj * 277.78 / 1000 / 12) : null;
-    const mTuvLine = tuvMwhPerMonth ? new Array(12).fill(tuvMwhPerMonth) : null;
-
     const datasets = [
       { type: "bar",  label: "Výkon TČ (MWh)", data: mHp,
         backgroundColor: "rgba(46,140,255,.7)", stack: "s" },
@@ -1012,13 +1008,6 @@ function buildCharts(result) {
         borderColor: "rgba(13,27,62,.8)", backgroundColor: "transparent",
         borderWidth: 2, pointRadius: 3, fill: false },
     ];
-    if (mTuvLine) {
-      datasets.push({
-        type: "line", label: "TUV baseline (MWh)", data: mTuvLine,
-        borderColor: "rgba(46,140,255,.5)", backgroundColor: "transparent",
-        borderWidth: 1.5, borderDash: [5, 4], pointRadius: 0, fill: false,
-      });
-    }
 
     charts["chPower"] = new Chart(document.getElementById("chPower"), {
       data: { labels: MONTHS, datasets },
