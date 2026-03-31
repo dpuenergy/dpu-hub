@@ -1180,11 +1180,21 @@ function buildCharts(result) {
       document.getElementById("heat_season_end")?.value);
     const pNom = inputs.hp_power_kw || 1;
     const dailyHpHrsTUV = new Array(days).fill(0);
-    for (let d = 0; d < days; d++) {
-      const s0 = d * 24, s1 = Math.min(s0 + 24, s.t_out_c.length);
-      let tuvKwh = 0;
-      for (let i = s0; i < s1; i++) tuvKwh += (s.tuv_kw[i] || 0);
-      dailyHpHrsTUV[d] = Math.min(24, tuvKwh / pNom);
+    if (Array.isArray(s.tuv_soc) && s.tuv_soc.length > 1) {
+      // HP is charging TUV tank when SOC is rising — use backend's actual simulation
+      for (let i = 1; i < s.tuv_soc.length; i++) {
+        if (s.tuv_soc[i] > s.tuv_soc[i - 1]) {
+          dailyHpHrsTUV[Math.floor(i / 24)] += 1;
+        }
+      }
+    } else {
+      // Fallback: estimate from energy balance
+      for (let d = 0; d < days; d++) {
+        const s0 = d * 24, s1 = Math.min(s0 + 24, s.t_out_c.length);
+        let tuvKwh = 0;
+        for (let i = s0; i < s1; i++) tuvKwh += (s.tuv_kw[i] || 0);
+        dailyHpHrsTUV[d] = Math.min(24, tuvKwh / pNom);
+      }
     }
 
     charts["chBufSoc"] = new Chart(document.getElementById("chBufSoc"), {
