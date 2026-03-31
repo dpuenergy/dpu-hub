@@ -897,9 +897,10 @@ function buildCharts(result) {
     destroyChart("chTankSoc");
   }
 
-  // Heating curve: aggregate into 0.5°C bins → clean line
+  // Heating curve: aggregate into 0.5°C bins → clean line (only heating hours)
   const hcBins = {};
   for (let i = 0; i < s.t_out_c.length; i++) {
+    if ((s.heat_need_kw[i] || 0) <= 0) continue; // skip non-heating hours (TUV only, summer)
     const bin = Math.round(s.t_out_c[i] * 2) / 2; // 0.5°C resolution
     if (!hcBins[bin]) hcBins[bin] = [];
     hcBins[bin].push(s.t_water_c[i]);
