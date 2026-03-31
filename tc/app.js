@@ -384,16 +384,26 @@ function calcNPV() {
 // ── Accumulation tank sizing ──────────────────────────────────────────────────
 
 function calcAccumulation() {
-  const powerKw = parseFloat(document.getElementById("hp_power_kw")?.value || 0);
-  const tMin    = parseFloat(document.getElementById("acc_t_min")?.value   || 5);
-  const dt      = parseFloat(document.getElementById("acc_dt")?.value      || 5);
-  const el      = document.getElementById("acc_result");
+  const powerKw  = parseFloat(document.getElementById("hp_power_kw")?.value  || 0);
+  const tMinMin  = parseFloat(document.getElementById("acc_t_min")?.value    || 20);
+  const bufTmin  = parseFloat(document.getElementById("buf_t_min")?.value    || 40);
+  const bufTmax  = parseFloat(document.getElementById("buf_t_max")?.value    || 55);
+  const el       = document.getElementById("acc_result");
+  const hiddenVol = document.getElementById("buf_vol_l");
+  const dt       = bufTmax - bufTmin;
   if (!el) return;
-  if (!powerKw || !tMin || !dt || dt <= 0) { el.textContent = "—"; return; }
+  if (!powerKw || !tMinMin || dt <= 0) {
+    el.textContent = "—";
+    if (hiddenVol) hiddenVol.value = 0;
+    return;
+  }
 
-  const vol     = (powerKw * tMin * 60) / (4.182 * dt);
+  // V [l] = P_nom [kW] × t_min [min] / (0.06978 × ΔT)
+  // derived from: P*t_min/60 [kWh] = V * 0.001163 [kWh/(l·K)] * ΔT
+  const vol     = powerKw * tMinMin / (0.06978 * dt);
   const rounded = Math.ceil(vol / 50) * 50;
-  el.innerHTML  = `${Math.round(vol).toLocaleString("cs-CZ")} l → typická řada zásobníku: <strong>${rounded} l</strong>`;
+  if (hiddenVol) hiddenVol.value = Math.round(vol);
+  el.innerHTML  = `Objem nádrže: ${Math.round(vol).toLocaleString("cs-CZ")} l → typická řada: <strong>${rounded} l</strong>`;
 }
 
 // ── Heating curve ─────────────────────────────────────────────────────────────
@@ -661,55 +671,50 @@ async function fetchChmiData() {
 // Hour-by-hour buffer tank model: HP runs at target power, tank balances demand.
 
 function simulateBuffer(s, p) {
-  const vol    = p.buf_vol_l || 0;
+  const vol  = parseFloat(document.getElementById("buf_vol_l")?.value || 0);
   if (vol <= 0) return null;
 
   const tMin   = p.buf_t_min   || 40;
   const tMax   = p.buf_t_max   || 55;
   const pNom   = p.hp_power_kw || 0;
-  const pTgt   = pNom * ((p.buf_hp_target_pct || 80) / 100);
-  const pMin   = pNom * ((p.hp_min_load_pct   || 25) / 100);
+  if (pNom <= 0) return null;
 
-  // Water: 1.163 Wh/(liter·K) = 0.001163 kWh/(liter·K)
+  // Carnot-based COP: uses theoretical heating curve (slope/intercept/hwMin)
+  const slope    = p.hw_slope     || -1.25;
+  const intercept = p.hw_intercept || 42.5;
+  const hwMin    = p.hw_min_c     || 45;
+  const copNom   = p.cop_nominal  || 3.2;
+  // Nominal point assumed at hw_t_design / hw_w_design (typically −15°C / 55°C)
+  const tOutNom  = p.hw_t_design  != null ? p.hw_t_design  : -15;
+  const tWaterNom = p.hw_w_design != null ? p.hw_w_design  : 55;
+
+  function getCop(tOut) {
+    const tWater = Math.max(hwMin, slope * tOut + intercept);
+    const dT_nom = tWaterNom - tOutNom;      // design lift
+    const dT_now = tWater    - tOut;          // actual lift
+    if (dT_now <= 0) return copNom * 2.5;
+    return Math.max(1.0, Math.min(copNom * 2.5, copNom * dT_nom / dT_now));
+  }
+
+  // Water: 0.001163 kWh/(liter·K)
   const capKwhPerK = vol * 0.001163;
   const n = s.t_out_c.length;
 
-  // Build COP(T_outdoor) lookup from backend simulation results
-  const copBins = {};
-  for (let i = 0; i < n; i++) {
-    const bin = Math.round(s.t_out_c[i]);
-    if (!copBins[bin]) copBins[bin] = [];
-    if ((s.cop[i] || 0) > 0) copBins[bin].push(s.cop[i]);
-  }
-  const copLookup = {};
-  for (const [t, vals] of Object.entries(copBins)) {
-    copLookup[+t] = vals.reduce((a, b) => a + b, 0) / vals.length;
-  }
-  const copKeys = Object.keys(copLookup).map(Number).sort((a, b) => a - b);
-  function getCop(tOut) {
-    if (!copKeys.length) return p.cop_nominal || 2.5;
-    const bin = Math.round(tOut);
-    if (copLookup[bin] != null) return copLookup[bin];
-    if (bin <= copKeys[0])              return copLookup[copKeys[0]];
-    if (bin >= copKeys[copKeys.length - 1]) return copLookup[copKeys[copKeys.length - 1]];
-    const lo = copKeys.filter(k => k <= bin).pop();
-    const hi = copKeys.find(k => k > bin);
-    return copLookup[lo] + (bin - lo) / (hi - lo) * (copLookup[hi] - copLookup[lo]);
-  }
-
-  const hp_kw    = new Array(n).fill(0);
-  const hp_el    = new Array(n).fill(0);
-  const biv_kw   = new Array(n).fill(0);
-  const tank_t   = new Array(n).fill(0);
+  const hp_kw  = new Array(n).fill(0);
+  const hp_el  = new Array(n).fill(0);
+  const biv_kw = new Array(n).fill(0);
+  const tank_t = new Array(n).fill(0);
 
   let T = (tMin + tMax) / 2;   // initial tank temperature
-  let on = T <= tMin;
+  let on = false;
   let starts = 0;
 
   for (let i = 0; i < n; i++) {
     const demand = s.heat_need_kw[i] || 0;
-    const cop    = Math.max(1.0, getCop(s.t_out_c[i]));
+    const tOut   = s.t_out_c[i] || 0;
+    const cop    = getCop(tOut);
 
+    // Hysteresis control
     const wasOn = on;
     if (!on && T <= tMin) on = true;
     if ( on && T >= tMax) on = false;
@@ -717,10 +722,11 @@ function simulateBuffer(s, p) {
 
     let Qhp = 0;
     if (on) {
-      const P = Math.max(pMin, Math.min(pTgt, pNom));
-      Qhp         = P;          // 1 h → kWh = kW
-      hp_kw[i]    = P;
-      hp_el[i]    = P / cop;
+      // Cap HP output: don't overshoot tMax
+      const maxQhp = demand + Math.max(0, (tMax - T) * capKwhPerK);
+      Qhp      = Math.min(pNom, Math.max(0, maxQhp));
+      hp_kw[i] = Qhp;
+      hp_el[i] = Qhp / cop;
     }
 
     // Tank energy balance
@@ -732,7 +738,7 @@ function simulateBuffer(s, p) {
       biv_kw[i] = (floor - T) * capKwhPerK;
       T = floor;
     }
-    // Hard clamp (physical limits)
+    // Hard clamp
     T = Math.max(tMin - 10, Math.min(tMax + 10, T));
     tank_t[i] = T;
   }
@@ -811,10 +817,9 @@ function getInputs() {
     investment_kcz:       parseFloat(document.getElementById("investment_kcz").value || "0"),
     depr_years:           parseFloat(document.getElementById("depr_years").value     || "15"),
 
-    buf_vol_l:         parseFloat(document.getElementById("buf_vol_l")?.value         || 0),
-    buf_t_min:         parseFloat(document.getElementById("buf_t_min")?.value         || 40),
-    buf_t_max:         parseFloat(document.getElementById("buf_t_max")?.value         || 55),
-    buf_hp_target_pct: parseFloat(document.getElementById("buf_hp_target_pct")?.value || 80),
+    buf_vol_l: parseFloat(document.getElementById("buf_vol_l")?.value || 0),
+    buf_t_min: parseFloat(document.getElementById("buf_t_min")?.value || 40),
+    buf_t_max: parseFloat(document.getElementById("buf_t_max")?.value || 55),
   };
 
   // For non-air-source HP types, pass constant source temperature to backend
