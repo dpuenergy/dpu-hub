@@ -1082,8 +1082,8 @@ function buildCharts(result) {
       {
         type: "line", label: "Výkon TČ (kW)",
         data: dur_kw, yAxisID: "y",
-        borderColor: "rgba(27,65,180,0.85)", backgroundColor: "rgba(27,65,180,0.08)",
-        fill: true, borderWidth: 1.5, pointRadius: 0, tension: 0.1,
+        borderColor: "rgba(27,65,180,0.85)", backgroundColor: "transparent",
+        fill: false, borderWidth: 1.5, pointRadius: 0, tension: 0.1,
       },
       {
         type: "line", label: "COP",
