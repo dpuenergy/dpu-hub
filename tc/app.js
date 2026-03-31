@@ -858,7 +858,13 @@ function buildCharts(result) {
                     .map(o => o.i);
   const durLabels = idx.map((_, i) => i);
   const dur_kw  = idx.map(i => s.heat_need_kw[i]);
-  const dur_cop = idx.map(i => s.cop[i] || null);
+  // Rolling average COP (window 30) to remove noise
+  const dur_cop_raw = idx.map(i => s.cop[i] || null);
+  const W = 30;
+  const dur_cop = dur_cop_raw.map((_, j) => {
+    const slice = dur_cop_raw.slice(Math.max(0, j - W), j + W + 1).filter(v => v != null);
+    return slice.length ? slice.reduce((a, b) => a + b, 0) / slice.length : null;
+  });
   makeDualAxisDuration("chDurationCop", durLabels, dur_kw, dur_cop);
 
   // Cooling chart — shown when cooling is enabled; graph rendered only if series data present
@@ -891,19 +897,26 @@ function buildCharts(result) {
     destroyChart("chTankSoc");
   }
 
-  // Heating curve scatter (sampled every 12 hours for clarity)
-  const pts = [];
-  for (let i = 0; i < s.t_out_c.length; i += 12) {
-    pts.push({ x: s.t_out_c[i], y: s.t_water_c[i] });
+  // Heating curve: aggregate into 0.5°C bins → clean line
+  const hcBins = {};
+  for (let i = 0; i < s.t_out_c.length; i++) {
+    const bin = Math.round(s.t_out_c[i] * 2) / 2; // 0.5°C resolution
+    if (!hcBins[bin]) hcBins[bin] = [];
+    hcBins[bin].push(s.t_water_c[i]);
   }
+  const hcPts = Object.keys(hcBins)
+    .map(k => parseFloat(k))
+    .sort((a, b) => a - b)
+    .map(k => ({ x: k, y: hcBins[k].reduce((a, b) => a + b, 0) / hcBins[k].length }));
   destroyChart("chHeatingCurve");
   charts["chHeatingCurve"] = new Chart(document.getElementById("chHeatingCurve"), {
-    type: "scatter",
-    data: { datasets: [{ label: "T voda (°C)", data: pts, pointRadius: 2 }] },
+    type: "line",
+    data: { datasets: [{ label: "T voda (°C)", data: hcPts, pointRadius: 3, borderWidth: 2, tension: 0.3 }] },
     options: {
       responsive: true, maintainAspectRatio: false,
+      parsing: { xAxisKey: "x", yAxisKey: "y" },
       scales: {
-        x: { title: { display: true, text: "T venku (°C)" } },
+        x: { type: "linear", title: { display: true, text: "T venku (°C)" } },
         y: { title: { display: true, text: "T výstupní vody (°C)" } },
       },
     },
