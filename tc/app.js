@@ -716,11 +716,9 @@ function simulateBuffer(s, p) {
   const n = s.t_out_c.length;
 
   // Buffer serves only the space heating circuit (UT). TUV goes through a separate
-  // DHW tank with its own pump and priority switching — it must not be routed through
-  // the buffer (would force higher tank temperature → worse COP).
-  // Approximate space-heating demand by subtracting uniform TUV baseload.
-  const tuvGj        = p.tuv_gj || 0;                         // GJ/rok
-  const tuvKwhPerHr  = tuvGj > 0 ? (tuvGj * 277.78 / n) : 0; // uniform hourly kW
+  // DHW tank — must not be routed through buffer (would force higher tank temperature).
+  // Use s.ut_kw directly if backend provides it, otherwise fall back to heat_need_kw.
+  const hasUtSeries = Array.isArray(s.ut_kw) && s.ut_kw.length === n;
 
   const hp_kw  = new Array(n).fill(0);
   const hp_el  = new Array(n).fill(0);
@@ -732,8 +730,8 @@ function simulateBuffer(s, p) {
   let starts = 0;
 
   for (let i = 0; i < n; i++) {
-    // Space heating only — strip uniform TUV baseload (handled by separate DHW tank)
-    const demand = Math.max(0, (s.heat_need_kw[i] || 0) - tuvKwhPerHr);
+    // Space heating only — use ut_kw series from backend (exact), or fall back to heat_need_kw
+    const demand = hasUtSeries ? (s.ut_kw[i] || 0) : (s.heat_need_kw[i] || 0);
     const cop    = getCop(i);
     const wasOn  = on;
 
@@ -783,7 +781,7 @@ function simulateBuffer(s, p) {
   // Reference SCOP: inverter HP follows space-heating demand exactly (same TUV exclusion)
   let refHeat = 0, refEl = 0;
   for (let i = 0; i < n; i++) {
-    const demand = Math.max(0, (s.heat_need_kw[i] || 0) - tuvKwhPerHr);
+    const demand = hasUtSeries ? (s.ut_kw[i] || 0) : (s.heat_need_kw[i] || 0);
     if (demand <= 0) continue;
     const cop = getCop(i);
     const qRef = Math.min(demand, pNom);          // inverter follows demand up to pNom
@@ -1174,9 +1172,9 @@ function buildCharts(result) {
     const bs = buf.summary;
     const fmtN = (v, d=1) => v != null ? v.toFixed(d) : "—";
     const avgCycleH = bs.starts > 0 ? (bs.hrsOn / bs.starts).toFixed(1) : "—";
-    // Space-heating hours only (same TUV exclusion as buffer simulation)
-    const tuvKwhPerHr = inputs.tuv_gj > 0 ? (inputs.tuv_gj * 277.78 / (s.heat_need_kw || []).length) : 0;
-    const heatHrs   = (s.heat_need_kw || []).filter(v => v - tuvKwhPerHr > 0).length;
+    // Space-heating hours only — use ut_kw if available
+    const utSeries  = Array.isArray(s.ut_kw) ? s.ut_kw : s.heat_need_kw;
+    const heatHrs   = (utSeries || []).filter(v => v > 0).length;
     const offFrac   = heatHrs > 0 ? Math.round((1 - bs.hrsOn / heatHrs) * 100) : 0;
     document.getElementById("buf_kpis").innerHTML = `
       <div class="box"><div class="box-label">Počet spuštění TČ / rok</div>
