@@ -298,6 +298,8 @@
     letter-spacing: .3px;
   }
   .ai-badge.visible { display: inline-block; }
+  .ai-badge.manual { background: rgba(217,119,6,.15); color: #b45309; }
+  .preview-content[contenteditable]:focus { outline: 2px solid var(--purple-border); outline-offset: -2px; border-radius: 4px; }
   .btn-toggle-version {
     font-size: 10px;
     background: none;
@@ -639,6 +641,7 @@
         </div>
         <div class="card-actions">
           <button class="btn-toggle-version" id="togglePred" onclick="toggleVersion('pred')">Šablona</button>
+          <button class="btn-toggle-version" id="resetPred" onclick="resetManual('pred')" style="display:none;">↺ Reset</button>
           <div class="tab-btns">
             <button class="tab-btn active" onclick="switchTab('pred','preview',this)">Náhled</button>
             <button class="tab-btn" onclick="switchTab('pred','html',this)">HTML</button>
@@ -648,7 +651,7 @@
       </div>
       <div class="card-body">
         <div class="tab-pane active" id="pred-preview">
-          <div class="preview-content" id="predPreview"></div>
+          <div class="preview-content" id="predPreview" contenteditable="true" spellcheck="false" oninput="onManualEdit('pred')"></div>
         </div>
         <div class="tab-pane" id="pred-html">
           <div class="html-content" id="predHtml"></div>
@@ -665,6 +668,7 @@
         </div>
         <div class="card-actions">
           <button class="btn-toggle-version" id="toggleZa" onclick="toggleVersion('za')">Šablona</button>
+          <button class="btn-toggle-version" id="resetZa" onclick="resetManual('za')" style="display:none;">↺ Reset</button>
           <div class="tab-btns">
             <button class="tab-btn active" onclick="switchTab('za','preview',this)">Náhled</button>
             <button class="tab-btn" onclick="switchTab('za','html',this)">HTML</button>
@@ -674,7 +678,7 @@
       </div>
       <div class="card-body">
         <div class="tab-pane active" id="za-preview">
-          <div class="preview-content" id="zaPreview"></div>
+          <div class="preview-content" id="zaPreview" contenteditable="true" spellcheck="false" oninput="onManualEdit('za')"></div>
         </div>
         <div class="tab-pane" id="za-html">
           <div class="html-content" id="zaHtml"></div>
@@ -739,6 +743,8 @@ const state = {
   ai_za: null,
   use_ai_pred: false,
   use_ai_za: false,
+  use_manual_pred: false,
+  use_manual_za: false,
   html: { pred: '', souhrn: '', za: '' }
 };
 
@@ -1102,17 +1108,47 @@ function buildZaHtml(text) {
 
 // ── Generate all blocks ────────────────────────────────────────────────────
 function generate() {
-  const predText = (state.use_ai_pred && state.ai_pred) ? state.ai_pred : buildPredTemplate();
-  const predHtmlStr = buildPredHtml(predText);
-  document.getElementById('predPreview').innerHTML = predHtmlStr;
-  document.getElementById('predHtml').textContent = predHtmlStr;
-  state.html.pred = predHtmlStr;
+  if (!state.use_manual_pred) {
+    const predText = (state.use_ai_pred && state.ai_pred) ? state.ai_pred : buildPredTemplate();
+    const predHtmlStr = buildPredHtml(predText);
+    document.getElementById('predPreview').innerHTML = predHtmlStr;
+    document.getElementById('predHtml').textContent = predHtmlStr;
+    state.html.pred = predHtmlStr;
+  }
 
-  const zaText = (state.use_ai_za && state.ai_za) ? state.ai_za : buildZaTemplate();
-  const zaHtmlStr = buildZaHtml(zaText);
-  document.getElementById('zaPreview').innerHTML = zaHtmlStr;
-  document.getElementById('zaHtml').textContent = zaHtmlStr;
-  state.html.za = zaHtmlStr;
+  if (!state.use_manual_za) {
+    const zaText = (state.use_ai_za && state.ai_za) ? state.ai_za : buildZaTemplate();
+    const zaHtmlStr = buildZaHtml(zaText);
+    document.getElementById('zaPreview').innerHTML = zaHtmlStr;
+    document.getElementById('zaHtml').textContent = zaHtmlStr;
+    state.html.za = zaHtmlStr;
+  }
+}
+
+// ── Reset manual edit ─────────────────────────────────────────────────────
+function resetManual(which) {
+  if (which === 'pred') {
+    state.use_manual_pred = false;
+  } else {
+    state.use_manual_za = false;
+  }
+  setAiBadges();
+  generate();
+}
+
+// ── Manual edit in preview ────────────────────────────────────────────────
+function onManualEdit(which) {
+  const el = document.getElementById(which === 'pred' ? 'predPreview' : 'zaPreview');
+  const htmlEl = document.getElementById(which === 'pred' ? 'predHtml' : 'zaHtml');
+  const html = el.innerHTML;
+  state.html[which] = html;
+  htmlEl.textContent = html;
+  if (which === 'pred') {
+    state.use_manual_pred = true;
+  } else {
+    state.use_manual_za = true;
+  }
+  setAiBadges();
 }
 
 // ── Render souhrn preview ──────────────────────────────────────────────────
@@ -1192,9 +1228,11 @@ function copyHtml(card) {
 function toggleVersion(which) {
   if (which === 'pred') {
     state.use_ai_pred = !state.use_ai_pred;
+    state.use_manual_pred = false;
     document.getElementById('togglePred').textContent = state.use_ai_pred ? 'Šablona' : 'AI verze';
   } else {
     state.use_ai_za = !state.use_ai_za;
+    state.use_manual_za = false;
     document.getElementById('toggleZa').textContent = state.use_ai_za ? 'Šablona' : 'AI verze';
   }
   generate();
@@ -1205,10 +1243,31 @@ function setAiBadges() {
   const bZa = document.getElementById('badgeZa');
   const tPred = document.getElementById('togglePred');
   const tZa = document.getElementById('toggleZa');
-  bPred.classList.toggle('visible', !!state.ai_pred);
-  bZa.classList.toggle('visible', !!state.ai_za);
+
+  // pred badge
+  if (state.use_manual_pred) {
+    bPred.classList.add('visible', 'manual');
+    bPred.textContent = 'Upraveno';
+  } else {
+    bPred.classList.remove('manual');
+    bPred.textContent = 'AI verze';
+    bPred.classList.toggle('visible', !!state.ai_pred);
+  }
+  // za badge
+  if (state.use_manual_za) {
+    bZa.classList.add('visible', 'manual');
+    bZa.textContent = 'Upraveno';
+  } else {
+    bZa.classList.remove('manual');
+    bZa.textContent = 'AI verze';
+    bZa.classList.toggle('visible', !!state.ai_za);
+  }
+
   tPred.classList.toggle('visible', !!state.ai_pred);
   tZa.classList.toggle('visible', !!state.ai_za);
+
+  document.getElementById('resetPred').style.display = state.use_manual_pred ? 'inline-block' : 'none';
+  document.getElementById('resetZa').style.display = state.use_manual_za ? 'inline-block' : 'none';
 }
 
 // ── Auto-generování 4. pádu ────────────────────────────────────────────────
