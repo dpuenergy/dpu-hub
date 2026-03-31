@@ -1008,15 +1008,13 @@ function buildCharts(result) {
   const inputs  = getInputs();
   const buf     = simulateBuffer(s, inputs);
 
-  makeLineChart("chTout", labels, s.t_out_c, "T venku (°C)");
-
-  // Monthly energy breakdown — stacked: TUV base + UT heating + bivalence, demand line on top
+  // Monthly energy breakdown — stacked bars: UT + TUV + bivalence, demand line overlay
   destroyChart("chPower");
   {
     const MONTHS = ["Led","Úno","Bře","Dub","Kvě","Čvn","Čvc","Srp","Zář","Říj","Lis","Pro"];
-    const mUT     = new Array(12).fill(0);
-    const mTUV    = new Array(12).fill(0);
-    const mBiv    = new Array(12).fill(0);
+    const mUT  = new Array(12).fill(0);
+    const mTUV = new Array(12).fill(0);
+    const mBiv = new Array(12).fill(0);
     const n = s.heat_need_kw.length;
     const heatMask = buildHeatSeasonMask(n,
       document.getElementById("heat_season_start")?.value,
@@ -1024,47 +1022,43 @@ function buildCharts(result) {
 
     for (let i = 0; i < n; i++) {
       const m = Math.min(11, Math.floor((i / n) * 12));
-      mTUV[m] += (s.tuv_kw[i]       || 0) / 1000;
+      mTUV[m] += (s.tuv_kw[i] || 0) / 1000;
       mUT[m]  += heatMask[i] ? (s.ut_kw[i] || 0) / 1000 : 0;
       mBiv[m] += heatMask[i] ? (s.bivalence_kw[i] || 0) / 1000 : 0;
     }
-
-    const datasets = [
-      { type: "bar",  label: "TUV — TČ (MWh)", data: mTUV,
-        backgroundColor: "rgba(46,140,255,.35)", stack: "s" },
-      { type: "bar",  label: "Vytápění UT — TČ (MWh)", data: mUT,
-        backgroundColor: "rgba(46,140,255,.85)", stack: "s" },
-      { type: "bar",  label: "Bivalence (MWh)", data: mBiv,
-        backgroundColor: "rgba(220,50,30,.7)",   stack: "s" },
-    ];
+    const mDemand = mUT.map((v, m) => +(v + mTUV[m] + mBiv[m]).toFixed(3));
 
     charts["chPower"] = new Chart(document.getElementById("chPower"), {
-      data: { labels: MONTHS, datasets },
+      data: {
+        labels: MONTHS,
+        datasets: [
+          { type: "bar",  label: "Vytápění UT (MWh)", data: mUT,
+            backgroundColor: "rgba(27,65,180,0.80)", stack: "s", order: 2 },
+          { type: "bar",  label: "TUV (MWh)", data: mTUV,
+            backgroundColor: "rgba(27,65,180,0.28)", stack: "s", order: 2 },
+          { type: "bar",  label: "Bivalence (MWh)", data: mBiv,
+            backgroundColor: "rgba(200,40,40,0.80)", stack: "s", order: 2 },
+          { type: "line", label: "Celková potřeba (MWh)", data: mDemand,
+            borderColor: "rgba(30,30,30,0.85)", backgroundColor: "transparent",
+            borderWidth: 2, pointRadius: 3, tension: 0.3, order: 1 },
+        ],
+      },
       options: {
         responsive: true, maintainAspectRatio: false,
-        plugins: { legend: { display: true } },
+        plugins: {
+          legend: { position: "bottom", labels: { font: { size: 11 } } },
+          tooltip: { callbacks: { label: ctx => `${ctx.dataset.label}: ${ctx.parsed.y.toFixed(2)} MWh` } },
+        },
         scales: {
-          x: { stacked: true },
-          y: { stacked: true, title: { display: true, text: "MWh/měsíc" } },
+          x: { stacked: true, ticks: { font: { size: 11 } } },
+          y: { stacked: true, title: { display: true, text: "MWh/měsíc", font: { size: 11 } },
+               ticks: { font: { size: 11 } } },
         },
       },
     });
   }
 
   const coolingActive = document.getElementById("cooling_enabled")?.checked;
-  if (coolingActive && summary.cooling_mwh != null) {
-    makeBarChart("chHeatSplit",
-      ["TČ", "Bivalence", "Chlazení"],
-      [summary.heat_from_hp_mwh, summary.bivalence_mwh, summary.cooling_mwh],
-      "Energie (MWh/rok)"
-    );
-  } else {
-    makeBarChart("chHeatSplit",
-      ["TČ", "Bivalence"],
-      [summary.heat_from_hp_mwh, summary.bivalence_mwh],
-      "Vyrobené teplo (MWh/rok)"
-    );
-  }
 
   // Duration curve: sort heating hours only (exclude summer zero-demand hours)
   const idx     = s.heat_need_kw.map((v, i) => ({ v, i }))
@@ -1081,9 +1075,151 @@ function buildCharts(result) {
     return slice.length ? slice.reduce((a, b) => a + b, 0) / slice.length : null;
   });
   const pMin = inputs.hp_power_kw * (inputs.hp_min_load_pct / 100);
-  makeDualAxisDuration("chDurationCop", durLabels, dur_kw, dur_cop, pMin);
+  // Duration curve with improved styling
+  destroyChart("chDurationCop");
+  {
+    const dcDatasets = [
+      {
+        type: "line", label: "Výkon TČ (kW)",
+        data: dur_kw, yAxisID: "y",
+        borderColor: "rgba(27,65,180,0.85)", backgroundColor: "rgba(27,65,180,0.08)",
+        fill: true, borderWidth: 1.5, pointRadius: 0, tension: 0.1,
+      },
+      {
+        type: "line", label: "COP",
+        data: dur_cop, yAxisID: "y2",
+        borderColor: "rgba(230,100,0,0.9)", backgroundColor: "transparent",
+        borderWidth: 1.5, pointRadius: 0, tension: 0.1,
+      },
+    ];
+    if (pMin > 0) {
+      dcDatasets.push({
+        type: "line", label: `Min. výkon TČ (${pMin.toFixed(0)} kW)`,
+        data: new Array(durLabels.length).fill(pMin),
+        yAxisID: "y", pointRadius: 0, borderWidth: 1,
+        borderDash: [6, 4], borderColor: "rgba(220,50,30,.7)", backgroundColor: "transparent",
+      });
+    }
+    charts["chDurationCop"] = new Chart(document.getElementById("chDurationCop"), {
+      data: { labels: durLabels, datasets: dcDatasets },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        interaction: { mode: "index", intersect: false },
+        plugins: {
+          legend: { position: "bottom", labels: { font: { size: 11 } } },
+          decimation: { enabled: true, algorithm: "min-max" },
+          tooltip: { callbacks: { title: items => `Pořadí hodiny: ${items[0].label}` } },
+        },
+        scales: {
+          x:  { display: false },
+          y:  { position: "left",  title: { display: true, text: "Výkon TČ (kW)", font: { size: 11 } } },
+          y2: { position: "right", grid: { drawOnChartArea: false },
+                title: { display: true, text: "COP", font: { size: 11 } },
+                min: 1, ticks: { font: { size: 11 } } },
+        },
+      },
+    });
+  }
 
-  // Annotate how many heating hours fall below HP minimum — shown below the chart
+  // ── Monthly COP (weighted average by heat output) ────────────────────────────
+  destroyChart("chMonthlyCop");
+  {
+    const MONTHS = ["Led","Úno","Bře","Dub","Kvě","Čvn","Čvc","Srp","Zář","Říj","Lis","Pro"];
+    const mCopWSum = new Array(12).fill(0);
+    const mCopW    = new Array(12).fill(0);
+    const n2 = s.heat_need_kw.length;
+    for (let i = 0; i < n2; i++) {
+      const w = s.heat_need_kw[i] || 0;
+      if (w > 0 && s.cop[i] > 0) {
+        const m = Math.min(11, Math.floor((i / n2) * 12));
+        mCopWSum[m] += s.cop[i] * w;
+        mCopW[m]    += w;
+      }
+    }
+    const mCop = mCopWSum.map((sum, m) => mCopW[m] > 0 ? +(sum / mCopW[m]).toFixed(3) : null);
+    const copMin = Math.min(...mCop.filter(v => v != null));
+    const copMax = Math.max(...mCop.filter(v => v != null));
+    const copColors = mCop.map(v => {
+      if (v == null) return "rgba(200,200,200,0.4)";
+      const t = copMax > copMin ? (v - copMin) / (copMax - copMin) : 0.5;
+      const r = Math.round(220 - t * 180);
+      const g = Math.round(60  + t * 160);
+      const b = Math.round(60  - t * 40);
+      return `rgba(${r},${g},${b},0.82)`;
+    });
+    charts["chMonthlyCop"] = new Chart(document.getElementById("chMonthlyCop"), {
+      type: "bar",
+      data: {
+        labels: MONTHS,
+        datasets: [{ label: "SCOP", data: mCop, backgroundColor: copColors, borderRadius: 4 }],
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: { callbacks: { label: ctx => `SCOP: ${ctx.parsed.y != null ? ctx.parsed.y.toFixed(3) : "—"}` } },
+        },
+        scales: {
+          x: { ticks: { font: { size: 11 } } },
+          y: { title: { display: true, text: "COP (–)", font: { size: 11 } },
+               ticks: { font: { size: 11 } }, min: 1 },
+        },
+      },
+    });
+  }
+
+  // ── HP output vs outdoor temperature bins ────────────────────────────────────
+  destroyChart("chTBin");
+  {
+    // 2°C bins from -24 to +36
+    const BIN_MIN = -24, BIN_MAX = 36, BIN_STEP = 2;
+    const binCount = (BIN_MAX - BIN_MIN) / BIN_STEP + 1;
+    const binLabels = [];
+    for (let t = BIN_MIN; t <= BIN_MAX; t += BIN_STEP) binLabels.push(`${t}`);
+    const binKwSum = new Array(binCount).fill(0);
+    const binCnt   = new Array(binCount).fill(0);
+    const n3 = s.t_out_c.length;
+    for (let i = 0; i < n3; i++) {
+      const hp = (s.heat_need_kw[i] || 0) - (s.bivalence_kw[i] || 0);
+      if (hp > 0.1) {
+        const bi = Math.round((s.t_out_c[i] - BIN_MIN) / BIN_STEP);
+        if (bi >= 0 && bi < binCount) { binKwSum[bi] += hp; binCnt[bi]++; }
+      }
+    }
+    const binAvg = binKwSum.map((sum, i) => binCnt[i] > 0 ? +(sum / binCnt[i]).toFixed(2) : 0);
+    const binColors = binLabels.map(l => {
+      const frac = (Number(l) - BIN_MIN) / (BIN_MAX - BIN_MIN);
+      const r = Math.round(30  + frac * 200);
+      const g = Math.round(80  - frac * 50);
+      const b = Math.round(200 - frac * 170);
+      return `rgba(${r},${g},${b},0.8)`;
+    });
+    charts["chTBin"] = new Chart(document.getElementById("chTBin"), {
+      type: "bar",
+      data: {
+        labels: binLabels.map(l => l + " °C"),
+        datasets: [{ label: "Průměrný výkon TČ (kW)", data: binAvg, backgroundColor: binColors, borderRadius: 3 }],
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: { callbacks: {
+            title: items => `T venku: ${items[0].label}`,
+            label: ctx => `Průměrný výkon: ${ctx.parsed.y.toFixed(1)} kW`,
+          }},
+        },
+        scales: {
+          x: { title: { display: true, text: "Teplota venkovního vzduchu (°C)", font: { size: 10 } },
+               ticks: { font: { size: 10 }, maxRotation: 45, maxTicksLimit: 15 } },
+          y: { title: { display: true, text: "Průměrný výkon TČ (kW)", font: { size: 11 } },
+               ticks: { font: { size: 11 } }, min: 0 },
+        },
+      },
+    });
+  }
+
+  // Annotate how many heating hours fall below HP minimum — shown below the duration chart
   const hrsBelow = dur_kw.filter(v => v < pMin && v > 0).length;
   const pctYear  = Math.round(hrsBelow / 8760 * 100);  // % roku (TUV = celoroční provoz)
   const noteEl   = document.getElementById("duration_min_note");

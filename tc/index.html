@@ -125,8 +125,10 @@
     .tab-pane.active { display: grid; gap: 10px; }
 
     /* ── Charts ── */
-    canvas { width: 100% !important; height: 260px !important; display: block; }
+    canvas { width: 100% !important; height: 280px !important; display: block; }
     .small canvas { height: 220px !important; }
+    .charts-4 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px; }
+    @media (max-width: 840px) { .charts-4 { grid-template-columns: 1fr; } }
     .charts { display: grid; gap: 12px; margin-top: 12px; }
     .ch-wrap { border-radius: 12px; border: 1px solid var(--border); background: var(--card); overflow: hidden; }
     .ch-head { padding: 10px 14px; border-bottom: 1px solid var(--border); font-size: 12px; font-weight: 700; color: var(--brand); }
@@ -725,32 +727,38 @@
         </div>
       </div>
 
-      <!-- Charts -->
-      <div class="charts">
-        <div class="ch-wrap small">
-          <div class="ch-head">Rozdělení tepla (ročně)</div>
-          <div class="ch-body"><canvas id="chHeatSplit"></canvas></div>
-        </div>
+      <!-- Charts: hlavní 4-kvadrant analytická sekce -->
+      <div class="charts-4">
         <div class="ch-wrap">
-          <div class="ch-head">Hodinové teploty venkovního vzduchu (°C)</div>
-          <div class="ch-body"><canvas id="chTout"></canvas></div>
-        </div>
-        <div class="ch-wrap">
-          <div class="ch-head">Měsíční energie — potřeba tepla vs. výkon TČ (MWh)</div>
+          <div class="ch-head">Měsíční energie — UT + TUV + bivalence (MWh)</div>
           <div class="ch-body"><canvas id="chPower"></canvas></div>
+        </div>
+        <div class="ch-wrap">
+          <div class="ch-head">Křivka trvání výkonu + COP</div>
+          <div class="ch-body">
+            <canvas id="chDurationCop"></canvas>
+            <div id="duration_min_note" style="display:none; font-size:12px; color:#c0392b; padding:6px 8px; background:#fdf2f0; border-radius:4px; margin-top:6px;"></div>
+          </div>
+        </div>
+        <div class="ch-wrap">
+          <div class="ch-head">Průměrný SCOP po měsících</div>
+          <div class="ch-body"><canvas id="chMonthlyCop"></canvas></div>
+        </div>
+        <div class="ch-wrap">
+          <div class="ch-head">Průměrný výkon TČ vs. teplota venku (°C)</div>
+          <div class="ch-body"><canvas id="chTBin"></canvas></div>
+        </div>
+      </div>
+
+      <!-- Vedlejší grafy (topná křivka, taktovací nádrž, chlazení) -->
+      <div class="charts" style="margin-top:12px;">
+        <div class="ch-wrap small">
+          <div class="ch-head">Topná křivka (T voda vs T venku)</div>
+          <div class="ch-body"><canvas id="chHeatingCurve"></canvas></div>
         </div>
         <div class="ch-wrap" id="ch_cooling_wrap" style="display:none;">
           <div class="ch-head">Hodinový výkon chlazení (kW)</div>
           <div class="ch-body"><canvas id="chCooling"></canvas></div>
-        </div>
-        <div class="ch-wrap">
-          <div class="ch-head">Křivka trvání výkonu + COP</div>
-          <div class="ch-body"><canvas id="chDurationCop"></canvas></div>
-          <div id="duration_min_note" style="display:none; font-size:12px; color:#c0392b; padding:6px 8px; background:#fdf2f0; border-radius:4px; margin-top:6px;"></div>
-        </div>
-        <div class="ch-wrap small">
-          <div class="ch-head">Topná křivka (T voda vs T venku)</div>
-          <div class="ch-body"><canvas id="chHeatingCurve"></canvas></div>
         </div>
         <div class="ch-wrap" id="ch_tank_soc_wrap" style="display:none;">
           <div class="ch-head">Stav zásobníků — TUV a chlazení (% kapacity)</div>
