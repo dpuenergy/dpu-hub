@@ -644,28 +644,6 @@
       </div>
     </div>
 
-    <!-- Card: SOUHRN -->
-    <div class="card" id="cardSouhrn">
-      <div class="card-header">
-        <div class="card-title">Cenový souhrn</div>
-        <div class="card-actions">
-          <div class="tab-btns">
-            <button class="tab-btn active" onclick="switchTab('souhrn','preview',this)">Náhled</button>
-            <button class="tab-btn" onclick="switchTab('souhrn','html',this)">HTML</button>
-          </div>
-          <button class="btn-copy" id="copySouhrn" onclick="copyHtml('souhrn')">Kopírovat</button>
-        </div>
-      </div>
-      <div class="card-body">
-        <div class="tab-pane active" id="souhrn-preview">
-          <div id="sournPreview"></div>
-        </div>
-        <div class="tab-pane" id="souhrn-html">
-          <div class="html-content" id="sournHtml"></div>
-        </div>
-      </div>
-    </div>
-
     <!-- Card: ZA -->
     <div class="card" id="cardZa">
       <div class="card-header">
@@ -1106,7 +1084,8 @@ function buildZaHtml(text) {
   const cHtml = buildContactsHtml(getSelectedContacts());
   const includeSouhrn = document.getElementById('sourhnToggle').checked;
   const { html: sournHtml } = includeSouhrn ? buildSourhnHtml(state.rows) : { html: '' };
-  return `<div style="font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#222;line-height:1.7;max-width:700px;">\n${sournHtml}${plainToHtml(text)}${cHtml}\n</div>`;
+  const maxW = includeSouhrn ? '800px' : '700px';
+  return `<div style="font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#222;line-height:1.7;max-width:${maxW};">\n${sournHtml}${plainToHtml(text)}${cHtml}\n</div>`;
 }
 
 // ── Generate all blocks ────────────────────────────────────────────────────
@@ -1116,11 +1095,6 @@ function generate() {
   document.getElementById('predPreview').innerHTML = predHtmlStr;
   document.getElementById('predHtml').textContent = predHtmlStr;
   state.html.pred = predHtmlStr;
-
-  const { html: sournHtmlStr, grandBez, grandS } = buildSourhnHtml(state.rows);
-  document.getElementById('sournPreview').innerHTML = sournHtmlStr;
-  document.getElementById('sournHtml').textContent = sournHtmlStr;
-  state.html.souhrn = sournHtmlStr;
 
   const zaText = (state.use_ai_za && state.ai_za) ? state.ai_za : buildZaTemplate();
   const zaHtmlStr = buildZaHtml(zaText);
