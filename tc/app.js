@@ -1169,13 +1169,29 @@ function buildCharts(result) {
     // Daily aggregated chart: tank temperature (line) + HP running hours per day (bar)
     destroyChart("chBufSoc");
     const bufTmin = inputs.buf_t_min, bufTmax = inputs.buf_t_max;
+    const days = buf.dailyTankT.length;
     const dayLabels = buf.dailyTankT.map((_, d) => `Den ${d + 1}`);
+
+    // TUV HP hours per day: hours outside heating season where TUV demand > 0
+    // (same HP, different circuit — not double-counted with buffer UT hours)
+    const heatMaskBuf = buildHeatSeasonMask(s.t_out_c.length,
+      document.getElementById("heat_season_start")?.value,
+      document.getElementById("heat_season_end")?.value);
+    const dailyHpHrsTUV = new Array(days).fill(0);
+    for (let i = 0; i < s.t_out_c.length; i++) {
+      if (!heatMaskBuf[i] && (s.tuv_kw[i] || 0) > 0) {
+        dailyHpHrsTUV[Math.floor(i / 24)] += 1;
+      }
+    }
+
     charts["chBufSoc"] = new Chart(document.getElementById("chBufSoc"), {
       data: {
         labels: dayLabels,
         datasets: [
-          { type: "bar",  label: "Chod TČ (h/den)",      data: buf.dailyHpHrs,
-            yAxisID: "y1", backgroundColor: "rgba(27,50,128,.25)", borderWidth: 0 },
+          { type: "bar",  label: "Chod TČ — topný okruh (h/den)", data: buf.dailyHpHrs,
+            yAxisID: "y1", backgroundColor: "rgba(27,50,128,.35)", borderWidth: 0, stack: "hp" },
+          { type: "bar",  label: "Chod TČ — TUV okruh (h/den)",   data: dailyHpHrsTUV,
+            yAxisID: "y1", backgroundColor: "rgba(46,140,255,.35)", borderWidth: 0, stack: "hp" },
           { type: "line", label: "Průměrná T nádrže (°C)", data: buf.dailyTankT,
             yAxisID: "y",  pointRadius: 0, borderWidth: 1.5, fill: false },
           { type: "line", label: "T min (start)",
