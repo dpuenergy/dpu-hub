@@ -1243,17 +1243,25 @@ function buildCharts(result) {
         + `<br><span style="color:#666;font-size:11px;">Alternativa: menší TČ = nižší minimum = menší nebo žádná nádrž — viz <em>Optimalizace výkonu</em> výše.</span>`;
       noteEl.style.display = "";
     } else if (pMin > 0 && hrsBelow > 0 && buf) {
-      // Buffer configured — confirm it handles the short-cycling issue
+      // Buffer configured — show status based on whether it's adequately sized
       const volRounded = Math.ceil((parseFloat(document.getElementById("buf_vol_l")?.value || 0)) / 50) * 50;
       const bivMwh     = buf.summary?.bivMwh ?? 0;
-      const bivNote    = bivMwh > 0.5
-        ? ` Pozor: nádrž je malá — ${bivMwh.toFixed(1)} MWh/rok není pokryto (bivalence). Zvaž větší objem.`
-        : "";
-      noteEl.style.background = "#f0fdf4";
-      noteEl.style.color      = "#166534";
-      noteEl.innerHTML =
-        `✓ Taktovací nádrž ${volRounded} l je nakonfigurována — krátké cykly kompresoru jsou vyřešeny.`
-        + ` Výsledky simulace s nádrží viz níže.${bivNote}`;
+      if (bivMwh > 0.5) {
+        // Buffer too small — yellow warning
+        noteEl.style.background = "#fffbeb";
+        noteEl.style.color      = "#92400e";
+        noteEl.innerHTML =
+          `⚠ Taktovací nádrž ${volRounded} l je nakonfigurována, ale je příliš malá — `
+          + `<strong>${bivMwh.toFixed(1)} MWh/rok</strong> zůstává nepokryto (bivalence). `
+          + `Zvaž větší objem nebo bivalentní zdroj pro zbývající špičky.`;
+      } else {
+        // Buffer adequate — green confirmation
+        noteEl.style.background = "#f0fdf4";
+        noteEl.style.color      = "#166534";
+        noteEl.innerHTML =
+          `✓ Taktovací nádrž ${volRounded} l je nakonfigurována — krátké cykly kompresoru jsou vyřešeny. `
+          + `Výsledky simulace s nádrží viz níže.`;
+      }
       noteEl.style.display = "";
     } else {
       noteEl.style.display = "none";
