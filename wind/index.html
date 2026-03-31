@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>DPU Wind Ideal</title>
+    <title>Větrný potenciál | DPU Energy</title>
 
     <link
       rel="stylesheet"
@@ -206,6 +206,8 @@
         #map{height:420px;}
       }
 
+      #kpis{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px;}
+      @media(max-width:900px){#kpis{grid-template-columns:1fr;}}
       .ufaGrid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
       .ufaGrid h3{margin:0 0 8px 0;font-size:14px;opacity:.9;color:var(--brand);font-weight:800}
       @media (max-width:1100px){.ufaGrid{grid-template-columns:1fr}}
@@ -223,13 +225,10 @@
 <script>if(localStorage.getItem("dpu_theme")==="dark")document.body.classList.add("dark");</script>
     <header>
       <div>
-        <h1>DPU Wind Ideal</h1>
-        <div class="sub">
-          Mapový výběr bodu + návrh ideální turbíny + bilance se spotřebou
-          (volitelně)
-        </div>
+        <h1>Větrný potenciál</h1>
+        <div class="sub">Výpočet větrného potenciálu, doporučený výkon turbíny a energetická bilance</div>
       </div>
-      <div class="sub mono">DPU Energy</div>
+      <div class="sub">DPU Energy</div>
     </header>
 
     <main>
@@ -241,7 +240,7 @@
         </div>
 
         <div class="row">
-          <label>Výchozí rok</label>
+          <label>Rok výpočtu</label>
           <input id="year" type="number" value="2024" />
         </div>
 <div class="row">
@@ -294,24 +293,24 @@
         </div>
 
         <div class="row">
-          <label>Účinnost střídače [%]</label>
+          <label>Účinnost střídače</label>
           <input
             id="invEff"
             type="number"
             value="0.96"
-            min="0.5"
-            max="1.0"
+            min="0.50"
+            max="1.00"
             step="0.01"
           />
-          <div class="small">Např. 0.95–0.99.</div>
+          <div class="small">Desetinné číslo 0–1, např. 0.96 = 96 %.</div>
         </div>
 
         <div class="row">
-          <label>Instalovaný výkon turbíny (ručně)</label>
+          <label>Vlastní instalovaný výkon [kW]</label>
           <div style="display: flex; gap: 8px; align-items: center">
             <input id="pCapUse" type="checkbox" />
             <div class="small" style="flex: 1">
-              Použít ruční špičkový výkon pro simulaci
+              Zadat vlastní výkon místo doporučeného
             </div>
           </div>
           <div
@@ -421,7 +420,7 @@
           </div>
 
           <div class="card">
-            <h2>Hodinový průběh (celý rok)</h2>
+            <h2>Průběh výroby</h2>
 
             <div class="row" style="margin-top:0;">
               <label>Zobrazení hodinového profilu</label>
@@ -703,7 +702,7 @@
             availability: 0.95,
             electrical: 0.05,
             cable_loss_pct: Number(document.getElementById("cableLoss").value),
-            inverter_eff: Number(document.getElementById("invEff").value) / 100.0,
+            inverter_eff: Number(document.getElementById("invEff").value),
           },
         };
       }
@@ -768,11 +767,11 @@
           ["Roční výroba elektřiny [kWh]", fmt(s.E_year_kWh, 0)],
           ["Maximální dosažený výkon [kW]", fmt(s.Pmax_kW, 2)],
           ["Využití instalovaného výkonu (kapacitní faktor) [-]", fmt(s.capacity_factor_est, 3)],
-          ["Navržený špičkový výkon turbíny (ideál) [kW]", fmt(ip.p_cap_kw, 2)],
-          ["Použitý špičkový výkon pro simulaci [kW]", fmt(sp.p_cap_kw, 2)],
+          ["Doporučený výkon turbíny [kW]", fmt(ip.p_cap_kw, 2)],
+          ["Výkon turbíny v simulaci [kW]", fmt(sp.p_cap_kw, 2)],
           ["Rozběhová rychlost větru [m/s]", fmt(ip.v_ci, 2)],
           ["Jmenovitá rychlost větru [m/s]", fmt(ip.v_r, 2)],
-          ["Tvar náběhu výkonu k [-]", fmt(ip.k, 2)],
+          ["Koeficient výkonové křivky (k)", fmt(ip.k, 2)],
           ["Průměrná rychlost větru ve výšce stožáru [m/s]", fmt(ws.ws_hub_mean_ms, 2)],
           ["Medián rychlosti větru (P50) ve výšce stožáru [m/s]", fmt(ws.ws_hub_p50_ms, 2)],
           ["Horní percentil rychlosti větru (P90) ve výšce stožáru [m/s]", fmt(ws.ws_hub_p90_ms, 2)],
@@ -1017,23 +1016,18 @@ if (hourlyChart) hourlyChart.destroy();
               ? `<b style="color: var(--warn);">Pozor:</b> chybí měsíce: <span class="mono">${mainData.summary.months_list}</span><br/>`
               : "";
 
-          let ufaLine = "";
-          if (mainData?.ufa_calibration) {
-            const u = mainData.ufa_calibration;
-            if (u.enabled) {
-              ufaLine = `<span class="small">ÚFA kalibrace: <b>zapnuto</b> • A_era ${fmt(u.A_era, 2)} → A_ufa ${fmt(u.A_ufa, 2)} • k_era ${fmt(u.k_era, 2)} → k_ufa ${fmt(u.k_ufa, 2)} • cache: ${u.cached ? "ano" : "ne"}</span><br/>`;
-            } else {
-              ufaLine = `<span class="small" style="color: var(--warn);">ÚFA kalibrace: <b>nepovedla se</b> (${u.error || "bez detailu"})</span><br/>`;
-            }
-          }
+          const ufaOk = mainData?.ufa_calibration?.enabled;
+          const ufaWarn = mainData?.ufa_calibration && !ufaOk
+            ? `<span style="color:var(--warn);">Kalibrace ÚFA se nezdařila — použita data ERA5.</span><br/>`
+            : "";
 
           setStatus(`
             ${warn}
-            Použitý bod: <span class="mono">${fmt(mainData.used_point.lat, 5)}, ${fmt(mainData.used_point.lon, 5)}</span><br/>
-            <span class="small">Dataset: <b>ERA5-Land</b> • grid: ~${fmt(mainData.grid.cell_km_lat, 1)}×${fmt(mainData.grid.cell_km_lon, 1)} km (Δlat ${fmt(mainData.grid.lat_step_deg, 3)}°, Δlon ${fmt(mainData.grid.lon_step_deg, 3)}°) • nejbližší gridpoint: <span class="mono">${fmt(mainData.grid.nearest_grid_lat, 5)}, ${fmt(mainData.grid.nearest_grid_lon, 5)}</span></span><br/>
-            <span class="small">Vítr (10 m): průměr ${fmt(mainData.wind_stats.ws10_mean_ms, 2)} m/s • ve výšce stožáru: průměr ${fmt(mainData.wind_stats.ws_hub_mean_ms, 2)} m/s • P50 ${fmt(mainData.wind_stats.ws_hub_p50_ms, 2)} m/s • P90 ${fmt(mainData.wind_stats.ws_hub_p90_ms, 2)} m/s • korekce ${fmt((mainData.wind_stats.wind_speed_factor - 1) * 100, 0)} %</span><br/>
-            ${ufaLine}
-            alpha: <span class="mono">${fmt(mainData.alpha, 2)}</span>
+            ${ufaWarn}
+            Souřadnice: <span class="mono">${fmt(mainData.used_point.lat, 5)}, ${fmt(mainData.used_point.lon, 5)}</span>
+            &nbsp;•&nbsp; zdroj: <b>ERA5-Land</b> (~${fmt(mainData.grid.cell_km_lat, 1)}×${fmt(mainData.grid.cell_km_lon, 1)} km)
+            ${ufaOk ? "&nbsp;•&nbsp; kalibrace ÚFA AV ČR: <b>zapnuto</b>" : ""}<br/>
+            <span class="small">Průměrná rychlost větru ve výšce stožáru: <b>${fmt(mainData.wind_stats.ws_hub_mean_ms, 2)} m/s</b> &nbsp;•&nbsp; P50: ${fmt(mainData.wind_stats.ws_hub_p50_ms, 2)} m/s &nbsp;•&nbsp; P90: ${fmt(mainData.wind_stats.ws_hub_p90_ms, 2)} m/s</span>
           `);
 
           // po prvním výpočtu přizpůsob max slideru podle ideálu
@@ -1065,6 +1059,6 @@ if (hourlyChart) hourlyChart.destroy();
       setStatus('Klikni do mapy a dej „Spočítat”.', '');
 
     </script>
-    <script src="/shared/navbar.js" data-tool="Wind Ideal"></script>
+    <script src="/shared/navbar.js" data-tool="Větrný potenciál"></script>
   </body>
 </html>
