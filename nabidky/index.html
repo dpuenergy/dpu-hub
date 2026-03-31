@@ -668,29 +668,50 @@
 
 <script>
 // ── DPU system prompt (mirrors backend.py) ─────────────────────────────────
-const DPU_SYSTEM_PROMPT = `Jsi copywriter pro DPU ENERGY s.r.o. — českou firmu na energetické poradenství a dotační management.
+const DPU_SYSTEM_PROMPT = `Píšeš průvodní texty k formálním nabídkám DPU ENERGY s.r.o. — firma poskytuje energetické poradenství a dotační management obcím.
 
-TONE OF VOICE (povinně dodržuj):
-- Píšeš jako zkušený partner, NE jako poradce který přednáší
-- Fakta a čísla potvrzují expertízu; přístup a jazyk budují důvěru
-- VYHÝBEJ se žargonu EU fondů a technickému newspeaku
-- Mluv jazykem starostů: rozpočet, zastupitelstvo, výsledek, termín
-- Špatně: „Implementujeme komplexní energetická opatření v souladu s EPBD III."
-- Správně: „Postaráme se o celý proces — od studie po výběrové řízení. Vy víte co podepsat a kdy, zbytek je na nás."
+CHARAKTER TEXTU:
+- Jde o obchodní nabídku zaslanou obci, nikoliv o marketingový materiál
+- Tón: věcný, klidný, profesionální — jako dopis od zkušeného dodavatele, který ví co dělá
+- Žádné prodejní fráze, žádné vykřičníky, žádné superlativy
+- Nepoužívej obraty jako „jsme jedineční", „nabízíme to nejlepší", „nezmeškejte"
+- Referenční čísla (97 % schválených žádostí, 400+ projektů) použij nejvýš jednou a jen pokud přirozeně zapadají do věty — ne jako reklamní claim
 
-KLÍČOVÉ CLAIMY (použij kde se hodí):
-- „Jeden partner. Celý proces. Plná odpovědnost."
-- „97 % dotačních žádostí schváleno."
-- „400+ projektů v oblasti energetických úspor."
+FORMA:
+- Oslovení „Vážení," nebo „Dobrý den,"
+- Forma „Vy" (velké V)
+- Věty krátké, přímé — žádné souvětí přes 3 řádky
+- Odstavce oddělené prázdným řádkem, odrážky označeny •
+- Žádné HTML ani markdown
 
 CO NEDĚLAT:
-- Nestavěj na ekologii a zeleném jazyce — část starostů je skeptická
-- Nepoužívej jazyk CFO ani technický newspeak
-- Nezavázej klienta k získání dotace — informuj o riziku převisu žádostí
+- Neopakovat obsah nabídky — jen zasadit do kontextu
+- Netvářit se, že dotace je jistá — obec si musí podat žádost a existuje riziko převisu
+- Nepoužívat žargon EU fondů ani technický newspeak
+- Nestavět text na ekologii — část starostů je k tomu skeptická
 
-CÍLOVÁ SKUPINA: starostové a úředníci obcí, jazyk zastupitelstev a obecních rozpočtů
+CÍLEM JE: text, který si starosta přečte a řekne „to zní rozumně", ne „to zní jako leták"`;
 
-STYL: stručně a jistě, krátké věty, formální ale ne strnulé (forma „Vy"), čeština`;
+const USER_PROMPT_TEMPLATE = `Napiš průvodní texty k níže popsané nabídce.
+
+{context}
+
+Vrať POUZE JSON (žádný jiný text):
+{
+  "pred": "...",
+  "za": "..."
+}
+
+Blok "pred" — text PŘED cenovým souhrnem (2–3 odstavce):
+- Oslovení + věta proč nabídku posíláme
+- Stručně co je předmětem (1–2 věty, nerozpisuj co vše umíme)
+- Pokud je uveden deadline dotační výzvy, zmínit věcně — ne jako hrozbu
+- Nezavírej odstavec chvalozpěvem na DPU
+
+Blok "za" — text ZA cenovým souhrnem (1–2 odstavce):
+- Podmínky spolupráce (fakturace, splatnost, platnost nabídky) — pokud jsou zadány
+- Výzva k dalšímu kroku (podpis, odpověď, schůzka) — jedna věta, bez nátlaku
+- Pozdrav`;
 
 // ── State ──────────────────────────────────────────────────────────────────
 const state = {
@@ -1169,32 +1190,7 @@ async function improveWithAI() {
   if (dotace) contextParts.push(`Předpokládaná výše dotace: ${dotace}`);
   if (dalsiText) contextParts.push(`Další informace: ${dalsiText}`);
 
-  const userPrompt = `Na základě těchto informací o nabídce vytvoř dva textové bloky v DPU ENERGY stylu:
-
-${contextParts.join('\n')}
-
-Vrať POUZE JSON v tomto přesném formátu (žádný jiný text):
-{
-  "pred": "...",
-  "za": "..."
-}
-
-Blok "pred" = úvodní text nabídky PŘED cenovým souhrnem (2–4 odstavce):
-- Oslovení a kontext proč nabídku posíláme
-- Stručný popis co v nabídce nabízíme
-- Proč DPU ENERGY (použij relevantní klíčové claimy)
-- Pokud je uveden deadline OPŽP, zdůrazni časovou naléhavost
-
-Blok "za" = závěrečný text nabídky ZA cenovým souhrnem (1–3 odstavce):
-- Další kroky (co klient má udělat)
-- Kontaktní výzva
-- Krátká důvěrná tečka
-
-Formátování:
-- Odstavce odděluj \\n\\n
-- Odrážky vyznačuj •
-- Žádné HTML, žádný markdown, jen prostý text
-- Začni "pred" oslovením jako "Vážení," nebo "Dobrý den,"`;
+  const userPrompt = USER_PROMPT_TEMPLATE.replace('{context}', contextParts.join('\n'));
 
   try {
     const raw = await callAnthropic({
