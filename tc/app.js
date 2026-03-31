@@ -411,9 +411,13 @@ function calcAccumulation() {
   const ruleMin  = Math.ceil(powerKw * 1.5 / 50) * 50;   // industry rule 1.5 l/kW
   const ruleMax  = Math.ceil(powerKw * 2.0 / 50) * 50;   // industry rule 2.0 l/kW
   if (hiddenVol) hiddenVol.value = Math.round(vol);
+  const bigDiff = rounded > ruleMax * 2;
   el.innerHTML =
-    `Výpočet (min. doba chodu): <strong>${rounded} l</strong>`
-    + `<br><span style="color:#555">Pravidlo 1,5–2 l/kW (invertor, hydr. oddělení): ${ruleMin}–${ruleMax} l</span>`;
+    `Doporučený objem (fyzikální výpočet): <strong>${rounded} l</strong>`
+    + `<br><span style="color:#555;font-size:11px;">Tato hodnota vstupuje do simulace.</span>`
+    + `<br><span style="color:#777;font-size:11px;">Orientační pravidlo 1,5–2 l/kW: ${ruleMin}–${ruleMax} l`
+    + (bigDiff ? ` — <em>výrazně nižší než výpočet; pravidlo platí pro malé domovní TČ, pro výkon ${powerKw} kW použij výpočet</em>` : "")
+    + `</span>`;
 }
 
 // ── Heating curve ─────────────────────────────────────────────────────────────
