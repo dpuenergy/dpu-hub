@@ -908,12 +908,12 @@
             }
             ufaPdfChart = new Chart(ctxP, {
               type: "line",
-              data: { labels: xs, datasets: [{ label: "Hustota pravděpodobnosti", data: ys, pointRadius: 0, borderWidth: 2, borderColor: C.blue2, backgroundColor: 'rgba(14,165,233,.12)', fill: true, tension: 0.1 }] },
+              data: { datasets: [{ label: "Hustota pravděpodobnosti", data: xs.map((x, i) => ({ x, y: ys[i] })), pointRadius: 0, borderWidth: 2, borderColor: C.blue2, backgroundColor: 'rgba(14,165,233,.12)', fill: true, tension: 0.1 }] },
               options: {
                 responsive: true,
                 maintainAspectRatio: false,
                 scales: {
-                  x: { title: { display: true, text: "m/s" }, ticks: { callback: (val, i) => { const lbl = xs[i]; return Number.isInteger(lbl) ? lbl : null; }, maxRotation: 0, autoSkip: false } },
+                  x: { type: 'linear', title: { display: true, text: "m/s" }, ticks: { stepSize: 1, maxRotation: 0 } },
                   y: { beginAtZero: true, title: { display: true, text: "" } }
                 }
               }
