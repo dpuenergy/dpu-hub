@@ -408,15 +408,15 @@ function calcAccumulation() {
   // derived from: P*t_min/60 [kWh] = V * 0.001163 [kWh/(l·K)] * ΔT
   const vol      = powerKw * tMinMin / (0.06978 * dt);
   const rounded  = Math.ceil(vol / 50) * 50;
-  const ruleMin  = Math.ceil(powerKw * 1.5 / 50) * 50;   // industry rule 1.5 l/kW
-  const ruleMax  = Math.ceil(powerKw * 2.0 / 50) * 50;   // industry rule 2.0 l/kW
+  const ruleMin  = Math.ceil(powerKw * 15 / 50) * 50;   // industry rule 15 l/kW
+  const ruleMax  = Math.ceil(powerKw * 20 / 50) * 50;   // industry rule 20 l/kW
   if (hiddenVol) hiddenVol.value = Math.round(vol);
   const bigDiff = rounded > ruleMax * 2;
   el.innerHTML =
     `Doporučený objem (fyzikální výpočet): <strong>${rounded} l</strong>`
     + `<br><span style="color:#555;font-size:11px;">Tato hodnota vstupuje do simulace.</span>`
-    + `<br><span style="color:#777;font-size:11px;">Orientační pravidlo 1,5–2 l/kW: ${ruleMin}–${ruleMax} l`
-    + (bigDiff ? ` — <em>výrazně nižší než výpočet; pravidlo platí pro malé domovní TČ, pro výkon ${powerKw} kW použij výpočet</em>` : "")
+    + `<br><span style="color:#777;font-size:11px;">Orientační pravidlo 15–20 l/kW: ${ruleMin}–${ruleMax} l`
+    + (bigDiff ? ` — <em>výrazně nižší než výpočet; pro výkon ${powerKw} kW použij fyzikální výpočet</em>` : "")
     + `</span>`;
 }
 
