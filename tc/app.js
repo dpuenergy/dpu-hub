@@ -1015,16 +1015,20 @@ function buildCharts(result) {
 
   // Annotate how many heating hours fall below HP minimum — shown below the chart
   const hrsBelow = dur_kw.filter(v => v < pMin && v > 0).length;
-  const pctBelow = dur_kw.length > 0 ? Math.round(hrsBelow / dur_kw.length * 100) : 0;
-  const noteEl = document.getElementById("duration_min_note");
+  const pctYear  = Math.round(hrsBelow / 8760 * 100);  // % roku (TUV = celoroční provoz)
+  const noteEl   = document.getElementById("duration_min_note");
   if (noteEl) {
     if (pMin > 0 && hrsBelow > 0) {
-      const volRec = parseFloat(document.getElementById("buf_vol_l")?.value || 0);
-      const volTxt = volRec > 0 ? ` Doporučená nádrž: <strong>min. ${Math.ceil(volRec / 50) * 50} l</strong>.` : "";
+      const volRec  = parseFloat(document.getElementById("buf_vol_l")?.value || 0);
+      const volText = volRec > 0
+        ? ` Pro aktuální výkon TČ (${inputs.hp_power_kw} kW) vychází min. nádrž <strong>${Math.ceil(volRec / 50) * 50} l</strong> — objem je přímo úměrný výkonu TČ.`
+        : "";
       noteEl.innerHTML =
-        `⚠ <strong>${hrsBelow} h/rok (${pctBelow} % topné sezóny)</strong> je poptávka pod minimem TČ (${pMin.toFixed(0)} kW) — bez akumulační nádrže hrozí krátkodobé cyklování kompresoru.${volTxt} `
-        + `<a href="#buf_section" onclick="document.getElementById('buf_section').scrollIntoView({behavior:'smooth'});return false;" `
-        + `style="color:#c0392b;font-weight:600;text-decoration:underline;">→ Nakonfigurovat akumulační nádrž</a>`;
+        `⚠ <strong>${hrsBelow} h/rok (${pctYear} % roku)</strong> je poptávka pod minimem TČ (${pMin.toFixed(0)} kW).${volText}`
+        + ` <strong>Řešení:</strong> (a) akumulační nádrž, nebo (b) menší TČ s bivalentním zdrojem pro špičky`
+        + ` — menší TČ = nižší minimum = menší nádrž. Viz <em>Optimalizace výkonu</em> pro nalezení optimálního bodu.`
+        + ` <a href="#buf_section" onclick="document.getElementById('buf_section').scrollIntoView({behavior:'smooth'});return false;"`
+        + ` style="color:#c0392b;font-weight:600;text-decoration:underline;">→ Nakonfigurovat nádrž</a>`;
       noteEl.style.display = "";
     } else {
       noteEl.style.display = "none";
