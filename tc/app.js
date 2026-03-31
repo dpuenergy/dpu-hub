@@ -104,12 +104,19 @@ function makeBarChart(canvasId, labels, data, label) {
   });
 }
 
-function makeDualAxisDuration(canvasId, x, y1, y2, pMin) {
+function makeDualAxisDuration(canvasId, x, y1, y2, pMin, bufKw) {
   destroyChart(canvasId);
   const datasets = [
-    { type: "line", label: "Výkon (kW) – křivka trvání", data: y1, yAxisID: "y",  pointRadius: 0, borderWidth: 1.5 },
-    { type: "line", label: "COP (–)",                    data: y2, yAxisID: "y1", pointRadius: 0, borderWidth: 1.5 },
+    { type: "line", label: "Poptávka tepla (kW)", data: y1, yAxisID: "y",  pointRadius: 0, borderWidth: 1.5 },
+    { type: "line", label: "COP (–)",              data: y2, yAxisID: "y1", pointRadius: 0, borderWidth: 1.5 },
   ];
+  if (bufKw) {
+    datasets.push({
+      type: "line", label: "Výkon TČ s nádrží (kW)",
+      data: bufKw, yAxisID: "y", pointRadius: 0, borderWidth: 1,
+      borderColor: "rgba(27,130,80,.7)", backgroundColor: "transparent",
+    });
+  }
   if (pMin > 0) {
     datasets.push({
       type: "line", label: `Min. výkon TČ (${pMin.toFixed(0)} kW)`,
@@ -1015,7 +1022,9 @@ function buildCharts(result) {
     return slice.length ? slice.reduce((a, b) => a + b, 0) / slice.length : null;
   });
   const pMin = inputs.hp_power_kw * (inputs.hp_min_load_pct / 100);
-  makeDualAxisDuration("chDurationCop", durLabels, dur_kw, dur_cop, pMin);
+  // If buffer simulation ran, map HP output back onto the sorted demand hours
+  const dur_buf_kw = buf ? idx.map(i => buf.hp_kw[i] || 0) : null;
+  makeDualAxisDuration("chDurationCop", durLabels, dur_kw, dur_cop, pMin, dur_buf_kw);
 
   // Annotate how many heating hours fall below HP minimum — shown below the chart
   const hrsBelow = dur_kw.filter(v => v < pMin && v > 0).length;
