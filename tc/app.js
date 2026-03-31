@@ -969,15 +969,19 @@ function buildCharts(result) {
   makeLineChart("chTout", labels, s.t_out_c, "T venku (°C)");
 
   destroyChart("chPower");
+  const powerDatasets = [
+    { type: "line", label: "Potřeba tepla (kW)", data: s.heat_need_kw,  pointRadius: 0, borderWidth: 1 },
+    { type: "line", label: "Výkon TČ bez nádrže (kW)", data: s.hp_heat_kw, pointRadius: 0, borderWidth: 1 },
+    { type: "line", label: "Bivalence (kW)",     data: s.bivalence_kw, pointRadius: 0, borderWidth: 1 },
+  ];
+  if (buf) {
+    powerDatasets.push({
+      type: "line", label: "Výkon TČ s nádrží (kW)", data: buf.hp_kw,
+      pointRadius: 0, borderWidth: 1.5, borderColor: "rgba(27,130,80,.8)", backgroundColor: "transparent",
+    });
+  }
   charts["chPower"] = new Chart(document.getElementById("chPower"), {
-    data: {
-      labels,
-      datasets: [
-        { type: "line", label: "Potřeba tepla (kW)", data: s.heat_need_kw, pointRadius: 0, borderWidth: 1 },
-        { type: "line", label: "Výkon TČ (kW)",      data: s.hp_heat_kw,  pointRadius: 0, borderWidth: 1 },
-        { type: "line", label: "Bivalence (kW)",      data: s.bivalence_kw, pointRadius: 0, borderWidth: 1 },
-      ],
-    },
+    data: { labels, datasets: powerDatasets },
     options: {
       responsive: true, maintainAspectRatio: false,
       plugins: { legend: { display: true }, decimation: { enabled: true, algorithm: "min-max" } },
