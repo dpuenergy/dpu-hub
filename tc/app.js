@@ -696,6 +696,11 @@ function simulateBuffer(s, p) {
     return 1 - Math.max(0, (0.5 - Math.min(loadFrac, 0.5)) * plf_k);
   }
 
+  // Optimal inverter operating point: HP runs at f_opt × pNom (best COP zone)
+  // rather than modulating down to low demand. Buffer absorbs the surplus.
+  const f_opt = 0.65;                            // ~65 % of pNom = peak efficiency zone
+  const pOpt  = Math.max(pMinFrac, f_opt) * pNom;
+
   // Water: 0.001163 kWh/(liter·K)
   const capKwhPerK = vol * 0.001163;
   const n = s.t_out_c.length;
@@ -727,9 +732,10 @@ function simulateBuffer(s, p) {
 
     let Qhp = 0;
     if (on) {
-      // HP runs at pNom; cap output so tank doesn't overshoot tMax
+      // Inverter HP targets pOpt (optimal efficiency point); buffer absorbs surplus.
+      // Cap so tank doesn't overshoot tMax.
       const maxQhp = demand + Math.max(0, (tMax - T) * capKwhPerK);
-      Qhp = Math.min(pNom, maxQhp);
+      Qhp = Math.min(pOpt, maxQhp);
     }
 
     // Tank energy balance (HP off → tank supplies demand, may go below tMin)
@@ -1111,9 +1117,9 @@ function buildCharts(result) {
       <div class="box"><div class="box-label">Bivalence (nedokrytí)</div>
         <div class="box-val">${fmtN(bs.bivMwh)} MWh/rok</div>
         <div class="box-sub">bez nádrže: ${fmtN(summary.bivalence_mwh)} MWh</div></div>
-      <div class="box"><div class="box-label">SCOP s nádrží (on/off)</div>
+      <div class="box"><div class="box-label">SCOP s nádrží (opt. bod)</div>
         <div class="box-val">${fmtN(bs.scop, 2)}</div>
-        <div class="box-sub">bez nádrže (invertor, částečné zatíž.): ${fmtN(bs.refScop, 2)}</div></div>
+        <div class="box-sub">bez nádrže (modulace na poptávku): ${fmtN(bs.refScop, 2)}</div></div>
     `;
   } else {
     if (bufWrap) bufWrap.style.display = "none";
