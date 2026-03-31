@@ -988,47 +988,40 @@ function buildCharts(result) {
   {
     const MONTHS = ["Led","Úno","Bře","Dub","Kvě","Čvn","Čvc","Srp","Zář","Říj","Lis","Pro"];
     const mDemand = new Array(12).fill(0);
-    const mHpUT   = new Array(12).fill(0);  // space heating covered by HP
-    const mHpTUV  = new Array(12).fill(0);  // DHW covered by HP (year-round base)
+    const mHp     = new Array(12).fill(0);
     const mBiv    = new Array(12).fill(0);
     const n = s.heat_need_kw.length;
 
-    // Uniform TUV hourly baseload derived from annual TUV input
-    const tuvKwhH = inputs.tuv_gj > 0 ? (inputs.tuv_gj * 277.78 / n) : 0;
-
     for (let i = 0; i < n; i++) {
-      const m       = Math.min(11, Math.floor((i / n) * 12));
-      const demand  = s.heat_need_kw[i] || 0;
-      const hpTotal = s.hp_heat_kw[i]   || 0;
-      const biv     = s.bivalence_kw[i] || 0;
+      const m = Math.min(11, Math.floor((i / n) * 12));
+      mDemand[m] += (s.heat_need_kw[i] || 0) / 1000;
+      mHp[m]     += (s.hp_heat_kw[i]   || 0) / 1000;
+      mBiv[m]    += (s.bivalence_kw[i] || 0) / 1000;
+    }
 
-      // UT demand = demand above the TUV baseload; TUV demand = baseload (or full demand if below)
-      const utDemand  = Math.max(0, demand - tuvKwhH);
-      const utFrac    = demand > 0 ? utDemand / demand : 0;
-      const hpUT  = hpTotal * utFrac;
-      const hpTuv = hpTotal - hpUT;
+    // TUV reference line: uniform monthly average from annual TUV input
+    const tuvMwhPerMonth = inputs.tuv_gj > 0 ? (inputs.tuv_gj * 277.78 / 1000 / 12) : null;
+    const mTuvLine = tuvMwhPerMonth ? new Array(12).fill(tuvMwhPerMonth) : null;
 
-      mDemand[m] += demand  / 1000;
-      mHpTUV[m]  += hpTuv  / 1000;
-      mHpUT[m]   += hpUT   / 1000;
-      mBiv[m]    += biv    / 1000;
+    const datasets = [
+      { type: "bar",  label: "Výkon TČ (MWh)", data: mHp,
+        backgroundColor: "rgba(46,140,255,.7)", stack: "s" },
+      { type: "bar",  label: "Bivalence (MWh)", data: mBiv,
+        backgroundColor: "rgba(220,50,30,.7)",  stack: "s" },
+      { type: "line", label: "Potřeba tepla celkem (MWh)", data: mDemand,
+        borderColor: "rgba(13,27,62,.8)", backgroundColor: "transparent",
+        borderWidth: 2, pointRadius: 3, fill: false },
+    ];
+    if (mTuvLine) {
+      datasets.push({
+        type: "line", label: "TUV baseline (MWh)", data: mTuvLine,
+        borderColor: "rgba(46,140,255,.5)", backgroundColor: "transparent",
+        borderWidth: 1.5, borderDash: [5, 4], pointRadius: 0, fill: false,
+      });
     }
 
     charts["chPower"] = new Chart(document.getElementById("chPower"), {
-      data: {
-        labels: MONTHS,
-        datasets: [
-          { type: "bar",  label: "TUV — TČ (MWh)",      data: mHpTUV,
-            backgroundColor: "rgba(46,140,255,.35)", stack: "s" },
-          { type: "bar",  label: "Vytápění UT — TČ (MWh)", data: mHpUT,
-            backgroundColor: "rgba(46,140,255,.8)",  stack: "s" },
-          { type: "bar",  label: "Bivalence (MWh)",     data: mBiv,
-            backgroundColor: "rgba(220,50,30,.7)",   stack: "s" },
-          { type: "line", label: "Potřeba tepla celkem (MWh)", data: mDemand,
-            borderColor: "rgba(13,27,62,.8)", backgroundColor: "transparent",
-            borderWidth: 2, pointRadius: 3, fill: false },
-        ],
-      },
+      data: { labels: MONTHS, datasets },
       options: {
         responsive: true, maintainAspectRatio: false,
         plugins: { legend: { display: true } },
