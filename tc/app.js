@@ -596,7 +596,7 @@ async function fetchPvgisTmy() {
 
 async function loadChmiStations() {
   const sel = document.getElementById("chmi_station");
-  const btn = event?.target;
+  const btn = event?.target?.tagName === "BUTTON" ? event.target : null;
   if (btn) { btn.disabled = true; btn.textContent = "Načítám…"; }
   try {
     const r = await fetch(window.location.origin + "/tc/api/chmi-stations");
