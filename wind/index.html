@@ -93,6 +93,12 @@
         color:var(--text);
         outline:none;
       }
+      input[type="checkbox"]{
+        width:16px; height:16px; flex-shrink:0;
+        padding:0; border-radius:4px;
+        accent-color:var(--brand);
+        cursor:pointer;
+      }
       input:focus,select:focus{
         border-color:rgba(27,50,128,.60);
       }
@@ -454,6 +460,18 @@
 
       const API = "https://dpuenergy-dpu-wind-ideal.hf.space";
 
+      // ── DPU brand barvy ──────────────────────────────────────────────────
+      const C = {
+        blue1:  '#1b3280',   // DPU tmavá modrá
+        blue2:  '#0ea5e9',   // DPU světlá modrá
+        blue3:  '#4f7be8',   // střední modrá
+        green:  '#10b981',   // spotřeba
+        amber:  '#f59e0b',   // rychlost větru
+        radar:  '#1b3280',
+      };
+      // barvy pro jednotlivé roky
+      const YEAR_COLORS = { 2023: C.blue3, 2024: C.blue1, 2025: C.blue2 };
+
       const statusEl = document.getElementById("status");
       const kpisEl = document.getElementById("kpis");
 
@@ -739,6 +757,9 @@
                 data: curveXY,
                 pointRadius: 0,
                 borderWidth: 3,
+                borderColor: C.blue1,
+                backgroundColor: 'rgba(27,50,128,.08)',
+                fill: true,
                 tension: 0.15,
                 spanGaps: true,
               },
@@ -839,10 +860,17 @@
           const ctxA = document.getElementById("ufaRoseAep");
           const ctxP = document.getElementById("ufaPdf");
 
+          const _radarDs = (label, data) => ({
+            label, data, pointRadius: 0, borderWidth: 2,
+            borderColor: C.blue1,
+            backgroundColor: 'rgba(27,50,128,.12)',
+            pointBackgroundColor: C.blue1,
+          });
+
           if (ctxF) {
             ufaRoseFreqChart = new Chart(ctxF, {
               type: "radar",
-              data: { labels, datasets: [{ label: "Frekvence (%)", data: freqAll, pointRadius: 0, borderWidth: 2 }] },
+              data: { labels, datasets: [_radarDs("Frekvence (%)", freqAll)] },
               options: { responsive: true, maintainAspectRatio: false, scales: { r: { beginAtZero: true } } }
             });
           }
@@ -850,7 +878,7 @@
           if (ctxM) {
             ufaRoseMeanChart = new Chart(ctxM, {
               type: "radar",
-              data: { labels, datasets: [{ label: "v̄ (m/s)", data: meanV, pointRadius: 0, borderWidth: 2 }] },
+              data: { labels, datasets: [_radarDs("v̄ (m/s)", meanV)] },
               options: { responsive: true, maintainAspectRatio: false, scales: { r: { beginAtZero: true } } }
             });
           }
@@ -858,7 +886,7 @@
           if (ctxA) {
             ufaRoseAepChart = new Chart(ctxA, {
               type: "radar",
-              data: { labels, datasets: [{ label: "AEP (kWh/rok)", data: aep, pointRadius: 0, borderWidth: 2 }] },
+              data: { labels, datasets: [_radarDs("AEP (kWh/rok)", aep)] },
               options: { responsive: true, maintainAspectRatio: false, scales: { r: { beginAtZero: true } } }
             });
           }
@@ -876,7 +904,7 @@
             }
             ufaPdfChart = new Chart(ctxP, {
               type: "line",
-              data: { labels: xs, datasets: [{ label: "PDF", data: ys, pointRadius: 0, borderWidth: 2, tension: 0.1 }] },
+              data: { labels: xs, datasets: [{ label: "Hustota pravděpodobnosti", data: ys, pointRadius: 0, borderWidth: 2, borderColor: C.blue2, backgroundColor: 'rgba(14,165,233,.12)', fill: true, tension: 0.1 }] },
               options: {
                 responsive: true,
                 maintainAspectRatio: false,
@@ -929,14 +957,19 @@ function renderHourlyChart() {
         if (loadT && loadT.xy.length) yMaxRaw = Math.max(yMaxRaw, Math.max(...loadT.xy.map((p) => p.y)));
         const yMax = yMaxRaw > 0 ? yMaxRaw : 1;
 
-        const datasets = series.map((s) => ({
-          label: `Výroba turbíny – ${s.year}`,
-          data: s.xy,
-          pointRadius: 0,
-          borderWidth: 2,
-          tension: 0.1,
-          spanGaps: true,
-        }));
+        const datasets = series.map((s) => {
+          const col = YEAR_COLORS[s.year] || C.blue1;
+          return {
+            label: `Výroba turbíny – ${s.year}`,
+            data: s.xy,
+            pointRadius: 0,
+            borderWidth: 2,
+            borderColor: col,
+            backgroundColor: col + '22',
+            tension: 0.1,
+            spanGaps: true,
+          };
+        });
 
         if (loadT) {
           datasets.push({
@@ -944,6 +977,8 @@ function renderHourlyChart() {
             data: loadT.xy,
             pointRadius: 0,
             borderWidth: 2,
+            borderColor: C.green,
+            backgroundColor: C.green + '22',
             tension: 0.1,
             spanGaps: true,
           });
@@ -961,6 +996,7 @@ function renderHourlyChart() {
               yAxisID: "y2",
               pointRadius: 0,
               borderWidth: 1,
+              borderColor: C.amber,
               borderDash: [6, 4],
               tension: 0.1,
               spanGaps: true,
