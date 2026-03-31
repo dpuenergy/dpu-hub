@@ -594,6 +594,11 @@ async function fetchPvgisTmy() {
   }
 }
 
+function onChmiSelectionChange() {
+  const hint = document.getElementById("chmi_reload_hint");
+  if (hint) hint.style.display = "";
+}
+
 async function loadChmiStations() {
   const sel = document.getElementById("chmi_station");
   const btn = event?.target?.tagName === "BUTTON" ? event.target : null;
@@ -641,6 +646,8 @@ async function fetchChmiData() {
     currentTemps = res.temps_c;
     currentClimateLabel = `ČHMÚ ${stationName} ${year} (${res.count} h, T min ${res.t_min}°C / max ${res.t_max}°C)`;
     _setClimateStatus(currentClimateLabel);
+    const hint = document.getElementById("chmi_reload_hint");
+    if (hint) hint.style.display = "none";
     await simulate();
   } catch (e) {
     alert("Chyba při načítání dat ČHMÚ:\n" + (e?.message || e));

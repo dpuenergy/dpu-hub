@@ -277,19 +277,15 @@
             <div id="panel_chmi" class="fg" style="display:none;">
               <div>
                 <label>Meteorologická stanice</label>
-                <select id="chmi_station">
-                  <option value="">-- nejprve klikni Načíst stanice --</option>
+                <select id="chmi_station" onchange="onChmiSelectionChange()">
+                  <option value="">-- načítám stanice… --</option>
                 </select>
               </div>
-              <div class="row2">
-                <div>
-                  <label>Rok</label>
-                  <select id="chmi_year"></select>
-                </div>
-                <div style="display:flex;align-items:flex-end;">
-                  <button class="btn btn-sm btn-ghost" onclick="loadChmiStations()" style="width:100%;">Načíst stanice</button>
-                </div>
+              <div>
+                <label>Rok</label>
+                <select id="chmi_year" onchange="onChmiSelectionChange()"></select>
               </div>
+              <div id="chmi_reload_hint" class="hint" style="color:#e07b00;display:none;">Vybrali jste jinou stanici nebo rok — klikněte na Načíst data.</div>
               <button class="btn" onclick="fetchChmiData()">Načíst data z ČHMÚ</button>
             </div>
 
