@@ -513,8 +513,11 @@
         <div style="display:flex;flex-direction:column;gap:8px;">
           <div class="field">
             <label>Název nabídky / projektu</label>
-            <input type="text" id="nazev" placeholder="např. Energetická studie OÚ Příbor" oninput="generate()">
-            <input type="text" id="nazevPad" placeholder="Název v 4. pádu: Energetickou studii OÚ Příbor" oninput="generate()" style="margin-top:4px;font-size:11px;color:var(--gray);">
+            <input type="text" id="nazev" placeholder="např. Energetická studie OÚ Příbor" oninput="generate(); scheduleAkuzativ()">
+            <div style="position:relative;margin-top:4px;">
+              <input type="text" id="nazevPad" placeholder="4. pád — generuje se automaticky" oninput="generate()" style="font-size:11px;color:var(--gray);width:100%;padding-right:22px;">
+              <span id="nazevPadSpinner" style="display:none;position:absolute;right:6px;top:50%;transform:translateY(-50%);"></span>
+            </div>
           </div>
           <div class="field">
             <label>Klient</label>
@@ -1098,7 +1101,7 @@ function buildZaHtml(text) {
   const cHtml = buildContactsHtml(getSelectedContacts());
   const includeSouhrn = document.getElementById('sourhnToggle').checked;
   const { html: sournHtml } = includeSouhrn ? buildSourhnHtml(state.rows) : { html: '' };
-  return `<div style="font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#222;line-height:1.7;max-width:700px;">\n${plainToHtml(text)}${sournHtml}${cHtml}\n</div>`;
+  return `<div style="font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#222;line-height:1.7;max-width:700px;">\n${sournHtml}${plainToHtml(text)}${cHtml}\n</div>`;
 }
 
 // ── Generate all blocks ────────────────────────────────────────────────────
@@ -1215,6 +1218,44 @@ function setAiBadges() {
   bZa.classList.toggle('visible', !!state.ai_za);
   tPred.classList.toggle('visible', !!state.ai_pred);
   tZa.classList.toggle('visible', !!state.ai_za);
+}
+
+// ── Auto-generování 4. pádu ────────────────────────────────────────────────
+let _akuzativTimer = null;
+let _akuzativLastNazev = '';
+
+function scheduleAkuzativ() {
+  clearTimeout(_akuzativTimer);
+  const nazev = document.getElementById('nazev').value.trim();
+  if (!nazev || nazev === _akuzativLastNazev) return;
+  _akuzativTimer = setTimeout(() => generateAkuzativ(nazev), 800);
+}
+
+async function generateAkuzativ(nazev) {
+  _akuzativLastNazev = nazev;
+  const spinner = document.getElementById('nazevPadSpinner');
+  spinner.innerHTML = '<span class="spinner spinner-dark" style="width:11px;height:11px;display:inline-block;"></span>';
+  spinner.style.display = 'inline-block';
+  try {
+    const result = await callAnthropic({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 60,
+      messages: [{
+        role: 'user',
+        content: `Dej mi 4. pád (akuzativ) tohoto názvu: "${nazev}". Vrať pouze skloňovaný název, nic jiného, žádné uvozovky, žádné vysvětlení.`
+      }]
+    });
+    const pad = result.trim();
+    const el = document.getElementById('nazevPad');
+    if (el.value === '' || el.value === _akuzativLastNazev) {
+      el.value = pad;
+      generate();
+    }
+  } catch (_) {
+    // tiše selže — uživatel může zadat ručně
+  } finally {
+    spinner.style.display = 'none';
+  }
 }
 
 // ── Anthropic API helper (přes Netlify proxy) ──────────────────────────────
