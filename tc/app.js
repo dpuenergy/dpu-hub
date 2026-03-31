@@ -679,19 +679,18 @@ function simulateBuffer(s, p) {
   const pNom   = p.hp_power_kw || 0;
   if (pNom <= 0) return null;
 
-  // Carnot-based COP: uses theoretical heating curve (slope/intercept/hwMin)
-  const slope    = p.hw_slope     || -1.25;
+  // Carnot-based COP using theoretical heating curve
+  const slope     = p.hw_slope     || -1.25;
   const intercept = p.hw_intercept || 42.5;
-  const hwMin    = p.hw_min_c     || 45;
-  const copNom   = p.cop_nominal  || 3.2;
-  // Nominal point assumed at hw_t_design / hw_w_design (typically −15°C / 55°C)
-  const tOutNom  = p.hw_t_design  != null ? p.hw_t_design  : -15;
-  const tWaterNom = p.hw_w_design != null ? p.hw_w_design  : 55;
+  const hwMin     = p.hw_min_c     || 45;
+  const copNom    = p.cop_nominal  || 3.2;
+  const tOutNom   = p.hw_t_design  != null ? p.hw_t_design  : -15;
+  const tWaterNom = p.hw_w_design  != null ? p.hw_w_design  : 55;
 
   function getCop(tOut) {
     const tWater = Math.max(hwMin, slope * tOut + intercept);
-    const dT_nom = tWaterNom - tOutNom;      // design lift
-    const dT_now = tWater    - tOut;          // actual lift
+    const dT_nom = tWaterNom - tOutNom;
+    const dT_now = tWater - tOut;
     if (dT_now <= 0) return copNom * 2.5;
     return Math.max(1.0, Math.min(copNom * 2.5, copNom * dT_nom / dT_now));
   }
@@ -705,7 +704,7 @@ function simulateBuffer(s, p) {
   const biv_kw = new Array(n).fill(0);
   const tank_t = new Array(n).fill(0);
 
-  let T = (tMin + tMax) / 2;   // initial tank temperature
+  let T = tMax;   // start fully charged
   let on = false;
   let starts = 0;
 
@@ -713,11 +712,20 @@ function simulateBuffer(s, p) {
     const demand = s.heat_need_kw[i] || 0;
     const tOut   = s.t_out_c[i] || 0;
     const cop    = getCop(tOut);
+    const wasOn  = on;
 
-    // Hysteresis control
-    const wasOn = on;
-    if (!on && T <= tMin) on = true;
-    if ( on && T >= tMax) on = false;
+    if (demand === 0) {
+      // No heating needed — always off, tank holds temperature
+      on = false;
+    } else {
+      // Proactive turn-on: trigger if tank would drop below tMin this hour without HP
+      const T_proj = T - demand / capKwhPerK;
+      if (!on && (T <= tMin || T_proj < tMin)) on = true;
+
+      // Turn off only when tank is full AND it can supply demand next hour without HP
+      if (on && T >= tMax && T_proj >= tMin) on = false;
+    }
+
     if (on && !wasOn) starts++;
 
     let Qhp = 0;
@@ -732,15 +740,26 @@ function simulateBuffer(s, p) {
     // Tank energy balance
     T += (Qhp - demand) / capKwhPerK;
 
-    // Bivalence: if tank falls below critical floor (tMin − 5°C)
+    // Bivalence: demand exceeded HP capacity
     const floor = tMin - 5;
     if (T < floor) {
       biv_kw[i] = (floor - T) * capKwhPerK;
       T = floor;
     }
-    // Hard clamp
     T = Math.max(tMin - 10, Math.min(tMax + 10, T));
     tank_t[i] = T;
+  }
+
+  // Aggregate to daily for chart readability
+  const days = Math.ceil(n / 24);
+  const dailyTankT  = new Array(days).fill(0);
+  const dailyHpHrs  = new Array(days).fill(0);
+  for (let d = 0; d < days; d++) {
+    const s0 = d * 24, s1 = Math.min(s0 + 24, n);
+    let tSum = 0, hpHrs = 0;
+    for (let h = s0; h < s1; h++) { tSum += tank_t[h]; if (hp_kw[h] > 0) hpHrs++; }
+    dailyTankT[d] = tSum / (s1 - s0);
+    dailyHpHrs[d] = hpHrs;
   }
 
   const hpMwh  = hp_kw.reduce((a, b) => a + b, 0) / 1000;
@@ -749,7 +768,7 @@ function simulateBuffer(s, p) {
   const scop   = elMwh > 0 ? hpMwh / elMwh : 0;
   const hrsOn  = hp_kw.filter(v => v > 0).length;
 
-  return { hp_kw, hp_el, biv_kw, tank_t,
+  return { hp_kw, hp_el, biv_kw, tank_t, dailyTankT, dailyHpHrs,
     summary: { hpMwh, bivMwh, elMwh, scop, starts, hrsOn } };
 }
 
@@ -1030,28 +1049,36 @@ function buildCharts(result) {
     if (bufWrap) bufWrap.style.display = "";
     if (bufSumWrap) bufSumWrap.style.display = "";
 
-    // Tank temperature chart with T_min/T_max reference lines
+    // Daily aggregated chart: tank temperature (line) + HP running hours per day (bar)
     destroyChart("chBufSoc");
-    const tMin = inputs.buf_t_min, tMax = inputs.buf_t_max;
+    const bufTmin = inputs.buf_t_min, bufTmax = inputs.buf_t_max;
+    const dayLabels = buf.dailyTankT.map((_, d) => `Den ${d + 1}`);
     charts["chBufSoc"] = new Chart(document.getElementById("chBufSoc"), {
       data: {
-        labels,
+        labels: dayLabels,
         datasets: [
-          { type: "line", label: "Teplota nádrže (°C)", data: buf.tank_t,
-            pointRadius: 0, borderWidth: 1, fill: false },
-          { type: "line", label: "T min (start)", data: new Array(labels.length).fill(tMin),
-            pointRadius: 0, borderWidth: 1, borderDash: [4, 4], borderColor: "rgba(240,90,40,.6)" },
-          { type: "line", label: "T max (stop)",  data: new Array(labels.length).fill(tMax),
-            pointRadius: 0, borderWidth: 1, borderDash: [4, 4], borderColor: "rgba(27,50,128,.5)" },
+          { type: "bar",  label: "Chod TČ (h/den)",      data: buf.dailyHpHrs,
+            yAxisID: "y1", backgroundColor: "rgba(27,50,128,.25)", borderWidth: 0 },
+          { type: "line", label: "Průměrná T nádrže (°C)", data: buf.dailyTankT,
+            yAxisID: "y",  pointRadius: 0, borderWidth: 1.5, fill: false },
+          { type: "line", label: "T min (start)",
+            data: new Array(dayLabels.length).fill(bufTmin),
+            yAxisID: "y",  pointRadius: 0, borderWidth: 1, borderDash: [4, 4],
+            borderColor: "rgba(240,90,40,.6)", backgroundColor: "transparent" },
+          { type: "line", label: "T max (stop)",
+            data: new Array(dayLabels.length).fill(bufTmax),
+            yAxisID: "y",  pointRadius: 0, borderWidth: 1, borderDash: [4, 4],
+            borderColor: "rgba(27,50,128,.5)", backgroundColor: "transparent" },
         ],
       },
       options: {
         responsive: true, maintainAspectRatio: false,
-        plugins: { legend: { display: true },
-          decimation: { enabled: true, algorithm: "min-max" } },
+        plugins: { legend: { display: true } },
         scales: {
-          x: { display: false },
-          y: { title: { display: true, text: "°C" } },
+          x:  { display: false },
+          y:  { position: "left",  title: { display: true, text: "°C" }, min: bufTmin - 8 },
+          y1: { position: "right", title: { display: true, text: "h/den" },
+                min: 0, max: 24, grid: { drawOnChartArea: false } },
         },
       },
     });
