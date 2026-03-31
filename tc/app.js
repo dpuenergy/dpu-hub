@@ -1415,6 +1415,9 @@ function buildCharts(result) {
       <div class="box"><div class="box-label">Bivalence s nádrží</div>
         <div class="box-val">${fmtN(bs.bivMwh)} MWh/rok</div>
         <div class="box-sub">bez nádrže: ${fmtN(summary.bivalence_mwh)} MWh/rok</div></div>
+      <div class="box"><div class="box-label">SCOP s nádrží</div>
+        <div class="box-val">${fmtN(bs.scop, 2)}</div>
+        <div class="box-sub">bez nádrže (z backendu): ${fmtN(summary.avg_cop, 2)}</div></div>
     `;
   } else {
     if (bufWrap) bufWrap.style.display = "none";
