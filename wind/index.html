@@ -913,7 +913,7 @@
                 responsive: true,
                 maintainAspectRatio: false,
                 scales: {
-                  x: { title: { display: true, text: "m/s" }, ticks: { callback: (val, i) => { const lbl = xs[i]; return Number.isInteger(lbl) ? lbl : null; }, maxRotation: 0 } },
+                  x: { title: { display: true, text: "m/s" }, ticks: { callback: (val, i) => { const lbl = xs[i]; return Number.isInteger(lbl) ? lbl : null; }, maxRotation: 0, autoSkip: false } },
                   y: { beginAtZero: true, title: { display: true, text: "" } }
                 }
               }
