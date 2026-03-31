@@ -104,16 +104,22 @@ function makeBarChart(canvasId, labels, data, label) {
   });
 }
 
-function makeDualAxisDuration(canvasId, x, y1, y2) {
+function makeDualAxisDuration(canvasId, x, y1, y2, pMin) {
   destroyChart(canvasId);
+  const datasets = [
+    { type: "line", label: "Výkon (kW) – křivka trvání", data: y1, yAxisID: "y",  pointRadius: 0, borderWidth: 1.5 },
+    { type: "line", label: "COP (–)",                    data: y2, yAxisID: "y1", pointRadius: 0, borderWidth: 1.5 },
+  ];
+  if (pMin > 0) {
+    datasets.push({
+      type: "line", label: `Min. výkon TČ (${pMin.toFixed(0)} kW)`,
+      data: new Array(x.length).fill(pMin),
+      yAxisID: "y", pointRadius: 0, borderWidth: 1,
+      borderDash: [6, 4], borderColor: "rgba(220,50,30,.7)", backgroundColor: "transparent",
+    });
+  }
   charts[canvasId] = new Chart(document.getElementById(canvasId), {
-    data: {
-      labels: x,
-      datasets: [
-        { type: "line", label: "Výkon (kW) – křivka trvání", data: y1, yAxisID: "y",  pointRadius: 0, borderWidth: 1 },
-        { type: "line", label: "COP (–)",                    data: y2, yAxisID: "y1", pointRadius: 0, borderWidth: 1 },
-      ],
-    },
+    data: { labels: x, datasets },
     options: {
       responsive: true, maintainAspectRatio: false,
       plugins: {
@@ -1004,7 +1010,19 @@ function buildCharts(result) {
     const slice = dur_cop_raw.slice(Math.max(0, j - W), j + W + 1).filter(v => v != null);
     return slice.length ? slice.reduce((a, b) => a + b, 0) / slice.length : null;
   });
-  makeDualAxisDuration("chDurationCop", durLabels, dur_kw, dur_cop);
+  const pMin = inputs.hp_power_kw * (inputs.hp_min_load_pct / 100);
+  makeDualAxisDuration("chDurationCop", durLabels, dur_kw, dur_cop, pMin);
+
+  // Annotate how many heating hours fall below HP minimum — shown below the chart
+  const hrsBelow = dur_kw.filter(v => v < pMin && v > 0).length;
+  const pctBelow = dur_kw.length > 0 ? Math.round(hrsBelow / dur_kw.length * 100) : 0;
+  const noteEl = document.getElementById("duration_min_note");
+  if (noteEl) {
+    noteEl.textContent = pMin > 0 && hrsBelow > 0
+      ? `⚠ ${hrsBelow} h/rok (${pctBelow} % topné sezóny) je poptávka pod minimem TČ (${pMin.toFixed(0)} kW) — bez akumulační nádrže hrozí krátkodobé cyklování kompresoru.`
+      : "";
+    noteEl.style.display = hrsBelow > 0 ? "" : "none";
+  }
 
   // Cooling chart — shown when cooling is enabled; graph rendered only if series data present
   const coolingWrap = document.getElementById("ch_cooling_wrap");
