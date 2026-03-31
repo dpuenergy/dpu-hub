@@ -1223,12 +1223,13 @@ function setAiBadges() {
 // ── Auto-generování 4. pádu ────────────────────────────────────────────────
 let _akuzativTimer = null;
 let _akuzativLastNazev = '';
+let _akuzativLastResult = ''; // poslední AI výstup — ochrana před přepisem ručních úprav
 
 function scheduleAkuzativ() {
   clearTimeout(_akuzativTimer);
   const nazev = document.getElementById('nazev').value.trim();
   if (!nazev || nazev === _akuzativLastNazev) return;
-  _akuzativTimer = setTimeout(() => generateAkuzativ(nazev), 800);
+  _akuzativTimer = setTimeout(() => generateAkuzativ(nazev), 900);
 }
 
 async function generateAkuzativ(nazev) {
@@ -1247,10 +1248,12 @@ async function generateAkuzativ(nazev) {
     });
     const pad = result.trim();
     const el = document.getElementById('nazevPad');
-    if (el.value === '' || el.value === _akuzativLastNazev) {
+    // Přepíš pokud je pole prázdné nebo obsahuje předchozí AI výstup (ne ruční úpravu)
+    if (el.value === '' || el.value === _akuzativLastResult) {
       el.value = pad;
       generate();
     }
+    _akuzativLastResult = pad;
   } catch (_) {
     // tiše selže — uživatel může zadat ručně
   } finally {
