@@ -677,6 +677,33 @@ async function fetchChmiData() {
   }
 }
 
+// ── Heating season helper ─────────────────────────────────────────────────────
+// Returns a boolean array[8760]: true = hour is within heating season.
+// start/end are "MM-DD" strings (e.g. "09-21", "05-18").
+// Season can wrap around year-end (e.g. Sep–May crosses Jan 1).
+function buildHeatSeasonMask(n, startMmDd, endMmDd) {
+  // Day-of-year for MM-DD (non-leap, 365 days)
+  const MONTH_DAYS = [31,28,31,30,31,30,31,31,30,31,30,31];
+  function dayOfYear(mmDd) {
+    const [mm, dd] = (mmDd || "").split("-").map(Number);
+    if (!mm || !dd) return null;
+    let d = 0;
+    for (let m = 0; m < mm - 1; m++) d += MONTH_DAYS[m];
+    return d + dd; // 1-based
+  }
+  const startDay = dayOfYear(startMmDd) || 264; // default Sep 21
+  const endDay   = dayOfYear(endMmDd)   || 138; // default May 18
+  const mask = new Array(n).fill(false);
+  for (let i = 0; i < n; i++) {
+    const dayOfYr = Math.floor(i / 24) + 1; // 1-based
+    const inSeason = startDay > endDay
+      ? (dayOfYr >= startDay || dayOfYr <= endDay)   // wraps around year-end
+      : (dayOfYr >= startDay && dayOfYr <= endDay);
+    mask[i] = inSeason;
+  }
+  return mask;
+}
+
 // ── Buffer tank simulation ────────────────────────────────────────────────────
 // Hour-by-hour buffer tank model: HP runs at target power, tank balances demand.
 
@@ -715,10 +742,12 @@ function simulateBuffer(s, p) {
   const capKwhPerK = vol * 0.001163;
   const n = s.t_out_c.length;
 
-  // Buffer serves only the space heating circuit (UT). TUV goes through a separate
-  // DHW tank — must not be routed through buffer (would force higher tank temperature).
-  // Use s.ut_kw directly if backend provides it, otherwise fall back to heat_need_kw.
+  // Buffer serves only the space heating circuit (UT) within the heating season.
+  // TUV goes through a separate DHW tank — must not be routed through buffer.
   const hasUtSeries = Array.isArray(s.ut_kw) && s.ut_kw.length === n;
+  const heatMask = buildHeatSeasonMask(n,
+    document.getElementById("heat_season_start")?.value,
+    document.getElementById("heat_season_end")?.value);
 
   const hp_kw  = new Array(n).fill(0);
   const hp_el  = new Array(n).fill(0);
@@ -730,8 +759,8 @@ function simulateBuffer(s, p) {
   let starts = 0;
 
   for (let i = 0; i < n; i++) {
-    // Space heating only — use ut_kw series from backend (exact), or fall back to heat_need_kw
-    const demand = hasUtSeries ? (s.ut_kw[i] || 0) : (s.heat_need_kw[i] || 0);
+    // Space heating only — within heating season, use ut_kw; outside season demand = 0
+    const demand = heatMask[i] ? (hasUtSeries ? (s.ut_kw[i] || 0) : (s.heat_need_kw[i] || 0)) : 0;
     const cop    = getCop(i);
     const wasOn  = on;
 
@@ -989,12 +1018,15 @@ function buildCharts(result) {
     const mTUV    = new Array(12).fill(0);
     const mBiv    = new Array(12).fill(0);
     const n = s.heat_need_kw.length;
+    const heatMask = buildHeatSeasonMask(n,
+      document.getElementById("heat_season_start")?.value,
+      document.getElementById("heat_season_end")?.value);
 
     for (let i = 0; i < n; i++) {
       const m = Math.min(11, Math.floor((i / n) * 12));
-      mUT[m]  += (s.ut_kw[i]        || 0) / 1000;
       mTUV[m] += (s.tuv_kw[i]       || 0) / 1000;
-      mBiv[m] += (s.bivalence_kw[i] || 0) / 1000;
+      mUT[m]  += heatMask[i] ? (s.ut_kw[i] || 0) / 1000 : 0;
+      mBiv[m] += heatMask[i] ? (s.bivalence_kw[i] || 0) / 1000 : 0;
     }
 
     const datasets = [

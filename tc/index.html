@@ -425,6 +425,18 @@
                 <div><label>Vnitřní teplota (°C)</label><input id="t_base_c" type="number" step="0.5" value="20" /></div>
                 <div><label>Zahájení vytápění (°C)</label><input id="t_heat_on_c" type="number" step="0.5" value="14" /></div>
               </div>
+              <div class="row2">
+                <div>
+                  <label>Topná sezóna — začátek</label>
+                  <input id="heat_season_start" type="text" value="09-21" placeholder="MM-DD" style="width:90px;" />
+                  <div class="hint">Výchozí: 21. září (09-21)</div>
+                </div>
+                <div>
+                  <label>Topná sezóna — konec</label>
+                  <input id="heat_season_end" type="text" value="05-18" placeholder="MM-DD" style="width:90px;" />
+                  <div class="hint">Výchozí: 18. května (05-18)</div>
+                </div>
+              </div>
               <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
                 <div style="font-size:11px; font-weight:600; color:var(--muted);">Topná křivka</div>
                 <select id="hw_preset" style="width:auto; font-size:11px; padding:3px 6px; border-radius:6px;" onchange="applyHwPreset()">
