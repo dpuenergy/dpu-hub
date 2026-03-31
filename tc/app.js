@@ -1409,15 +1409,12 @@ function buildCharts(result) {
       <div class="box"><div class="box-label">Počet spuštění TČ / rok</div>
         <div class="box-val">${bs.starts}</div>
         <div class="box-sub">prům. délka cyklu: ${avgCycleH} h</div></div>
-      <div class="box"><div class="box-label">Chod TČ</div>
+      <div class="box"><div class="box-label">Chod TČ (topný okruh)</div>
         <div class="box-val">${bs.hrsOn} h/rok</div>
         <div class="box-sub">TČ jede ${offFrac > 0 ? 100 - offFrac : "—"} % topné sezóny</div></div>
-      <div class="box"><div class="box-label">Bivalence (nedokrytí)</div>
+      <div class="box"><div class="box-label">Bivalence s nádrží</div>
         <div class="box-val">${fmtN(bs.bivMwh)} MWh/rok</div>
-        <div class="box-sub">bez nádrže: ${fmtN(summary.bivalence_mwh)} MWh</div></div>
-      <div class="box"><div class="box-label">SCOP s nádrží (opt. bod)</div>
-        <div class="box-val">${fmtN(bs.scop, 2)}</div>
-        <div class="box-sub">bez nádrže (modulace na poptávku): ${fmtN(bs.refScop, 2)}</div></div>
+        <div class="box-sub">bez nádrže: ${fmtN(summary.bivalence_mwh)} MWh/rok</div></div>
     `;
   } else {
     if (bufWrap) bufWrap.style.display = "none";
