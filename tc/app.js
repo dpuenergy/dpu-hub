@@ -1182,7 +1182,6 @@ function buildCharts(result) {
     const dailyHpHrsTUV = new Array(days).fill(0);
     for (let d = 0; d < days; d++) {
       const s0 = d * 24, s1 = Math.min(s0 + 24, s.t_out_c.length);
-      if (heatMaskBuf[s0]) continue; // heating season — skip, covered by buffer bars
       let tuvKwh = 0;
       for (let i = s0; i < s1; i++) tuvKwh += (s.tuv_kw[i] || 0);
       dailyHpHrsTUV[d] = Math.min(24, tuvKwh / pNom);
