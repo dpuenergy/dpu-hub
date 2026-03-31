@@ -1018,10 +1018,17 @@ function buildCharts(result) {
   const pctBelow = dur_kw.length > 0 ? Math.round(hrsBelow / dur_kw.length * 100) : 0;
   const noteEl = document.getElementById("duration_min_note");
   if (noteEl) {
-    noteEl.textContent = pMin > 0 && hrsBelow > 0
-      ? `⚠ ${hrsBelow} h/rok (${pctBelow} % topné sezóny) je poptávka pod minimem TČ (${pMin.toFixed(0)} kW) — bez akumulační nádrže hrozí krátkodobé cyklování kompresoru.`
-      : "";
-    noteEl.style.display = hrsBelow > 0 ? "" : "none";
+    if (pMin > 0 && hrsBelow > 0) {
+      const volRec = parseFloat(document.getElementById("buf_vol_l")?.value || 0);
+      const volTxt = volRec > 0 ? ` Doporučená nádrž: <strong>min. ${Math.ceil(volRec / 50) * 50} l</strong>.` : "";
+      noteEl.innerHTML =
+        `⚠ <strong>${hrsBelow} h/rok (${pctBelow} % topné sezóny)</strong> je poptávka pod minimem TČ (${pMin.toFixed(0)} kW) — bez akumulační nádrže hrozí krátkodobé cyklování kompresoru.${volTxt} `
+        + `<a href="#buf_section" onclick="document.getElementById('buf_section').scrollIntoView({behavior:'smooth'});return false;" `
+        + `style="color:#c0392b;font-weight:600;text-decoration:underline;">→ Nakonfigurovat akumulační nádrž</a>`;
+      noteEl.style.display = "";
+    } else {
+      noteEl.style.display = "none";
+    }
   }
 
   // Cooling chart — shown when cooling is enabled; graph rendered only if series data present
