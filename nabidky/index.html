@@ -80,10 +80,14 @@
     flex-shrink: 0;
     background: #fff;
     border-right: 1px solid var(--gray-border);
-    overflow-y: auto;
+    overflow-y: scroll;
     display: flex;
     flex-direction: column;
   }
+  .sidebar::-webkit-scrollbar { width: 8px; }
+  .sidebar::-webkit-scrollbar-track { background: #dddde0; border-radius: 4px; }
+  .sidebar::-webkit-scrollbar-thumb { background: #a0a0a8; border-radius: 4px; }
+  .sidebar::-webkit-scrollbar-thumb:hover { background: #7a7a88; }
 
   .sidebar-inner { padding: 14px; display: flex; flex-direction: column; gap: 14px; }
 
@@ -213,13 +217,17 @@
   /* ── Output column ── */
   .output-col {
     flex: 1;
-    overflow-y: auto;
+    overflow-y: scroll;
     padding: 14px;
     display: flex;
     flex-direction: column;
     gap: 14px;
     min-width: 0;
   }
+  .output-col::-webkit-scrollbar { width: 8px; }
+  .output-col::-webkit-scrollbar-track { background: #dddde0; border-radius: 4px; }
+  .output-col::-webkit-scrollbar-thumb { background: #a0a0a8; border-radius: 4px; }
+  .output-col::-webkit-scrollbar-thumb:hover { background: #7a7a88; }
 
   .output-header {
     display: flex;
