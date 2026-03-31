@@ -514,6 +514,7 @@
           <div class="field">
             <label>Název nabídky / projektu</label>
             <input type="text" id="nazev" placeholder="např. Energetická studie OÚ Příbor" oninput="generate()">
+            <input type="text" id="nazevPad" placeholder="Název v 4. pádu: Energetickou studii OÚ Příbor" oninput="generate()" style="margin-top:4px;font-size:11px;color:var(--gray);">
           </div>
           <div class="field">
             <label>Klient</label>
@@ -526,45 +527,6 @@
               <button type="button" class="btn-fmt" onclick="insertBullet('rozsah')">• Odrážka</button>
             </div>
             <textarea id="rozsah" rows="5" placeholder="Popis předmětu nabídky&#10;## Klíčový termín&#10;• položka 1&#10;• položka 2" oninput="generate()"></textarea>
-          </div>
-        </div>
-      </div>
-
-      <!-- OPŽP toggle -->
-      <div>
-        <div class="toggle-row">
-          <label class="toggle">
-            <input type="checkbox" id="opzpToggle" onchange="toggleOpzp()">
-            <span class="toggle-slider"></span>
-          </label>
-          <label for="opzpToggle" style="cursor:pointer;">Výzva OPŽP</label>
-        </div>
-        <div id="opzpFields" class="sub-fields hidden">
-          <div class="row2">
-            <div class="field">
-              <label>Deadline podání žádosti</label>
-              <input type="date" id="deadline" oninput="generate()">
-            </div>
-            <div class="field">
-              <label>Program / výzva</label>
-              <input type="text" id="program" placeholder="např. OPŽP 1.3" oninput="generate()">
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Dotace toggle -->
-      <div>
-        <div class="toggle-row">
-          <label class="toggle">
-            <input type="checkbox" id="dotaceToggle" onchange="toggleDotace()">
-            <span class="toggle-slider"></span>
-          </label>
-          <label for="dotaceToggle" style="cursor:pointer;">Předpokládaná dotace</label>
-        </div>
-        <div id="dotaceFields" class="sub-fields hidden">
-          <div class="field">
-            <input type="text" id="dotace" placeholder="např. až 85 % způsobilých nákladů" oninput="generate()">
           </div>
         </div>
       </div>
@@ -609,6 +571,13 @@
       <div>
         <div class="section-title">Text za položkami</div>
         <div style="display:flex;flex-direction:column;gap:8px;">
+          <div class="toggle-row">
+            <label class="toggle">
+              <input type="checkbox" id="sourhnToggle" onchange="generate()">
+              <span class="toggle-slider"></span>
+            </label>
+            <label for="sourhnToggle" style="cursor:pointer;">Zahrnout cenový souhrn po skupinách</label>
+          </div>
           <div class="row2">
             <div class="field">
               <label>Fakturace</label>
@@ -887,16 +856,6 @@ function insertHeading(id, level) {
 }
 
 // ── Toggle sections ────────────────────────────────────────────────────────
-function toggleOpzp() {
-  const on = document.getElementById('opzpToggle').checked;
-  document.getElementById('opzpFields').classList.toggle('hidden', !on);
-  generate();
-}
-function toggleDotace() {
-  const on = document.getElementById('dotaceToggle').checked;
-  document.getElementById('dotaceFields').classList.toggle('hidden', !on);
-  generate();
-}
 
 // ── Rows ───────────────────────────────────────────────────────────────────
 function addRow(name = '', price = '', dph = '21') {
@@ -1070,43 +1029,21 @@ ${rowsHtml}
 // ── Build PRED template text ───────────────────────────────────────────────
 function buildPredTemplate() {
   const nazev = document.getElementById('nazev').value.trim();
+  const nazevPad = document.getElementById('nazevPad').value.trim();
   const klient = document.getElementById('klient').value.trim();
   const rozsah = document.getElementById('rozsah').value.trim();
-  const opzp = document.getElementById('opzpToggle').checked;
-  const deadline = document.getElementById('deadline').value;
-  const program = document.getElementById('program').value.trim();
-  const dotace = document.getElementById('dotaceToggle').checked
-    ? document.getElementById('dotace').value.trim() : '';
 
   let lines = [];
   lines.push('Vážení,');
   lines.push('');
 
-  const subject = nazev ? `nabídku na ${nazev}` : (klient ? `nabídku pro ${klient}` : 'naši nabídku');
+  const nazevVete = nazevPad || nazev;
+  const subject = nazevVete ? `nabídku na ${nazevVete}` : (klient ? `nabídku pro ${klient}` : 'naši nabídku');
   lines.push(`dovolujeme si Vám předložit ${subject}.`);
 
   if (rozsah) {
     lines.push('');
     lines.push(rozsah);
-  }
-
-  if (opzp && (deadline || program)) {
-    lines.push('');
-    let opzpLine = 'V rámci';
-    if (program) opzpLine += ` výzvy ${program}`;
-    if (deadline) {
-      const d = new Date(deadline);
-      const formatted = d.toLocaleDateString('cs-CZ');
-      opzpLine += ` je deadline pro podání žádosti ${formatted}.`;
-    } else {
-      opzpLine += ' doporučujeme nepodcenit přípravu a začít co nejdříve.';
-    }
-    lines.push(opzpLine);
-  }
-
-  if (dotace) {
-    lines.push('');
-    lines.push(`Předpokládaná výše dotace: ${dotace}.`);
   }
 
   return lines.join('\n');
@@ -1159,7 +1096,9 @@ function buildPredHtml(text) {
 
 function buildZaHtml(text) {
   const cHtml = buildContactsHtml(getSelectedContacts());
-  return `<div style="font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#222;line-height:1.7;max-width:700px;">\n${plainToHtml(text)}${cHtml}\n</div>`;
+  const includeSouhrn = document.getElementById('sourhnToggle').checked;
+  const { html: sournHtml } = includeSouhrn ? buildSourhnHtml(state.rows) : { html: '' };
+  return `<div style="font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#222;line-height:1.7;max-width:700px;">\n${plainToHtml(text)}${sournHtml}${cHtml}\n</div>`;
 }
 
 // ── Generate all blocks ────────────────────────────────────────────────────
@@ -1319,18 +1258,10 @@ async function improveWithAI() {
   const nazev = document.getElementById('nazev').value.trim();
   const klient = document.getElementById('klient').value.trim();
   const rozsah = document.getElementById('rozsah').value.trim();
-  const opzp = document.getElementById('opzpToggle').checked;
-  const deadline = document.getElementById('deadline').value;
-  const program = document.getElementById('program').value.trim();
-  const dotace = document.getElementById('dotaceToggle').checked
-    ? document.getElementById('dotace').value.trim() : '';
   const dalsiText = document.getElementById('dalsiText').value.trim();
 
   const contextParts = [`Název projektu/nabídky: ${nazev}`, `Klient: ${klient}`];
   if (rozsah) contextParts.push(`Rozsah prací: ${rozsah}`);
-  if (opzp && deadline) contextParts.push(`OPŽP výzva — deadline podání žádosti: ${deadline}`);
-  if (program) contextParts.push(`Dotační program: ${program}`);
-  if (dotace) contextParts.push(`Předpokládaná výše dotace: ${dotace}`);
   if (dalsiText) contextParts.push(`Další informace: ${dalsiText}`);
 
   const userPrompt = USER_PROMPT_TEMPLATE.replace('{context}', contextParts.join('\n'));
