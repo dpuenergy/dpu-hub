@@ -1,0 +1,57 @@
+name: Keep Streamlit Apps Alive
+
+on:
+  schedule:
+    - cron: '0 7 * * 1,4'   # každé pondělí a čtvrtek v 7:00 UTC
+  workflow_dispatch:          # možnost spustit ručně
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Playwright + Chromium
+        run: npx playwright install chromium --with-deps
+
+      - name: Visit Streamlit apps (establishes real WebSocket session)
+        run: |
+          node - <<'EOF'
+          const { chromium } = require('playwright');
+
+          const APPS = [
+            { name: 'podklady',   url: 'https://dpuenergy-podklady.streamlit.app/?embed=true' },
+            { name: 'komunita',   url: 'https://dpuenergy-komunita.streamlit.app/?embed=true' },
+            { name: 'kalkulator', url: 'https://dpu-kalkulator.streamlit.app/?embed=true' },
+          ];
+
+          (async () => {
+            const browser = await chromium.launch();
+            let allOk = true;
+
+            for (const { name, url } of APPS) {
+              const page = await browser.newPage();
+              try {
+                console.log(`⏳ ${name}: otevírám ${url}`);
+                await page.goto(url, { waitUntil: 'networkidle', timeout: 120_000 });
+                // Počkáme chvíli, ať se WebSocket session plně ustaví
+                await page.waitForTimeout(5000);
+                console.log(`✓  ${name}: OK`);
+              } catch (err) {
+                console.error(`✗  ${name}: ${err.message}`);
+                allOk = false;
+              } finally {
+                await page.close();
+              }
+            }
+
+            await browser.close();
+            process.exit(allOk ? 0 : 1);
+          })();
+          EOF
