@@ -325,7 +325,6 @@
     font-size: 13px;
     line-height: 1.6;
     color: #222;
-    white-space: pre-wrap;
     word-break: break-word;
   }
 
@@ -626,7 +625,7 @@
     <div class="card" id="cardPred">
       <div class="card-header">
         <div class="card-title">
-          Úvodní text (před souhrnem)
+          Text před položkami
           <span class="ai-badge" id="badgePred">AI verze</span>
         </div>
         <div class="card-actions">
@@ -674,7 +673,7 @@
     <div class="card" id="cardZa">
       <div class="card-header">
         <div class="card-title">
-          Závěrečný text (za souhrnem)
+          Text za položkami
           <span class="ai-badge" id="badgeZa">AI verze</span>
         </div>
         <div class="card-actions">
@@ -1058,7 +1057,7 @@ function buildPredTemplate() {
   lines.push('Vážení,');
   lines.push('');
 
-  const subject = nazev || (klient ? `nabídku pro ${klient}` : 'naši nabídku');
+  const subject = nazev ? `nabídku na ${nazev}` : (klient ? `nabídku pro ${klient}` : 'naši nabídku');
   lines.push(`dovolujeme si Vám předložit ${subject}.`);
 
   if (rozsah) {
