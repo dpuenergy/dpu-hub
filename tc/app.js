@@ -680,10 +680,20 @@ function simulateBuffer(s, p) {
   if (pNom <= 0) return null;
 
   // COP: use backend values (same model as duration chart), fall back to nominal
-  const copNom = p.cop_nominal || 3.2;
+  const copNom  = p.cop_nominal    || 3.2;
+  const pMinFrac = (p.hp_min_load_pct || 25) / 100;   // e.g. 0.25
+
   function getCop(i) {
     const v = s.cop && s.cop[i];
     return (v > 0) ? Math.max(1.0, v) : copNom;
+  }
+
+  // Partial-load factor: COP penalty for inverter HP running below 50 % of pNom.
+  // At pMinFrac load → -8 %; at 50 % load → 0 %; above 50 % → 0 %.
+  // Buffer HP runs at higher average load → smaller penalty → better SCOP.
+  const plf_k = 0.08 / Math.max(0.01, 0.5 - pMinFrac);   // slope
+  function plf(loadFrac) {
+    return 1 - Math.max(0, (0.5 - Math.min(loadFrac, 0.5)) * plf_k);
   }
 
   // Water: 0.001163 kWh/(liter·K)
@@ -732,10 +742,25 @@ function simulateBuffer(s, p) {
       T = floor;
     }
     T = Math.max(tMin - 10, Math.min(tMax + 10, T));
+    // Buffer HP electricity: apply partial-load factor based on actual HP output
+    const f_buf = pNom > 0 ? Qhp / pNom : 1;
     hp_kw[i] = Qhp;
-    hp_el[i] = Qhp / cop;
+    hp_el[i] = Qhp > 0 ? Qhp / (cop * plf(f_buf)) : 0;
     tank_t[i] = T;
   }
+
+  // Reference SCOP: inverter HP follows demand exactly, but with partial-load COP penalty
+  let refHeat = 0, refEl = 0;
+  for (let i = 0; i < n; i++) {
+    const demand = s.heat_need_kw[i] || 0;
+    if (demand <= 0) continue;
+    const cop = getCop(i);
+    const qRef = Math.min(demand, pNom);          // inverter follows demand up to pNom
+    const fRef = pNom > 0 ? qRef / pNom : 1;
+    refHeat += qRef;
+    refEl   += qRef / (cop * plf(fRef));
+  }
+  const refScop = refEl > 0 ? refHeat / refEl : 0;
 
   // Aggregate to daily for chart readability
   const days = Math.ceil(n / 24);
@@ -756,7 +781,7 @@ function simulateBuffer(s, p) {
   const hrsOn  = hp_kw.filter(v => v > 0).length;
 
   return { hp_kw, hp_el, biv_kw, tank_t, dailyTankT, dailyHpHrs,
-    summary: { hpMwh, bivMwh, elMwh, scop, starts, hrsOn } };
+    summary: { hpMwh, bivMwh, elMwh, scop, refScop, starts, hrsOn } };
 }
 
 // ── Inputs ────────────────────────────────────────────────────────────────────
@@ -1086,9 +1111,9 @@ function buildCharts(result) {
       <div class="box"><div class="box-label">Bivalence (nedokrytí)</div>
         <div class="box-val">${fmtN(bs.bivMwh)} MWh/rok</div>
         <div class="box-sub">bez nádrže: ${fmtN(summary.bivalence_mwh)} MWh</div></div>
-      <div class="box"><div class="box-label">SCOP (on/off provoz)</div>
+      <div class="box"><div class="box-label">SCOP s nádrží (on/off)</div>
         <div class="box-val">${fmtN(bs.scop, 2)}</div>
-        <div class="box-sub">invertorový provoz: ${(summary.electricity_mwh > 0 ? (summary.heat_from_hp_mwh / summary.electricity_mwh).toFixed(2) : "—")}</div></div>
+        <div class="box-sub">bez nádrže (invertor, částečné zatíž.): ${fmtN(bs.refScop, 2)}</div></div>
     `;
   } else {
     if (bufWrap) bufWrap.style.display = "none";
