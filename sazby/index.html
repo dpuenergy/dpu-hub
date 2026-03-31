@@ -104,15 +104,16 @@ window.addEventListener("message", (ev)=>{
   downloadHtml(fname, out);
 });
 
-function resizeFrames(){
-  const h = Math.max(820, window.innerHeight - 44);
-  frameNN.style.height = h+"px";
-  frameVN.style.height = h+"px";
-  frameMERGE.style.height = h+"px";
+function autoHeight(iframe) {
+  try {
+    const el = iframe.contentDocument && iframe.contentDocument.documentElement;
+    if (!el) return;
+    const update = () => { const h = el.scrollHeight; if (h > 0) iframe.style.height = h + 'px'; };
+    new ResizeObserver(update).observe(el);
+    update();
+  } catch(e) {}
 }
-window.addEventListener("resize", resizeFrames);
-window.addEventListener("load", resizeFrames);
-setTimeout(resizeFrames, 200);
+[frameNN, frameVN, frameMERGE].forEach(fr => fr.addEventListener('load', () => autoHeight(fr)));
 
 function postMode(mode){
   try { frameNN.contentWindow.postMessage({type:"DPU_MODE", mode}, "*"); } catch(_e){}
@@ -125,7 +126,7 @@ function setMode(mode){
   frameMERGE.style.display = (mode==="MERGE") ? "block" : "none";
   location.hash = (mode==="VN") ? "#VN" : (mode==="MERGE" ? "#MERGE" : "#NN");
   postMode(mode);
-  resizeFrames();
+  setTimeout(() => autoHeight([frameNN,frameVN,frameMERGE].find(f => f.style.display !== "none")), 50);
 }
 
 const proxyPending = new Map();
