@@ -679,20 +679,11 @@ function simulateBuffer(s, p) {
   const pNom   = p.hp_power_kw || 0;
   if (pNom <= 0) return null;
 
-  // Carnot-based COP using theoretical heating curve
-  const slope     = p.hw_slope     || -1.25;
-  const intercept = p.hw_intercept || 42.5;
-  const hwMin     = p.hw_min_c     || 45;
-  const copNom    = p.cop_nominal  || 3.2;
-  const tOutNom   = p.hw_t_design  != null ? p.hw_t_design  : -15;
-  const tWaterNom = p.hw_w_design  != null ? p.hw_w_design  : 55;
-
-  function getCop(tOut) {
-    const tWater = Math.max(hwMin, slope * tOut + intercept);
-    const dT_nom = tWaterNom - tOutNom;
-    const dT_now = tWater - tOut;
-    if (dT_now <= 0) return copNom * 2.5;
-    return Math.max(1.0, Math.min(copNom * 2.5, copNom * dT_nom / dT_now));
+  // COP: use backend values (same model as duration chart), fall back to nominal
+  const copNom = p.cop_nominal || 3.2;
+  function getCop(i) {
+    const v = s.cop && s.cop[i];
+    return (v > 0) ? Math.max(1.0, v) : copNom;
   }
 
   // Water: 0.001163 kWh/(liter·K)
@@ -710,8 +701,7 @@ function simulateBuffer(s, p) {
 
   for (let i = 0; i < n; i++) {
     const demand = s.heat_need_kw[i] || 0;
-    const tOut   = s.t_out_c[i] || 0;
-    const cop    = getCop(tOut);
+    const cop    = getCop(i);
     const wasOn  = on;
 
     if (demand === 0) {
