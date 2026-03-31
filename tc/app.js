@@ -715,6 +715,13 @@ function simulateBuffer(s, p) {
   const capKwhPerK = vol * 0.001163;
   const n = s.t_out_c.length;
 
+  // Buffer serves only the space heating circuit (UT). TUV goes through a separate
+  // DHW tank with its own pump and priority switching — it must not be routed through
+  // the buffer (would force higher tank temperature → worse COP).
+  // Approximate space-heating demand by subtracting uniform TUV baseload.
+  const tuvGj        = p.tuv_gj || 0;                         // GJ/rok
+  const tuvKwhPerHr  = tuvGj > 0 ? (tuvGj * 277.78 / n) : 0; // uniform hourly kW
+
   const hp_kw  = new Array(n).fill(0);
   const hp_el  = new Array(n).fill(0);
   const biv_kw = new Array(n).fill(0);
@@ -725,7 +732,8 @@ function simulateBuffer(s, p) {
   let starts = 0;
 
   for (let i = 0; i < n; i++) {
-    const demand = s.heat_need_kw[i] || 0;
+    // Space heating only — strip uniform TUV baseload (handled by separate DHW tank)
+    const demand = Math.max(0, (s.heat_need_kw[i] || 0) - tuvKwhPerHr);
     const cop    = getCop(i);
     const wasOn  = on;
 
@@ -738,15 +746,22 @@ function simulateBuffer(s, p) {
     // Strict hysteresis: on at tMin, off at tMax
     if (!on && T <= tMin) on = true;
     if ( on && T >= tMax) on = false;
-    if (on && !wasOn) starts++;
 
     let Qhp = 0;
     if (on) {
       // Inverter HP targets pOpt (optimal efficiency point); buffer absorbs surplus.
       // Cap so tank doesn't overshoot tMax.
       const maxQhp = demand + Math.max(0, (tMax - T) * capKwhPerK);
-      Qhp = Math.min(pOpt, maxQhp);
+      const pMin   = pMinFrac * pNom;
+      // HP can only run if it can deliver at least pMin — otherwise tank can't absorb
+      // the minimum output without overflowing (e.g. summer TUV: small demand + small tank).
+      if (maxQhp >= pMin) {
+        Qhp = Math.min(pOpt, maxQhp);
+      } else {
+        on = false;  // force off — tank will supply from stored heat
+      }
     }
+    if (on && !wasOn) starts++;
 
     // Tank energy balance (HP off → tank supplies demand, may go below tMin)
     T += (Qhp - demand) / capKwhPerK;
@@ -765,10 +780,10 @@ function simulateBuffer(s, p) {
     tank_t[i] = T;
   }
 
-  // Reference SCOP: inverter HP follows demand exactly, but with partial-load COP penalty
+  // Reference SCOP: inverter HP follows space-heating demand exactly (same TUV exclusion)
   let refHeat = 0, refEl = 0;
   for (let i = 0; i < n; i++) {
-    const demand = s.heat_need_kw[i] || 0;
+    const demand = Math.max(0, (s.heat_need_kw[i] || 0) - tuvKwhPerHr);
     if (demand <= 0) continue;
     const cop = getCop(i);
     const qRef = Math.min(demand, pNom);          // inverter follows demand up to pNom
@@ -968,26 +983,45 @@ function buildCharts(result) {
 
   makeLineChart("chTout", labels, s.t_out_c, "T venku (°C)");
 
+  // Monthly energy breakdown — stacked bar (HP + bivalence) + demand line
   destroyChart("chPower");
-  const powerDatasets = [
-    { type: "line", label: "Potřeba tepla (kW)", data: s.heat_need_kw,  pointRadius: 0, borderWidth: 1 },
-    { type: "line", label: "Výkon TČ bez nádrže (kW)", data: s.hp_heat_kw, pointRadius: 0, borderWidth: 1 },
-    { type: "line", label: "Bivalence (kW)",     data: s.bivalence_kw, pointRadius: 0, borderWidth: 1 },
-  ];
-  if (buf) {
-    powerDatasets.push({
-      type: "line", label: "Výkon TČ s nádrží (kW)", data: buf.hp_kw,
-      pointRadius: 0, borderWidth: 1.5, borderColor: "rgba(27,130,80,.8)", backgroundColor: "transparent",
+  {
+    const MONTHS = ["Led","Úno","Bře","Dub","Kvě","Čvn","Čvc","Srp","Zář","Říj","Lis","Pro"];
+    const mDemand = new Array(12).fill(0);
+    const mHp     = new Array(12).fill(0);
+    const mBiv    = new Array(12).fill(0);
+    const n = s.heat_need_kw.length;
+
+    for (let i = 0; i < n; i++) {
+      const m = Math.min(11, Math.floor((i / n) * 12));
+      mDemand[m] += (s.heat_need_kw[i] || 0) / 1000;
+      mHp[m]     += (s.hp_heat_kw[i]   || 0) / 1000;
+      mBiv[m]    += (s.bivalence_kw[i] || 0) / 1000;
+    }
+
+    charts["chPower"] = new Chart(document.getElementById("chPower"), {
+      data: {
+        labels: MONTHS,
+        datasets: [
+          { type: "bar",  label: "Výkon TČ (MWh)",    data: mHp,
+            backgroundColor: "rgba(46,140,255,.7)",  stack: "s" },
+          { type: "bar",  label: "Bivalence (MWh)",   data: mBiv,
+            backgroundColor: "rgba(220,50,30,.7)",   stack: "s" },
+          { type: "line", label: "Potřeba tepla (MWh)", data: mDemand,
+            borderColor: "rgba(13,27,62,.7)", backgroundColor: "transparent",
+            borderWidth: 2, pointRadius: 3, fill: false },
+        ],
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: true } },
+        scales: {
+          x: { stacked: true },
+          y: { stacked: true, title: { display: true, text: "MWh/měsíc" } },
+        },
+      },
     });
   }
-  charts["chPower"] = new Chart(document.getElementById("chPower"), {
-    data: { labels, datasets: powerDatasets },
-    options: {
-      responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { display: true }, decimation: { enabled: true, algorithm: "min-max" } },
-      scales: { x: { display: false } },
-    },
-  });
 
   const coolingActive = document.getElementById("cooling_enabled")?.checked;
   if (coolingActive && summary.cooling_mwh != null) {
@@ -1142,7 +1176,9 @@ function buildCharts(result) {
     const bs = buf.summary;
     const fmtN = (v, d=1) => v != null ? v.toFixed(d) : "—";
     const avgCycleH = bs.starts > 0 ? (bs.hrsOn / bs.starts).toFixed(1) : "—";
-    const heatHrs   = (s.heat_need_kw || []).filter(v => v > 0).length;
+    // Space-heating hours only (same TUV exclusion as buffer simulation)
+    const tuvKwhPerHr = inputs.tuv_gj > 0 ? (inputs.tuv_gj * 277.78 / (s.heat_need_kw || []).length) : 0;
+    const heatHrs   = (s.heat_need_kw || []).filter(v => v - tuvKwhPerHr > 0).length;
     const offFrac   = heatHrs > 0 ? Math.round((1 - bs.hrsOn / heatHrs) * 100) : 0;
     document.getElementById("buf_kpis").innerHTML = `
       <div class="box"><div class="box-label">Počet spuštění TČ / rok</div>
@@ -1150,7 +1186,7 @@ function buildCharts(result) {
         <div class="box-sub">prům. délka cyklu: ${avgCycleH} h</div></div>
       <div class="box"><div class="box-label">Chod TČ</div>
         <div class="box-val">${bs.hrsOn} h/rok</div>
-        <div class="box-sub">nádrž kryje ${offFrac} % topných hodin</div></div>
+        <div class="box-sub">TČ jede ${offFrac > 0 ? 100 - offFrac : "—"} % topné sezóny</div></div>
       <div class="box"><div class="box-label">Bivalence (nedokrytí)</div>
         <div class="box-val">${fmtN(bs.bivMwh)} MWh/rok</div>
         <div class="box-sub">bez nádrže: ${fmtN(summary.bivalence_mwh)} MWh</div></div>
