@@ -1410,20 +1410,19 @@ function buildCharts(result) {
     const utSeries  = Array.isArray(s.ut_kw) ? s.ut_kw : s.heat_need_kw;
     const heatHrs   = (utSeries || []).filter(v => v > 0).length;
     const offFrac   = heatHrs > 0 ? Math.round((1 - bs.hrsOn / heatHrs) * 100) : 0;
-    document.getElementById("buf_kpis").innerHTML = `
-      <div class="box"><div class="box-label">Počet spuštění TČ / rok</div>
-        <div class="box-val">${bs.starts}</div>
-        <div class="box-sub">prům. délka cyklu: ${avgCycleH} h</div></div>
-      <div class="box"><div class="box-label">Chod TČ (topný okruh)</div>
-        <div class="box-val">${bs.hrsOn} h/rok</div>
-        <div class="box-sub">TČ jede ${offFrac > 0 ? 100 - offFrac : "—"} % topné sezóny</div></div>
-      <div class="box"><div class="box-label">Bivalence s nádrží</div>
-        <div class="box-val">${fmtN(bs.bivMwh)} MWh/rok</div>
-        <div class="box-sub">bez nádrže: ${fmtN(summary.bivalence_mwh)} MWh/rok</div></div>
-      <div class="box"><div class="box-label">SCOP s nádrží</div>
-        <div class="box-val">${fmtN(bs.scop, 2)}</div>
-        <div class="box-sub">bez nádrže (z backendu): ${fmtN(summary.avg_cop, 2)}</div></div>
-    `;
+    const scopBuf = (bs.scop > 0 && isFinite(bs.scop)) ? bs.scop.toFixed(2) : "—";
+    const scopRef = (summary.avg_cop > 0 && isFinite(summary.avg_cop)) ? summary.avg_cop.toFixed(2) : "—";
+    const el = document.getElementById("buf_kpis");
+    el.innerHTML = "";
+    const box1 = document.createElement("div"); box1.className = "box";
+    box1.innerHTML = `<div class="box-label">Počet spuštění TČ / rok</div><div class="box-val">${bs.starts}</div><div class="box-sub">prům. délka cyklu: ${avgCycleH} h</div>`;
+    const box2 = document.createElement("div"); box2.className = "box";
+    box2.innerHTML = `<div class="box-label">Chod TČ (topný okruh)</div><div class="box-val">${bs.hrsOn} h/rok</div><div class="box-sub">TČ jede ${offFrac > 0 ? 100 - offFrac : "—"} % topné sezóny</div>`;
+    const box3 = document.createElement("div"); box3.className = "box";
+    box3.innerHTML = `<div class="box-label">Bivalence s nádrží</div><div class="box-val">${fmtN(bs.bivMwh)} MWh/rok</div><div class="box-sub">bez nádrže: ${fmtN(summary.bivalence_mwh)} MWh/rok</div>`;
+    const box4 = document.createElement("div"); box4.className = "box";
+    box4.innerHTML = `<div class="box-label">SCOP s nádrží</div><div class="box-val">${scopBuf}</div><div class="box-sub">bez nádrže: ${scopRef}</div>`;
+    el.appendChild(box1); el.appendChild(box2); el.appendChild(box3); el.appendChild(box4);
   } else {
     if (bufWrap) bufWrap.style.display = "none";
     if (bufSumWrap) bufSumWrap.style.display = "none";
