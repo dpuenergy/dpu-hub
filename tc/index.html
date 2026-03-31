@@ -652,6 +652,22 @@
           </details>
 
           <div class="section-title">Investice a odpisy</div>
+          <div class="fg" style="margin-bottom:8px;">
+            <div class="row2">
+              <div><label>Tepelné čerpadlo (Kč)</label><input id="inv_hp" type="number" step="10000" value="0" oninput="calcInvestmentTotal()" /></div>
+              <div><label>Taktovací nádrž (Kč)</label><input id="inv_buf" type="number" step="5000" value="0" oninput="calcInvestmentTotal()" /></div>
+            </div>
+            <div class="row2">
+              <div><label>Zásobník TUV (Kč)</label><input id="inv_tuv" type="number" step="5000" value="0" oninput="calcInvestmentTotal()" /></div>
+              <div><label>Bivalentní zdroj (Kč)</label><input id="inv_biv" type="number" step="5000" value="0" oninput="calcInvestmentTotal()" /></div>
+            </div>
+            <div class="row2">
+              <div><label>Instalace / ostatní (Kč)</label><input id="inv_other" type="number" step="10000" value="0" oninput="calcInvestmentTotal()" /></div>
+              <div style="display:flex; flex-direction:column; justify-content:flex-end;">
+                <div id="inv_total_display" style="font-size:13px; font-weight:700; color:var(--brand); padding:9px 11px; border-radius:10px; border:2px solid var(--accent); background:#eff6ff;">Celkem: 0 Kč</div>
+              </div>
+            </div>
+          </div>
           <div style="display:flex; align-items:center; gap:6px; margin-bottom:6px; font-size:13px; cursor:pointer;">
             <input type="checkbox" id="include_depr" />
             <label style="margin:0; font-size:13px; color:var(--text); cursor:pointer;" for="include_depr">Zahrnout odpisy do ročních nákladů</label>

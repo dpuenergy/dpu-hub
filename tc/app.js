@@ -392,6 +392,17 @@ function calcNPV() {
   if (elInline) elInline.innerHTML = html;
 }
 
+// ── Investment total ──────────────────────────────────────────────────────────
+
+function calcInvestmentTotal() {
+  const ids = ["inv_hp", "inv_buf", "inv_tuv", "inv_biv", "inv_other"];
+  const total = ids.reduce((sum, id) => sum + (parseFloat(document.getElementById(id)?.value || 0) || 0), 0);
+  const display = document.getElementById("inv_total_display");
+  if (display) display.textContent = `Celkem: ${Math.round(total).toLocaleString("cs-CZ")} Kč`;
+  const invEl = document.getElementById("investment_kcz");
+  if (invEl) { invEl.value = Math.round(total); calcNPV(); }
+}
+
 // ── Accumulation tank sizing ──────────────────────────────────────────────────
 
 function calcAccumulation() {
