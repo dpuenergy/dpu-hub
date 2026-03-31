@@ -53,48 +53,19 @@
   }
   .topbar-back:hover { background: rgba(255,255,255,.15); color: #fff; }
 
-  /* ── API key bar ── */
-  .apibar {
-    background: #fff;
-    border-bottom: 1px solid var(--gray-border);
-    padding: 8px 14px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-shrink: 0;
+  /* ── API status dot in topbar ── */
+  .api-status {
+    display: flex; align-items: center; gap: 6px;
+    font-size: 11px; color: rgba(255,255,255,.7);
   }
-  .apibar label { font-size: 11px; font-weight: 600; color: var(--gray); white-space: nowrap; }
-  .apibar input {
-    flex: 1;
-    border: 1px solid var(--gray-border);
-    border-radius: 5px;
-    padding: 5px 8px;
-    font-size: 12px;
-    font-family: monospace;
-    outline: none;
-    min-width: 0;
-  }
-  .apibar input:focus { border-color: var(--purple); }
   .api-dot {
-    width: 9px; height: 9px;
-    border-radius: 50%;
-    background: var(--red);
-    flex-shrink: 0;
-    transition: background .2s;
+    width: 8px; height: 8px; border-radius: 50%;
+    background: #888; flex-shrink: 0; transition: background .3s;
   }
-  .api-dot.set { background: var(--green); }
-  .btn-save-api {
-    background: var(--purple);
-    color: #fff;
-    border: none;
-    border-radius: 5px;
-    padding: 5px 12px;
-    font-size: 12px;
-    cursor: pointer;
-    white-space: nowrap;
-    font-family: Arial, Helvetica, sans-serif;
-  }
-  .btn-save-api:hover { background: var(--purple-mid); }
+  .api-dot.ok     { background: #27ae60; }
+  .api-dot.error  { background: var(--red); }
+  .api-dot.checking { background: #f39c12; animation: pulse .8s ease-in-out infinite alternate; }
+  @keyframes pulse { from { opacity: .5; } to { opacity: 1; } }
 
   /* ── Main layout ── */
   .main {
@@ -462,15 +433,11 @@
     <div class="topbar-title">Caflou Generator</div>
     <div class="topbar-sub">DPU ENERGY s.r.o. — nabídkový generátor</div>
   </div>
+  <div class="api-status">
+    <div class="api-dot checking" id="apiDot"></div>
+    <span id="apiStatusLabel">Ověřuji AI…</span>
+  </div>
   <a href="/" class="topbar-back">← Hub</a>
-</div>
-
-<!-- API key bar -->
-<div class="apibar">
-  <label>Anthropic API klíč</label>
-  <input type="password" id="apiKeyInput" placeholder="sk-ant-..." autocomplete="off">
-  <div class="api-dot" id="apiDot"></div>
-  <button class="btn-save-api" onclick="saveApiKey()">Uložit</button>
 </div>
 
 <!-- Main layout -->
@@ -739,41 +706,28 @@ let rowIdCounter = 0;
 
 // ── Init ───────────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
-  loadApiKey();
   addRow();
   generate();
+  checkApiStatus();
 });
 
-// ── API Key ────────────────────────────────────────────────────────────────
-function saveApiKey() {
-  const val = document.getElementById('apiKeyInput').value.trim();
-  if (val) {
-    localStorage.setItem('dpu_api_key', val);
-    updateApiDot(true);
-  } else {
-    localStorage.removeItem('dpu_api_key');
-    updateApiDot(false);
+// ── API status check ───────────────────────────────────────────────────────
+async function checkApiStatus() {
+  const dot = document.getElementById('apiDot');
+  const label = document.getElementById('apiStatusLabel');
+  try {
+    const resp = await fetch('/.netlify/functions/anthropic-proxy');
+    if (resp.ok) {
+      dot.className = 'api-dot ok';
+      label.textContent = 'AI připojeno';
+    } else {
+      dot.className = 'api-dot error';
+      label.textContent = 'AI není nakonfigurováno';
+    }
+  } catch {
+    dot.className = 'api-dot error';
+    label.textContent = 'AI nedostupné';
   }
-}
-
-function loadApiKey() {
-  const saved = localStorage.getItem('dpu_api_key');
-  if (saved) {
-    document.getElementById('apiKeyInput').value = saved;
-    updateApiDot(true);
-  } else {
-    updateApiDot(false);
-  }
-}
-
-function getApiKey() {
-  return document.getElementById('apiKeyInput').value.trim()
-    || localStorage.getItem('dpu_api_key')
-    || '';
-}
-
-function updateApiDot(isSet) {
-  document.getElementById('apiDot').classList.toggle('set', isSet);
 }
 
 // ── Toggle sections ────────────────────────────────────────────────────────
@@ -1159,22 +1113,16 @@ function setAiBadges() {
   tZa.classList.toggle('visible', !!state.ai_za);
 }
 
-// ── Anthropic API helper ───────────────────────────────────────────────────
-async function callAnthropic(apiKey, payload) {
-  const resp = await fetch('https://api.anthropic.com/v1/messages', {
+// ── Anthropic API helper (přes Netlify proxy) ──────────────────────────────
+async function callAnthropic(payload) {
+  const resp = await fetch('/.netlify/functions/anthropic-proxy', {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': apiKey,
-      'anthropic-version': '2023-06-01',
-      'anthropic-dangerous-allow-browser': 'true',
-    },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   });
   const data = await resp.json();
   if (!resp.ok) {
-    const errMsg = data.error?.message || `HTTP ${resp.status}`;
-    if (resp.status === 401) throw new Error('Neplatný API klíč Anthropic');
+    const errMsg = data.error || `HTTP ${resp.status}`;
     throw new Error(errMsg);
   }
   return data.content[0].text;
@@ -1198,12 +1146,6 @@ function extractJson(raw) {
 
 // ── AI improve ─────────────────────────────────────────────────────────────
 async function improveWithAI() {
-  const apiKey = getApiKey();
-  if (!apiKey) {
-    showAiStatus('err', 'Nejdřív zadejte Anthropic API klíč v horní liště.');
-    return;
-  }
-
   const btn = document.getElementById('btnAI');
   btn.disabled = true;
   btn.innerHTML = '<div class="spinner"></div> Zpracovávám…';
@@ -1255,7 +1197,7 @@ Formátování:
 - Začni "pred" oslovením jako "Vážení," nebo "Dobrý den,"`;
 
   try {
-    const raw = await callAnthropic(apiKey, {
+    const raw = await callAnthropic({
       model: 'claude-sonnet-4-6',
       max_tokens: 2048,
       system: DPU_SYSTEM_PROMPT,
@@ -1311,12 +1253,6 @@ function handleFileInputChange(e) {
 }
 
 async function handleFileUpload(file) {
-  const apiKey = getApiKey();
-  if (!apiKey) {
-    setUploadStatus('err', 'Nejdřív zadejte Anthropic API klíč.');
-    return;
-  }
-
   const allowedTypes = { 'image/png': true, 'image/jpeg': true, 'image/jpg': true, 'image/webp': true, 'application/pdf': true };
   let mediaType = file.type;
   if (mediaType === 'image/jpg') mediaType = 'image/jpeg';
@@ -1374,7 +1310,7 @@ Pravidla:
       ];
     }
 
-    const raw = await callAnthropic(apiKey, {
+    const raw = await callAnthropic({
       model: 'claude-sonnet-4-6',
       max_tokens: 2048,
       messages: [{ role: 'user', content: contentBlocks }],
