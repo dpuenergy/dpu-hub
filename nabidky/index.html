@@ -483,9 +483,9 @@
         </div>
       </div>
 
-      <!-- Základní info -->
+      <!-- Text před položkami -->
       <div>
-        <div class="section-title">Základní informace</div>
+        <div class="section-title">Text před položkami</div>
         <div style="display:flex;flex-direction:column;gap:8px;">
           <div class="field">
             <label>Název nabídky / projektu</label>
@@ -496,13 +496,12 @@
             <input type="text" id="klient" placeholder="např. Obec Příbor" oninput="generate()">
           </div>
           <div class="field">
-            <label>Rozsah / popis prací</label>
+            <label>Popis / obsah nabídky</label>
             <div style="display:flex;gap:4px;margin-bottom:4px;">
-              <button type="button" class="btn-fmt" onclick="insertHeading('rozsah',1)"># Nadpis</button>
               <button type="button" class="btn-fmt" onclick="insertHeading('rozsah',2)">## Podnadpis</button>
               <button type="button" class="btn-fmt" onclick="insertBullet('rozsah')">• Odrážka</button>
             </div>
-            <textarea id="rozsah" rows="5" placeholder="Stručný popis co je předmětem nabídky&#10;• položka 1&#10;• položka 2" oninput="generate()"></textarea>
+            <textarea id="rozsah" rows="5" placeholder="Popis předmětu nabídky&#10;## Klíčový termín&#10;• položka 1&#10;• položka 2" oninput="generate()"></textarea>
           </div>
         </div>
       </div>
@@ -582,34 +581,27 @@
         </div>
       </div>
 
-      <!-- Fakturace -->
+      <!-- Text za položkami -->
       <div>
-        <div class="section-title">Podmínky</div>
-        <div class="row2">
-          <div class="field">
-            <label>Fakturace</label>
-            <input type="text" id="fakturace" placeholder="např. po etapách" oninput="generate()">
+        <div class="section-title">Text za položkami</div>
+        <div style="display:flex;flex-direction:column;gap:8px;">
+          <div class="row2">
+            <div class="field">
+              <label>Fakturace</label>
+              <input type="text" id="fakturace" placeholder="např. po etapách" oninput="generate()">
+            </div>
+            <div class="field">
+              <label>Splatnost</label>
+              <input type="text" id="splatnost" placeholder="např. 14 dní" oninput="generate()">
+            </div>
           </div>
           <div class="field">
-            <label>Splatnost</label>
-            <input type="text" id="splatnost" placeholder="např. 14 dní" oninput="generate()">
-          </div>
-
-        </div>
-      </div>
-
-      <!-- Další info toggle -->
-      <div>
-        <div class="toggle-row">
-          <label class="toggle">
-            <input type="checkbox" id="dalsiToggle" onchange="toggleDalsi()">
-            <span class="toggle-slider"></span>
-          </label>
-          <label for="dalsiToggle" style="cursor:pointer;">Další informace</label>
-        </div>
-        <div id="dalsiFields" class="sub-fields hidden">
-          <div class="field">
-            <textarea id="dalsiText" rows="3" placeholder="Poznámky, specifika projektu, zvláštní podmínky..." oninput="generate()"></textarea>
+            <label>Volný text</label>
+            <div style="display:flex;gap:4px;margin-bottom:4px;">
+              <button type="button" class="btn-fmt" onclick="insertHeading('dalsiText',2)">## Podnadpis</button>
+              <button type="button" class="btn-fmt" onclick="insertBullet('dalsiText')">• Odrážka</button>
+            </div>
+            <textarea id="dalsiText" rows="4" placeholder="Doplňující text, poznámky, zvláštní podmínky..." oninput="generate()"></textarea>
           </div>
         </div>
       </div>
@@ -808,6 +800,7 @@ function getSelectedContacts() {
 
 function buildContactsHtml(contacts) {
   if (!contacts.length) return '';
+  const heading = '<p style="margin:14px 0 8px 0;font-size:14px;line-height:18px;font-weight:700;color:#2D2558;letter-spacing:0.2px;">Kontaktní osoby</p>';
   const blocks = contacts.map(p =>
     '<div style="display:inline-block;vertical-align:top;min-width:220px;margin-right:32px;margin-bottom:8px;">' +
     '<p style="margin:0 0 2px 0;font-weight:700;">' + escHtml(p.name) + '</p>' +
@@ -816,7 +809,7 @@ function buildContactsHtml(contacts) {
     '<p style="margin:0;">E-mail: <a href="mailto:' + escHtml(p.email) + '" style="color:#2D2558;">' + escHtml(p.email) + '</a></p>' +
     '</div>'
   ).join('');
-  return '<div style="font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#222;line-height:1.6;margin-top:16px;">' + blocks + '</div>';
+  return heading + '<div style="font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#222;line-height:1.6;">' + blocks + '</div>';
 }
 
 // ── Bullet insert helper ───────────────────────────────────────────────────
@@ -878,11 +871,6 @@ function toggleOpzp() {
 function toggleDotace() {
   const on = document.getElementById('dotaceToggle').checked;
   document.getElementById('dotaceFields').classList.toggle('hidden', !on);
-  generate();
-}
-function toggleDalsi() {
-  const on = document.getElementById('dalsiToggle').checked;
-  document.getElementById('dalsiFields').classList.toggle('hidden', !on);
   generate();
 }
 
@@ -1104,8 +1092,7 @@ function buildPredTemplate() {
 function buildZaTemplate() {
   const fakturace = document.getElementById('fakturace').value.trim();
   const splatnost = document.getElementById('splatnost').value.trim();
-  const dalsi = document.getElementById('dalsiToggle').checked
-    ? document.getElementById('dalsiText').value.trim() : '';
+  const dalsi = document.getElementById('dalsiText').value.trim();
 
   let lines = [];
 
@@ -1114,7 +1101,7 @@ function buildZaTemplate() {
   if (splatnost) podmiky.push(`• Splatnost: ${splatnost}`);
   podmiky.push('• Přijetí nabídky: potvrzením e-mailem nebo zasláním objednávky');
 
-  lines.push('Podmínky spolupráce:');
+  lines.push('## Podmínky spolupráce');
   lines.push('');
   lines.push(podmiky.join('\n'));
   lines.push('');
@@ -1136,7 +1123,14 @@ function buildZaTemplate() {
 
 // ── PRED / ZA HTML wrappers ────────────────────────────────────────────────
 function buildPredHtml(text) {
-  return `<div style="font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#222;line-height:1.7;max-width:700px;">\n${plainToHtml(text)}\n</div>`;
+  const nazev = document.getElementById('nazev').value.trim();
+  const klient = document.getElementById('klient').value.trim();
+  let headingHtml = '';
+  if (nazev || klient) {
+    const heading = [nazev, klient].filter(Boolean).join(' — ');
+    headingHtml = `<p style="margin:0 0 10px 0;font-size:18px;line-height:24px;font-weight:700;color:#2D2558;">${escHtml(heading)}</p>\n`;
+  }
+  return `<div style="font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#222;line-height:1.7;max-width:700px;">\n${headingHtml}${plainToHtml(text)}\n</div>`;
 }
 
 function buildZaHtml(text) {
@@ -1148,7 +1142,7 @@ function buildZaHtml(text) {
 function generate() {
   const predText = (state.use_ai_pred && state.ai_pred) ? state.ai_pred : buildPredTemplate();
   const predHtmlStr = buildPredHtml(predText);
-  document.getElementById('predPreview').textContent = predText;
+  document.getElementById('predPreview').innerHTML = predHtmlStr;
   document.getElementById('predHtml').textContent = predHtmlStr;
   state.html.pred = predHtmlStr;
 
@@ -1159,9 +1153,7 @@ function generate() {
 
   const zaText = (state.use_ai_za && state.ai_za) ? state.ai_za : buildZaTemplate();
   const zaHtmlStr = buildZaHtml(zaText);
-  const _sc = getSelectedContacts();
-  const _cp = _sc.length ? '\n\n' + _sc.map(p => p.name + '\n' + p.title + '\n' + p.tel + ' | ' + p.email).join('\n\n') : '';
-  document.getElementById('zaPreview').textContent = zaText + _cp;
+  document.getElementById('zaPreview').innerHTML = zaHtmlStr;
   document.getElementById('zaHtml').textContent = zaHtmlStr;
   state.html.za = zaHtmlStr;
 }
@@ -1308,8 +1300,7 @@ async function improveWithAI() {
   const program = document.getElementById('program').value.trim();
   const dotace = document.getElementById('dotaceToggle').checked
     ? document.getElementById('dotace').value.trim() : '';
-  const dalsiText = document.getElementById('dalsiToggle').checked
-    ? document.getElementById('dalsiText').value.trim() : '';
+  const dalsiText = document.getElementById('dalsiText').value.trim();
 
   const contextParts = [`Název projektu/nabídky: ${nazev}`, `Klient: ${klient}`];
   if (rozsah) contextParts.push(`Rozsah prací: ${rozsah}`);
