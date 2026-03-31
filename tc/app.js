@@ -657,6 +657,96 @@ async function fetchChmiData() {
   }
 }
 
+// ── Buffer tank simulation ────────────────────────────────────────────────────
+// Hour-by-hour buffer tank model: HP runs at target power, tank balances demand.
+
+function simulateBuffer(s, p) {
+  const vol    = p.buf_vol_l || 0;
+  if (vol <= 0) return null;
+
+  const tMin   = p.buf_t_min   || 40;
+  const tMax   = p.buf_t_max   || 55;
+  const pNom   = p.hp_power_kw || 0;
+  const pTgt   = pNom * ((p.buf_hp_target_pct || 80) / 100);
+  const pMin   = pNom * ((p.hp_min_load_pct   || 25) / 100);
+
+  // Water: 1.163 Wh/(liter·K) = 0.001163 kWh/(liter·K)
+  const capKwhPerK = vol * 0.001163;
+  const n = s.t_out_c.length;
+
+  // Build COP(T_outdoor) lookup from backend simulation results
+  const copBins = {};
+  for (let i = 0; i < n; i++) {
+    const bin = Math.round(s.t_out_c[i]);
+    if (!copBins[bin]) copBins[bin] = [];
+    if ((s.cop[i] || 0) > 0) copBins[bin].push(s.cop[i]);
+  }
+  const copLookup = {};
+  for (const [t, vals] of Object.entries(copBins)) {
+    copLookup[+t] = vals.reduce((a, b) => a + b, 0) / vals.length;
+  }
+  const copKeys = Object.keys(copLookup).map(Number).sort((a, b) => a - b);
+  function getCop(tOut) {
+    if (!copKeys.length) return p.cop_nominal || 2.5;
+    const bin = Math.round(tOut);
+    if (copLookup[bin] != null) return copLookup[bin];
+    if (bin <= copKeys[0])              return copLookup[copKeys[0]];
+    if (bin >= copKeys[copKeys.length - 1]) return copLookup[copKeys[copKeys.length - 1]];
+    const lo = copKeys.filter(k => k <= bin).pop();
+    const hi = copKeys.find(k => k > bin);
+    return copLookup[lo] + (bin - lo) / (hi - lo) * (copLookup[hi] - copLookup[lo]);
+  }
+
+  const hp_kw    = new Array(n).fill(0);
+  const hp_el    = new Array(n).fill(0);
+  const biv_kw   = new Array(n).fill(0);
+  const tank_t   = new Array(n).fill(0);
+
+  let T = (tMin + tMax) / 2;   // initial tank temperature
+  let on = T <= tMin;
+  let starts = 0;
+
+  for (let i = 0; i < n; i++) {
+    const demand = s.heat_need_kw[i] || 0;
+    const cop    = Math.max(1.0, getCop(s.t_out_c[i]));
+
+    const wasOn = on;
+    if (!on && T <= tMin) on = true;
+    if ( on && T >= tMax) on = false;
+    if (on && !wasOn) starts++;
+
+    let Qhp = 0;
+    if (on) {
+      const P = Math.max(pMin, Math.min(pTgt, pNom));
+      Qhp         = P;          // 1 h → kWh = kW
+      hp_kw[i]    = P;
+      hp_el[i]    = P / cop;
+    }
+
+    // Tank energy balance
+    T += (Qhp - demand) / capKwhPerK;
+
+    // Bivalence: if tank falls below critical floor (tMin − 5°C)
+    const floor = tMin - 5;
+    if (T < floor) {
+      biv_kw[i] = (floor - T) * capKwhPerK;
+      T = floor;
+    }
+    // Hard clamp (physical limits)
+    T = Math.max(tMin - 10, Math.min(tMax + 10, T));
+    tank_t[i] = T;
+  }
+
+  const hpMwh  = hp_kw.reduce((a, b) => a + b, 0) / 1000;
+  const bivMwh = biv_kw.reduce((a, b) => a + b, 0) / 1000;
+  const elMwh  = hp_el.reduce((a, b) => a + b, 0) / 1000;
+  const scop   = elMwh > 0 ? hpMwh / elMwh : 0;
+  const hrsOn  = hp_kw.filter(v => v > 0).length;
+
+  return { hp_kw, hp_el, biv_kw, tank_t,
+    summary: { hpMwh, bivMwh, elMwh, scop, starts, hrsOn } };
+}
+
 // ── Inputs ────────────────────────────────────────────────────────────────────
 
 function getInputs() {
@@ -720,6 +810,11 @@ function getInputs() {
     include_depreciation: document.getElementById("include_depr").checked,
     investment_kcz:       parseFloat(document.getElementById("investment_kcz").value || "0"),
     depr_years:           parseFloat(document.getElementById("depr_years").value     || "15"),
+
+    buf_vol_l:         parseFloat(document.getElementById("buf_vol_l")?.value         || 0),
+    buf_t_min:         parseFloat(document.getElementById("buf_t_min")?.value         || 40),
+    buf_t_max:         parseFloat(document.getElementById("buf_t_max")?.value         || 55),
+    buf_hp_target_pct: parseFloat(document.getElementById("buf_hp_target_pct")?.value || 80),
   };
 
   // For non-air-source HP types, pass constant source temperature to backend
@@ -816,6 +911,8 @@ function buildCharts(result) {
   const s       = result.series;
   const summary = result.summary;
   const labels  = s.t_out_c.map((_, i) => i);
+  const inputs  = getInputs();
+  const buf     = simulateBuffer(s, inputs);
 
   makeLineChart("chTout", labels, s.t_out_c, "T venku (°C)");
 
@@ -920,6 +1017,64 @@ function buildCharts(result) {
       },
     },
   });
+
+  // ── Buffer tank charts & summary ──────────────────────────────────────────
+  const bufWrap     = document.getElementById("ch_buf_wrap");
+  const bufSumWrap  = document.getElementById("buf_summary_wrap");
+  if (buf) {
+    if (bufWrap) bufWrap.style.display = "";
+    if (bufSumWrap) bufSumWrap.style.display = "";
+
+    // Tank temperature chart with T_min/T_max reference lines
+    destroyChart("chBufSoc");
+    const tMin = inputs.buf_t_min, tMax = inputs.buf_t_max;
+    charts["chBufSoc"] = new Chart(document.getElementById("chBufSoc"), {
+      data: {
+        labels,
+        datasets: [
+          { type: "line", label: "Teplota nádrže (°C)", data: buf.tank_t,
+            pointRadius: 0, borderWidth: 1, fill: false },
+          { type: "line", label: "T min (start)", data: new Array(labels.length).fill(tMin),
+            pointRadius: 0, borderWidth: 1, borderDash: [4, 4], borderColor: "rgba(240,90,40,.6)" },
+          { type: "line", label: "T max (stop)",  data: new Array(labels.length).fill(tMax),
+            pointRadius: 0, borderWidth: 1, borderDash: [4, 4], borderColor: "rgba(27,50,128,.5)" },
+        ],
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: true },
+          decimation: { enabled: true, algorithm: "min-max" } },
+        scales: {
+          x: { display: false },
+          y: { title: { display: true, text: "°C" } },
+        },
+      },
+    });
+
+    // KPI summary: with-buffer vs backend (no-buffer)
+    const bs = buf.summary;
+    const noElMwh = (summary.electricity_mwh || 0);
+    const noScop  = noElMwh > 0 ? (summary.heat_from_hp_mwh || 0) / noElMwh : 0;
+    const fmtN = (v, d=1) => v != null ? v.toFixed(d) : "—";
+    document.getElementById("buf_kpis").innerHTML = `
+      <div class="box"><div class="box-label">SCOP s nádrží</div>
+        <div class="box-val">${fmtN(bs.scop, 2)}</div>
+        <div class="box-sub">bez nádrže: ${fmtN(noScop, 2)}</div></div>
+      <div class="box"><div class="box-label">Spotřeba el. s nádrží</div>
+        <div class="box-val">${fmtN(bs.elMwh)} MWh</div>
+        <div class="box-sub">bez nádrže: ${fmtN(noElMwh)} MWh</div></div>
+      <div class="box"><div class="box-label">Bivalence s nádrží</div>
+        <div class="box-val">${fmtN(bs.bivMwh)} MWh</div>
+        <div class="box-sub">bez nádrže: ${fmtN(summary.bivalence_mwh)} MWh</div></div>
+      <div class="box"><div class="box-label">Počet spuštění TČ</div>
+        <div class="box-val">${bs.starts}</div>
+        <div class="box-sub">chod: ${bs.hrsOn} h/rok</div></div>
+    `;
+  } else {
+    if (bufWrap) bufWrap.style.display = "none";
+    if (bufSumWrap) bufSumWrap.style.display = "none";
+    destroyChart("chBufSoc");
+  }
 }
 
 // ── Main actions ──────────────────────────────────────────────────────────────
