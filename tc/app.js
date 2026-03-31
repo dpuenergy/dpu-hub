@@ -595,11 +595,15 @@ async function loadChmiStations() {
   const btn = event?.target;
   if (btn) { btn.disabled = true; btn.textContent = "Načítám…"; }
   try {
-    const res = await apiGet("/api/chmi-stations");
+    const r = await fetch(window.location.origin + "/tc/api/chmi-stations");
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    const res = await r.json();
     sel.innerHTML = '<option value="">-- vybrat stanici --</option>';
     for (const s of res.stations) {
       const opt = document.createElement("option");
       opt.value = s.wsi;
+      opt.dataset.lat = s.lat;
+      opt.dataset.lon = s.lon;
       opt.textContent = `${s.name} (${s.lat.toFixed(3)}, ${s.lon.toFixed(3)})`;
       sel.appendChild(opt);
     }
@@ -615,14 +619,21 @@ async function fetchChmiData() {
   const btn = event?.target;
   if (btn) { btn.disabled = true; btn.textContent = "Načítám…"; }
   try {
-    const wsi  = document.getElementById("chmi_station").value;
-    const year = parseInt(document.getElementById("chmi_year").value);
-    if (!wsi) { alert("Nejprve vyber stanici."); return; }
-
     const stationSel = document.getElementById("chmi_station");
-    const stationName = stationSel.options[stationSel.selectedIndex]?.text?.split(" (")[0] || wsi;
+    const year = parseInt(document.getElementById("chmi_year").value);
+    const opt  = stationSel.options[stationSel.selectedIndex];
+    if (!opt?.value) { alert("Nejprve vyber stanici."); return; }
 
-    const res = await apiGet(`/api/fetch-chmi?wsi=${encodeURIComponent(wsi)}&year=${year}`);
+    const stationName = opt.text.split(" (")[0];
+    const lat = opt.dataset.lat;
+    const lon = opt.dataset.lon;
+    if (!lat || !lon) { alert("Stanice nemá souřadnice – zkus znovu načíst seznam."); return; }
+
+    const r = await fetch(
+      `${window.location.origin}/tc/api/fetch-chmi?lat=${lat}&lon=${lon}&year=${year}`
+    );
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    const res = await r.json();
     currentTemps = res.temps_c;
     currentClimateLabel = `ČHMÚ ${stationName} ${year} (${res.count} h, T min ${res.t_min}°C / max ${res.t_max}°C)`;
     _setClimateStatus(currentClimateLabel);

@@ -3,3 +3,13 @@
 
 [context.production.environment]
   NODE_VERSION = "18"
+
+[[redirects]]
+  from = "/tc/api/chmi-stations"
+  to = "/.netlify/functions/chmi-stations"
+  status = 200
+
+[[redirects]]
+  from = "/tc/api/fetch-chmi"
+  to = "/.netlify/functions/fetch-chmi"
+  status = 200
