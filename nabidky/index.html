@@ -34,24 +34,32 @@
 
   /* ── Top bar ── */
   .topbar {
-    background: var(--purple);
+    background: #1b3280;
     color: #fff;
-    padding: 0 16px;
-    height: 44px;
+    padding: 0 20px;
+    height: 60px;
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    gap: 12px;
     flex-shrink: 0;
     z-index: 10;
+    box-shadow: 0 2px 16px rgba(0,0,0,.25);
+    font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, sans-serif;
   }
-  .topbar-title { font-size: 15px; font-weight: 700; letter-spacing: .3px; }
-  .topbar-sub { font-size: 11px; opacity: .65; margin-top: 1px; }
+  .topbar-logo {
+    width: 32px; height: 32px; border-radius: 8px;
+    background: #2e8cff; display: flex; align-items: center; justify-content: center;
+    font-weight: 800; font-size: 14px; letter-spacing: -.5px; flex-shrink: 0;
+  }
+  .topbar-title { font-size: 17px; font-weight: 700; letter-spacing: -.2px; }
+  .topbar-sub { font-size: 13px; opacity: .65; }
+  .topbar-right { margin-left: auto; display: flex; align-items: center; gap: 12px; }
   .topbar-back {
-    font-size: 12px; color: rgba(255,255,255,.75); text-decoration: none;
-    border: 1px solid rgba(255,255,255,.3); border-radius: 5px;
-    padding: 4px 10px; transition: background .15s;
+    font-size: 12px; font-weight: 600; color: #fff; text-decoration: none;
+    border: 1px solid rgba(255,255,255,.35); border-radius: 6px;
+    padding: 5px 12px; transition: background .15s;
   }
-  .topbar-back:hover { background: rgba(255,255,255,.15); color: #fff; }
+  .topbar-back:hover { background: rgba(255,255,255,.15); }
 
   /* ── API status dot in topbar ── */
   .api-status {
@@ -473,15 +481,18 @@
 
 <!-- Top bar -->
 <div class="topbar">
+  <div class="topbar-logo">DE</div>
   <div>
-    <div class="topbar-title">Caflou Generator</div>
-    <div class="topbar-sub">DPU ENERGY s.r.o. — nabídkový generátor</div>
+    <div class="topbar-title">Nabídkový generátor</div>
+    <div class="topbar-sub">DPU Energy — Caflou</div>
   </div>
-  <div class="api-status">
-    <div class="api-dot checking" id="apiDot"></div>
-    <span id="apiStatusLabel">Ověřuji AI…</span>
+  <div class="topbar-right">
+    <div class="api-status">
+      <div class="api-dot checking" id="apiDot"></div>
+      <span id="apiStatusLabel">Ověřuji AI…</span>
+    </div>
+    <a href="/" class="topbar-back">← Hub</a>
   </div>
-  <a href="/" class="topbar-back">← Hub</a>
 </div>
 
 <!-- Main layout -->
