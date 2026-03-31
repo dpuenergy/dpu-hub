@@ -964,7 +964,7 @@ function plainToHtml(text) {
 }
 
 // ── Build souhrn HTML ──────────────────────────────────────────────────────
-// Proven inline-block span layout, fixed px widths: 78+382+74+94+50+84 = 762px
+// Inline-block span layout, fixed px widths: 78+382+74+94+50+84 = 762px
 function buildSourhnHtml(rows) {
   let grandBez = 0, grandDph = 0, grandS = 0;
   const validRows = rows.filter(r => r.name || r.price);
@@ -974,12 +974,14 @@ function buildSourhnHtml(rows) {
   }
 
   let rowsHtml = '';
+  const dphRates = new Set();
   validRows.forEach((r, i) => {
     const bez = parseNum(r.price);
     const dphRate = parseInt(r.dph) || 21;
     const dphAmt = bez * dphRate / 100;
     const sDph = bez + dphAmt;
     grandBez += bez; grandDph += dphAmt; grandS += sDph;
+    dphRates.add(dphRate);
 
     rowsHtml += `
   <div style="border-bottom:1px solid #b7b7b7;padding:8px 0;white-space:nowrap;">
@@ -991,6 +993,9 @@ function buildSourhnHtml(rows) {
     <span style="display:inline-block;width:84px;text-align:right;color:#000;">${fmtNbsp(sDph)}&nbsp;<span style="color:#6B6C6E;">Kč</span></span>
   </div>`;
   });
+
+  // DPH label v součtové sekci — zobrazí sazbu pokud jsou všechny řádky shodné
+  const dphLabel = dphRates.size === 1 ? `DPH ${[...dphRates][0]}%` : 'DPH';
 
   const html = `<div style="font-family:Arial, Helvetica, sans-serif;font-size:12px;line-height:18px;color:#000;">
 
@@ -1015,7 +1020,7 @@ ${rowsHtml}
       <span style="display:inline-block;width:105px;text-align:right;color:#000;">${fmtNbsp(grandBez)}&nbsp;<span style="color:#6B6C6E;">Kč</span></span>
     </div>
     <div style="white-space:nowrap;margin:0 0 8px 0;">
-      <span style="display:inline-block;width:150px;text-align:right;color:#6B6C6E;">DPH</span>
+      <span style="display:inline-block;width:150px;text-align:right;color:#6B6C6E;">${dphLabel}</span>
       <span style="display:inline-block;width:105px;text-align:right;color:#000;">${fmtNbsp(grandDph)}&nbsp;<span style="color:#6B6C6E;">Kč</span></span>
     </div>
     <div style="border-top:2px solid #000;padding-top:6px;white-space:nowrap;">
