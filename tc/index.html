@@ -700,7 +700,10 @@
 
       <!-- KPIs -->
       <div class="card">
-        <div class="card-head"><h3>Výsledky simulace</h3></div>
+        <div class="card-head">
+          <h3>Dimenzování TČ</h3>
+          <span style="font-size:11px; color:var(--muted); font-weight:400;">Ekonomická analýza — bez vlivu taktovací nádrže</span>
+        </div>
         <div class="card-body">
           <div class="kpi-grid">
             <div class="box" id="box_el">
@@ -735,6 +738,19 @@
           </div>
           <div id="npv_result_inline" style="margin-top:8px;"></div>
           <div id="savings_inline" style="margin-top:6px; font-size:12px; color:var(--muted);"></div>
+        </div>
+      </div>
+
+      <!-- Provoz s taktovací nádrží — zobrazí se jen po nakonfigurování nádrže -->
+      <div id="buf_summary_wrap" style="display:none;">
+        <div class="card">
+          <div class="card-head">
+            <h3>Provoz s taktovací nádrží</h3>
+            <span style="font-size:11px; color:var(--muted); font-weight:400;">Počet spuštění, délka cyklů, SCOP s nádrží vs. bez</span>
+          </div>
+          <div class="card-body">
+            <div class="kpi-grid" id="buf_kpis"></div>
+          </div>
         </div>
       </div>
 
@@ -777,16 +793,8 @@
           <div class="ch-body"><canvas id="chTankSoc"></canvas></div>
         </div>
         <div class="ch-wrap" id="ch_buf_wrap" style="display:none;">
-          <div class="ch-head">Taktovací nádrž (topný okruh) — teplota (°C) a chod TČ</div>
+          <div class="ch-head">Taktovací nádrž — teplota nádrže (°C) a chod TČ (h/den)</div>
           <div class="ch-body"><canvas id="chBufSoc"></canvas></div>
-        </div>
-        <div id="buf_summary_wrap" style="display:none;">
-          <div class="card">
-            <div class="card-head"><h3>Simulace s taktovací nádrží (topný okruh)</h3></div>
-            <div class="card-body">
-              <div class="kpi-grid" id="buf_kpis"></div>
-            </div>
-          </div>
         </div>
       </div>
 
