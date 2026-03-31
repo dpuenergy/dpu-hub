@@ -713,43 +713,25 @@ function simulateBuffer(s, p) {
     // Strict hysteresis: on at tMin, off at tMax
     if (!on && T <= tMin) on = true;
     if ( on && T >= tMax) on = false;
-
-    let Qhp = 0;
-    let T_new;
-
-    if (on) {
-      // HP runs at up to pNom; cap so tank doesn't overshoot tMax
-      const maxQhp = demand + Math.max(0, (tMax - T) * capKwhPerK);
-      Qhp  = Math.min(pNom, maxQhp);
-      T_new = T + (Qhp - demand) / capKwhPerK;
-    } else {
-      // HP off: tank supplies demand
-      T_new = T - demand / capKwhPerK;
-
-      if (T_new < tMin) {
-        // Tank drains to tMin mid-hour → HP starts for the remaining fraction
-        // t1 = fraction HP is off (tank drains T → tMin), t2 = fraction HP is on
-        const t1 = Math.max(0, Math.min(1, (T - tMin) * capKwhPerK / demand));
-        const t2 = 1 - t1;
-        on = true;
-        // HP output during t2 (capped so T doesn't exceed tMax starting from tMin)
-        const maxQhp_t2 = demand * t2 + Math.max(0, (tMax - tMin) * capKwhPerK);
-        Qhp   = Math.min(pNom * t2, maxQhp_t2);
-        T_new = tMin + Math.max(0, (Qhp - demand * t2) / capKwhPerK);
-        T_new = Math.min(tMax, T_new);
-      }
-    }
-
-    // Count starts after all state changes
     if (on && !wasOn) starts++;
 
-    // Bivalence: HP can't cover demand (pNom < demand sustained)
-    const floor = tMin - 5;
-    if (T_new < floor) {
-      biv_kw[i] = (floor - T_new) * capKwhPerK;
-      T_new = floor;
+    let Qhp = 0;
+    if (on) {
+      // HP runs at pNom; cap output so tank doesn't overshoot tMax
+      const maxQhp = demand + Math.max(0, (tMax - T) * capKwhPerK);
+      Qhp = Math.min(pNom, maxQhp);
     }
-    T = Math.max(tMin - 10, Math.min(tMax + 10, T_new));
+
+    // Tank energy balance (HP off → tank supplies demand, may go below tMin)
+    T += (Qhp - demand) / capKwhPerK;
+
+    // Bivalence: tank drained past floor (tMin−5 °C), supplement needed
+    const floor = tMin - 5;
+    if (T < floor) {
+      biv_kw[i] = (floor - T) * capKwhPerK;
+      T = floor;
+    }
+    T = Math.max(tMin - 10, Math.min(tMax + 10, T));
     hp_kw[i] = Qhp;
     hp_el[i] = Qhp / cop;
     tank_t[i] = T;
@@ -1088,24 +1070,25 @@ function buildCharts(result) {
       },
     });
 
-    // KPI summary: with-buffer vs backend (no-buffer)
+    // KPI summary
     const bs = buf.summary;
-    const noElMwh = (summary.electricity_mwh || 0);
-    const noScop  = noElMwh > 0 ? (summary.heat_from_hp_mwh || 0) / noElMwh : 0;
     const fmtN = (v, d=1) => v != null ? v.toFixed(d) : "—";
+    const avgCycleH = bs.starts > 0 ? (bs.hrsOn / bs.starts).toFixed(1) : "—";
+    const heatHrs   = (s.heat_need_kw || []).filter(v => v > 0).length;
+    const offFrac   = heatHrs > 0 ? Math.round((1 - bs.hrsOn / heatHrs) * 100) : 0;
     document.getElementById("buf_kpis").innerHTML = `
-      <div class="box"><div class="box-label">SCOP s nádrží</div>
-        <div class="box-val">${fmtN(bs.scop, 2)}</div>
-        <div class="box-sub">bez nádrže: ${fmtN(noScop, 2)}</div></div>
-      <div class="box"><div class="box-label">Spotřeba el. s nádrží</div>
-        <div class="box-val">${fmtN(bs.elMwh)} MWh</div>
-        <div class="box-sub">bez nádrže: ${fmtN(noElMwh)} MWh</div></div>
-      <div class="box"><div class="box-label">Bivalence s nádrží</div>
-        <div class="box-val">${fmtN(bs.bivMwh)} MWh</div>
-        <div class="box-sub">bez nádrže: ${fmtN(summary.bivalence_mwh)} MWh</div></div>
-      <div class="box"><div class="box-label">Počet spuštění TČ</div>
+      <div class="box"><div class="box-label">Počet spuštění TČ / rok</div>
         <div class="box-val">${bs.starts}</div>
-        <div class="box-sub">chod: ${bs.hrsOn} h/rok</div></div>
+        <div class="box-sub">prům. délka cyklu: ${avgCycleH} h</div></div>
+      <div class="box"><div class="box-label">Chod TČ</div>
+        <div class="box-val">${bs.hrsOn} h/rok</div>
+        <div class="box-sub">nádrž kryje ${offFrac} % topných hodin</div></div>
+      <div class="box"><div class="box-label">Bivalence (nedokrytí)</div>
+        <div class="box-val">${fmtN(bs.bivMwh)} MWh/rok</div>
+        <div class="box-sub">bez nádrže: ${fmtN(summary.bivalence_mwh)} MWh</div></div>
+      <div class="box"><div class="box-label">SCOP (on/off provoz)</div>
+        <div class="box-val">${fmtN(bs.scop, 2)}</div>
+        <div class="box-sub">invertorový provoz: ${(summary.electricity_mwh > 0 ? (summary.heat_from_hp_mwh / summary.electricity_mwh).toFixed(2) : "—")}</div></div>
     `;
   } else {
     if (bufWrap) bufWrap.style.display = "none";
