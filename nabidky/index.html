@@ -534,42 +534,6 @@
         </div>
       </div>
 
-      <!-- Předmět nabídky — objekty -->
-      <div>
-        <div class="section-title">Předmět nabídky — objekty / skupiny</div>
-        <table class="objects-table">
-          <thead>
-            <tr>
-              <th class="col-name">Název skupiny</th>
-              <th class="col-price">Cena bez DPH</th>
-              <th class="col-dph">DPH %</th>
-              <th class="col-del"></th>
-            </tr>
-          </thead>
-          <tbody id="rowsBody"></tbody>
-        </table>
-        <button class="btn-add-row" onclick="addRow()">+ Přidat řádek</button>
-      </div>
-
-      <!-- Kontakty -->
-      <div>
-        <div class="section-title">Kontaktní osoby</div>
-        <div style="display:flex;flex-direction:column;gap:6px;">
-          <label class="contact-row">
-            <input type="checkbox" id="contact0" onchange="generate()">
-            <div class="contact-info"><strong>Václav Mareš</strong> — Obchodní ředitel<br><span>+420 770 312 377 · mares@dpuenergy.cz</span></div>
-          </label>
-          <label class="contact-row">
-            <input type="checkbox" id="contact1" onchange="generate()">
-            <div class="contact-info"><strong>Ing. Jakub Hřídel</strong> — Jednatel a technický ředitel<br><span>+420 702 231 584 · hridel@dpuenergy.cz</span></div>
-          </label>
-          <label class="contact-row">
-            <input type="checkbox" id="contact2" onchange="generate()">
-            <div class="contact-info"><strong>Ing. Petr Stejskal</strong> — Jednatel<br><span>+420 774 111 818 · stejskal@dpuenergy.cz</span></div>
-          </label>
-        </div>
-      </div>
-
       <!-- Text za položkami -->
       <div>
         <div class="section-title">Text za položkami</div>
@@ -581,6 +545,24 @@
             </label>
             <label for="sourhnToggle" style="cursor:pointer;">Zahrnout cenový souhrn po skupinách</label>
           </div>
+
+          <!-- Předmět nabídky — objekty -->
+          <div>
+            <div class="section-title" style="margin-top:4px;">Předmět nabídky — objekty / skupiny</div>
+            <table class="objects-table">
+              <thead>
+                <tr>
+                  <th class="col-name">Název skupiny</th>
+                  <th class="col-price">Cena bez DPH</th>
+                  <th class="col-dph">DPH %</th>
+                  <th class="col-del"></th>
+                </tr>
+              </thead>
+              <tbody id="rowsBody"></tbody>
+            </table>
+            <button class="btn-add-row" onclick="addRow()">+ Přidat řádek</button>
+          </div>
+
           <div class="row2">
             <div class="field">
               <label>Fakturace</label>
@@ -599,6 +581,25 @@
             </div>
             <textarea id="dalsiText" rows="4" placeholder="Doplňující text, poznámky, zvláštní podmínky..." oninput="generate()"></textarea>
           </div>
+        </div>
+      </div>
+
+      <!-- Kontakty -->
+      <div>
+        <div class="section-title">Kontaktní osoby</div>
+        <div style="display:flex;flex-direction:column;gap:6px;">
+          <label class="contact-row">
+            <input type="checkbox" id="contact0" onchange="generate()">
+            <div class="contact-info"><strong>Václav Mareš</strong> — Obchodní ředitel<br><span>+420 770 312 377 · mares@dpuenergy.cz</span></div>
+          </label>
+          <label class="contact-row">
+            <input type="checkbox" id="contact1" onchange="generate()">
+            <div class="contact-info"><strong>Ing. Jakub Hřídel</strong> — Jednatel a technický ředitel<br><span>+420 702 231 584 · hridel@dpuenergy.cz</span></div>
+          </label>
+          <label class="contact-row">
+            <input type="checkbox" id="contact2" onchange="generate()">
+            <div class="contact-info"><strong>Ing. Petr Stejskal</strong> — Jednatel<br><span>+420 774 111 818 · stejskal@dpuenergy.cz</span></div>
+          </label>
         </div>
       </div>
 
