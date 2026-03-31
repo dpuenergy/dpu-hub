@@ -996,18 +996,17 @@ function buildCharts(result) {
     // Uniform TUV hourly baseload derived from annual TUV input
     const tuvKwhH = inputs.tuv_gj > 0 ? (inputs.tuv_gj * 277.78 / n) : 0;
 
-    const tHeatOn = inputs.t_heat_on_c ?? 14;
-
     for (let i = 0; i < n; i++) {
       const m       = Math.min(11, Math.floor((i / n) * 12));
       const demand  = s.heat_need_kw[i] || 0;
       const hpTotal = s.hp_heat_kw[i]   || 0;
       const biv     = s.bivalence_kw[i] || 0;
 
-      // Outside heating season (t_out >= t_heat_on): all output is TUV, zero UT
-      const isHeating = (s.t_out_c[i] || 0) < tHeatOn;
-      const hpTuv = isHeating ? Math.min(hpTotal, tuvKwhH) : hpTotal;
-      const hpUT  = isHeating ? (hpTotal - hpTuv) : 0;
+      // UT demand = demand above the TUV baseload; TUV demand = baseload (or full demand if below)
+      const utDemand  = Math.max(0, demand - tuvKwhH);
+      const utFrac    = demand > 0 ? utDemand / demand : 0;
+      const hpUT  = hpTotal * utFrac;
+      const hpTuv = hpTotal - hpUT;
 
       mDemand[m] += demand  / 1000;
       mHpTUV[m]  += hpTuv  / 1000;
