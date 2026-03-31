@@ -1221,15 +1221,18 @@ function buildCharts(result) {
 
   // Annotate how many heating hours fall below HP minimum — shown below the duration chart
   const hrsBelow = dur_kw.filter(v => v < pMin && v > 0).length;
-  const pctYear  = Math.round(hrsBelow / 8760 * 100);  // % roku (TUV = celoroční provoz)
+  const pctYear  = Math.round(hrsBelow / 8760 * 100);
   const noteEl   = document.getElementById("duration_min_note");
   if (noteEl) {
-    if (pMin > 0 && hrsBelow > 0) {
-      const volRec  = parseFloat(document.getElementById("buf_vol_l")?.value || 0);
+    if (pMin > 0 && hrsBelow > 0 && !buf) {
+      // Buffer not configured — show warning with setup instructions
+      const volRec     = parseFloat(document.getElementById("buf_vol_l")?.value || 0);
       const volRounded = volRec > 0 ? Math.ceil(volRec / 50) * 50 : null;
-      const volLine = volRounded
+      const volLine    = volRounded
         ? `Doporučený objem taktovací nádrže pro TČ ${inputs.hp_power_kw} kW: <strong>${volRounded} l</strong>.`
         : `Objem nádrže se spočítá automaticky — nastav min. dobu chodu TČ níže.`;
+      noteEl.style.background = "#fdf2f0";
+      noteEl.style.color      = "#c0392b";
       noteEl.innerHTML =
         `⚠ <strong>${hrsBelow} h/rok (${pctYear} % roku)</strong> je poptávka pod minimem TČ (${pMin.toFixed(0)} kW)`
         + ` — kompresor by v těchto hodinách taktoval příliš krátce a degradoval by. `
@@ -1238,6 +1241,19 @@ function buildCharts(result) {
         + `① <a href="#buf_section" onclick="document.getElementById('buf_section').scrollIntoView({behavior:'smooth'});return false;" style="color:#c0392b;font-weight:600;">Přejít na Taktovací nádrž</a>`
         + ` → ② ověřit T min/max a min. dobu chodu → ③ kliknout <strong>Simulovat</strong>.`
         + `<br><span style="color:#666;font-size:11px;">Alternativa: menší TČ = nižší minimum = menší nebo žádná nádrž — viz <em>Optimalizace výkonu</em> výše.</span>`;
+      noteEl.style.display = "";
+    } else if (pMin > 0 && hrsBelow > 0 && buf) {
+      // Buffer configured — confirm it handles the short-cycling issue
+      const volRounded = Math.ceil((parseFloat(document.getElementById("buf_vol_l")?.value || 0)) / 50) * 50;
+      const bivMwh     = buf.summary?.bivMwh ?? 0;
+      const bivNote    = bivMwh > 0.5
+        ? ` Pozor: nádrž je malá — ${bivMwh.toFixed(1)} MWh/rok není pokryto (bivalence). Zvaž větší objem.`
+        : "";
+      noteEl.style.background = "#f0fdf4";
+      noteEl.style.color      = "#166534";
+      noteEl.innerHTML =
+        `✓ Taktovací nádrž ${volRounded} l je nakonfigurována — krátké cykly kompresoru jsou vyřešeny.`
+        + ` Výsledky simulace s nádrží viz níže.${bivNote}`;
       noteEl.style.display = "";
     } else {
       noteEl.style.display = "none";
