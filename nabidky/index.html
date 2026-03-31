@@ -498,6 +498,8 @@
           <div class="field">
             <label>Rozsah / popis prací</label>
             <div style="display:flex;gap:4px;margin-bottom:4px;">
+              <button type="button" class="btn-fmt" onclick="insertHeading('rozsah',1)"># Nadpis</button>
+              <button type="button" class="btn-fmt" onclick="insertHeading('rozsah',2)">## Podnadpis</button>
               <button type="button" class="btn-fmt" onclick="insertBullet('rozsah')">• Odrážka</button>
             </div>
             <textarea id="rozsah" rows="5" placeholder="Stručný popis co je předmětem nabídky&#10;• položka 1&#10;• položka 2" oninput="generate()"></textarea>
@@ -838,6 +840,35 @@ function insertBullet(id) {
   generate();
 }
 
+// ── Heading insert helper ──────────────────────────────────────────────────
+function insertHeading(id, level) {
+  const ta = document.getElementById(id);
+  const start = ta.selectionStart;
+  const val = ta.value;
+  const lineStart = val.lastIndexOf('\n', start - 1) + 1;
+  const lineEndIdx = val.indexOf('\n', start);
+  const end = lineEndIdx === -1 ? val.length : lineEndIdx;
+  const line = val.slice(lineStart, end);
+  const marker = level === 1 ? '# ' : '## ';
+  const otherMarker = level === 1 ? '## ' : '# ';
+  if (line.startsWith(marker)) {
+    // remove marker
+    const newLine = line.slice(marker.length);
+    ta.value = val.slice(0, lineStart) + newLine + val.slice(end);
+    ta.selectionStart = ta.selectionEnd = Math.max(lineStart, start - marker.length);
+  } else if (line.startsWith(otherMarker)) {
+    // replace other marker
+    const newLine = marker + line.slice(otherMarker.length);
+    ta.value = val.slice(0, lineStart) + newLine + val.slice(end);
+    ta.selectionStart = ta.selectionEnd = start + (marker.length - otherMarker.length);
+  } else {
+    ta.value = val.slice(0, lineStart) + marker + line + val.slice(end);
+    ta.selectionStart = ta.selectionEnd = start + marker.length;
+  }
+  ta.focus();
+  generate();
+}
+
 // ── Toggle sections ────────────────────────────────────────────────────────
 function toggleOpzp() {
   const on = document.getElementById('opzpToggle').checked;
@@ -926,25 +957,36 @@ function escHtml(s) {
 // ── Plain text → HTML ──────────────────────────────────────────────────────
 function plainToHtml(text) {
   if (!text) return '';
-  const paras = text.split(/\n\n+/);
-  return paras.map(p => {
-    const lines = p.split('\n');
-    const bullets = lines.filter(l => l.trimStart().startsWith('•'));
-    const nonBullets = lines.filter(l => !l.trimStart().startsWith('•'));
-    let html = '';
-    if (nonBullets.length > 0) {
-      html += `<p style="margin:0 0 6px 0;">${escHtml(nonBullets.join('\n'))}</p>`;
+  const lines = text.split('\n');
+  let html = '';
+  let paraLines = [];
+
+  function flushPara() {
+    if (!paraLines.length) return;
+    const joined = paraLines.join('\n').trim();
+    if (joined) html += `<p style="margin:0 0 6px 0;">${escHtml(joined)}</p>`;
+    paraLines = [];
+  }
+
+  lines.forEach(line => {
+    if (line.startsWith('## ')) {
+      flushPara();
+      const content = escHtml(line.slice(3));
+      html += `<p style="margin:14px 0 6px 0;font-size:14px;line-height:18px;font-weight:700;color:#2D2558;letter-spacing:0.2px;">${content}</p>`;
+    } else if (line.startsWith('# ')) {
+      flushPara();
+      const content = escHtml(line.slice(2));
+      html += `<p style="margin:0 0 10px 0;font-size:18px;line-height:24px;font-weight:700;color:#2D2558;">${content}</p>`;
+    } else if (line.trimStart().startsWith('• ')) {
+      flushPara();
+      const content = escHtml(line.replace(/^\s*•\s*/, ''));
+      html += `<p style="margin:0 0 4px 0;"><span style="display:inline-block;width:14px;font-weight:700;color:#2D2558;">•</span>${content}</p>`;
+    } else {
+      paraLines.push(line);
     }
-    if (bullets.length > 0) {
-      html += `<ul style="margin:4px 0 6px 16px;padding:0;">`;
-      bullets.forEach(b => {
-        const content = b.replace(/^\s*•\s*/, '');
-        html += `<li style="margin-bottom:3px;">${escHtml(content)}</li>`;
-      });
-      html += `</ul>`;
-    }
-    return html;
-  }).join('');
+  });
+  flushPara();
+  return html;
 }
 
 // ── Build souhrn HTML ──────────────────────────────────────────────────────
