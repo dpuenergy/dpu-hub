@@ -199,13 +199,19 @@
         background:rgba(225,29,72,.08);
       }
 
-      canvas{
-        width:100% !important;
-        height:320px !important;
+      canvas{ display:block; }
+
+      .ch-wrap{
+        position:relative;
+        height:300px;
         border-radius:16px;
         border:1px solid var(--line);
         background:#fff;
+        overflow:hidden;
       }
+      .ch-wrap > canvas{ border-radius:inherit; }
+      .ch-wrap.h240{ height:240px; }
+      .ch-wrap.h360{ height:360px; }
 
       @media (max-width:1080px){
         main{grid-template-columns:1fr;}
@@ -234,7 +240,6 @@
         <h1>Větrný potenciál</h1>
         <div class="sub">Výpočet větrného potenciálu, doporučený výkon turbíny a energetická bilance</div>
       </div>
-      <div class="sub">DPU Energy</div>
     </header>
 
     <main>
@@ -242,7 +247,7 @@
         <div class="row">
           <label>Souřadnice (klikni do mapy)</label>
           <input id="coords" value="50.0755, 14.4378" />
-          <div class="small">lat, lon</div>
+          <div class="small">zeměpisná šířka, zeměpisná délka</div>
         </div>
 
         <div class="row">
@@ -299,16 +304,15 @@
         </div>
 
         <div class="row">
-          <label>Účinnost střídače</label>
+          <label>Účinnost střídače [%]</label>
           <input
             id="invEff"
             type="number"
-            value="0.96"
-            min="0.50"
-            max="1.00"
-            step="0.01"
+            value="96"
+            min="50"
+            max="100"
+            step="1"
           />
-          <div class="small">Desetinné číslo 0–1, např. 0.96 = 96 %.</div>
         </div>
 
         <div class="row">
@@ -411,10 +415,10 @@
                     Grafy jsou odvozené z dat ÚFA (10 m) pro zadané souřadnice. Slouží jako orientační kontrola směrovosti a rozdělení rychlostí.
                   </div>
                   <div class="ufaGrid">
-                    <div class="card" style="padding:10px;"><h3>Rozdělení směrů větru (%)</h3><canvas id="ufaRoseFreq"></canvas></div>
-                    <div class="card" style="padding:10px;"><h3>Průměrná rychlost větru (m/s)</h3><canvas id="ufaRoseMean"></canvas></div>
-                    <div class="card" style="padding:10px;"><h3>Roční výroba energie (kWh)</h3><canvas id="ufaRoseAep"></canvas></div>
-                    <div class="card" style="padding:10px;"><h3>Hustota pravděpodobnosti rychlosti větru</h3><canvas id="ufaPdf"></canvas></div>
+                    <div class="card" style="padding:10px;"><h3>Rozdělení směrů větru (%)</h3><div class="ch-wrap h240"><canvas id="ufaRoseFreq"></canvas></div></div>
+                    <div class="card" style="padding:10px;"><h3>Průměrná rychlost větru (m/s)</h3><div class="ch-wrap h240"><canvas id="ufaRoseMean"></canvas></div></div>
+                    <div class="card" style="padding:10px;"><h3>Roční výroba energie (kWh)</h3><div class="ch-wrap h240"><canvas id="ufaRoseAep"></canvas></div></div>
+                    <div class="card" style="padding:10px;"><h3>Hustota pravděpodobnosti rychlosti větru</h3><div class="ch-wrap h240"><canvas id="ufaPdf"></canvas></div></div>
                   </div>
                 </div>
         
@@ -422,7 +426,7 @@
         <div class="charts">
           <div class="card">
             <h2>Výkonová křivka turbíny</h2>
-            <canvas id="curve"></canvas>
+            <div class="ch-wrap"><canvas id="curve"></canvas></div>
           </div>
 
           <div class="card">
@@ -450,7 +454,7 @@
               </div>
             </div>
 
-            <canvas id="hourly"></canvas>
+            <div class="ch-wrap h360"><canvas id="hourly"></canvas></div>
           </div>
         </div>
       </div>
@@ -720,7 +724,7 @@
             availability: 0.95,
             electrical: 0.05,
             cable_loss_pct: Number(document.getElementById("cableLoss").value),
-            inverter_eff: Number(document.getElementById("invEff").value),
+            inverter_eff: Number(document.getElementById("invEff").value) / 100.0,
           },
         };
       }
