@@ -2,18 +2,25 @@ name: Keep Streamlit apps awake
 
 on:
   schedule:
-    - cron: '0 * * * *'          # každou hodinu
-  workflow_dispatch:              # možnost spustit ručně
+    - cron: '0 5,7,9,11,13,15,17 * * 1-5'  # každé 2h v 7–19 CET (pracovní dny)
+    - cron: '0 8 * * 0,6'                   # víkendy jednou v 10:00 CET
+  workflow_dispatch:
 
 jobs:
   ping:
     runs-on: ubuntu-latest
     steps:
       - name: Ping dpuenergy-komunita
-        run: curl -s -o /dev/null -w "%{http_code}" https://dpuenergy-komunita.streamlit.app/
+        run: |
+          CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 30 https://dpuenergy-komunita.streamlit.app/)
+          echo "komunita: $CODE"
 
       - name: Ping dpuenergy-podklady
-        run: curl -s -o /dev/null -w "%{http_code}" https://dpuenergy-podklady.streamlit.app/
+        run: |
+          CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 30 https://dpuenergy-podklady.streamlit.app/)
+          echo "podklady: $CODE"
 
       - name: Ping dpu-kalkulator
-        run: curl -s -o /dev/null -w "%{http_code}" https://dpu-kalkulator.streamlit.app/
+        run: |
+          CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 30 https://dpu-kalkulator.streamlit.app/)
+          echo "kalkulator: $CODE"
