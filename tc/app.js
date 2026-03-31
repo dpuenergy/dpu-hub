@@ -654,7 +654,7 @@ function getInputs() {
   const heatUnit    = document.getElementById("heat_unit")?.value || "GJ";
   const heatToGj    = HEAT_TO_GJ[heatUnit] || 1;
   const inp = {
-    dataset_id: document.getElementById("dataset")?.value || null,
+    dataset_id: document.getElementById("dataset")?.value || "",
     hp_type: hpType,
     hp_modulation:      document.getElementById("hp_modulation")?.value || "inverter",
     hp_min_load_pct:    parseFloat(document.getElementById("hp_min_load_pct")?.value || 25),
