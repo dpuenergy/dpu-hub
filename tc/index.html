@@ -334,25 +334,36 @@
           </div>
 
           <div class="section-title" id="buf_section">Taktovací nádrž (topný okruh)</div>
-          <div class="hint">Hydraulický oddělovač topného okruhu — TČ běží na optimálním výkonu a nádrž vyrovnává okamžitou potřebu tepla. Zabraňuje krátkodobému cyklování kompresoru. <strong>Zásobník TUV se zadává odděleně níže a není součástí tohoto modelu.</strong></div>
+          <div class="hint" style="margin-bottom:8px;">Hydraulický oddělovač topného okruhu — TČ běží na optimálním výkonu a nádrž vyrovnává okamžitou potřebu tepla. Zabraňuje krátkodobému cyklování kompresoru. <strong>Zásobník TUV se zadává odděleně níže.</strong></div>
+          <div class="info-panel" style="margin-bottom:10px;">
+            <strong>Postup nastavení:</strong>
+            <ol style="margin:5px 0 0 18px; padding:0; font-size:12px; line-height:1.9;">
+              <li>Nastav <strong>T min / T max</strong> dle topné soustavy (podlahové: 35/45 °C, radiátory: 45/60 °C)</li>
+              <li>Nastav <strong>min. dobu chodu</strong> dle typu TČ — výpočet objemu se aktualizuje automaticky</li>
+              <li>Klikni <strong>Simulovat</strong> — výsledky zobrazí počet spuštění, SCOP a chování nádrže</li>
+            </ol>
+          </div>
           <div class="row2">
             <div>
               <label>T min — start TČ (°C)</label>
               <input id="buf_t_min" type="number" value="40" step="1" oninput="calcAccumulation()" />
+              <div class="hint">TČ se zapne, jakmile teplota nádrže klesne pod tuto hodnotu. Nastav o 5 °C níže než je min. teplota výstupní vody.</div>
             </div>
             <div>
               <label>T max — stop TČ (°C)</label>
               <input id="buf_t_max" type="number" value="55" step="1" oninput="calcAccumulation()" />
+              <div class="hint">TČ se vypne po nabití nádrže. Nastav na max. provozní teplotu topné soustavy (nesmí přesáhnout pracovní teplotu TČ).</div>
             </div>
           </div>
           <div class="row2">
             <div>
               <label>Min. doba chodu TČ (min)</label>
               <input id="acc_t_min" type="number" value="10" step="1" min="1" oninput="calcAccumulation()" />
-              <div class="hint">Invertor: 5–10 min. On/off: 15–30 min. Pro srovnání viz pravidlo 1,5–2 l/kW níže.</div>
+              <div class="hint">Invertor: 5–10 min. On/off: 15–30 min. Kratší cyklus = menší nádrž, ale více spuštění kompresoru.</div>
             </div>
-            <div>
-              <div id="acc_result" style="font-size:12px; color:var(--brand); margin-top:20px; font-weight:600;">—</div>
+            <div style="display:flex; flex-direction:column; justify-content:center;">
+              <div id="acc_result" style="font-size:13px; color:var(--brand); font-weight:700; padding:10px 12px; border-radius:10px; border:2px solid var(--accent); background:#eff6ff; line-height:1.6;">—</div>
+              <div class="hint" style="margin-top:4px;">Objem bude použit v simulaci. Po úpravě klikni <strong>Simulovat</strong>.</div>
             </div>
           </div>
           <input type="hidden" id="buf_vol_l" value="0" />

@@ -1226,15 +1226,18 @@ function buildCharts(result) {
   if (noteEl) {
     if (pMin > 0 && hrsBelow > 0) {
       const volRec  = parseFloat(document.getElementById("buf_vol_l")?.value || 0);
-      const volText = volRec > 0
-        ? ` Pro aktuální výkon TČ (${inputs.hp_power_kw} kW) vychází min. nádrž <strong>${Math.ceil(volRec / 50) * 50} l</strong> — objem je přímo úměrný výkonu TČ.`
-        : "";
+      const volRounded = volRec > 0 ? Math.ceil(volRec / 50) * 50 : null;
+      const volLine = volRounded
+        ? `Doporučený objem taktovací nádrže pro TČ ${inputs.hp_power_kw} kW: <strong>${volRounded} l</strong>.`
+        : `Objem nádrže se spočítá automaticky — nastav min. dobu chodu TČ níže.`;
       noteEl.innerHTML =
-        `⚠ <strong>${hrsBelow} h/rok (${pctYear} % roku)</strong> je poptávka pod minimem TČ (${pMin.toFixed(0)} kW).${volText}`
-        + ` <strong>Řešení:</strong> (a) akumulační nádrž, nebo (b) menší TČ s bivalentním zdrojem pro špičky`
-        + ` — menší TČ = nižší minimum = menší nádrž. Viz <em>Optimalizace výkonu</em> pro nalezení optimálního bodu.`
-        + ` <a href="#buf_section" onclick="document.getElementById('buf_section').scrollIntoView({behavior:'smooth'});return false;"`
-        + ` style="color:#c0392b;font-weight:600;text-decoration:underline;">→ Nakonfigurovat nádrž</a>`;
+        `⚠ <strong>${hrsBelow} h/rok (${pctYear} % roku)</strong> je poptávka pod minimem TČ (${pMin.toFixed(0)} kW)`
+        + ` — kompresor by v těchto hodinách taktoval příliš krátce a degradoval by. `
+        + volLine
+        + `<br><strong>Postup:</strong> `
+        + `① <a href="#buf_section" onclick="document.getElementById('buf_section').scrollIntoView({behavior:'smooth'});return false;" style="color:#c0392b;font-weight:600;">Přejít na Taktovací nádrž</a>`
+        + ` → ② ověřit T min/max a min. dobu chodu → ③ kliknout <strong>Simulovat</strong>.`
+        + `<br><span style="color:#666;font-size:11px;">Alternativa: menší TČ = nižší minimum = menší nebo žádná nádrž — viz <em>Optimalizace výkonu</em> výše.</span>`;
       noteEl.style.display = "";
     } else {
       noteEl.style.display = "none";
