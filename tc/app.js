@@ -897,22 +897,20 @@ function buildCharts(result) {
     destroyChart("chTankSoc");
   }
 
-  // Heating curve: aggregate into 0.5°C bins → clean line (only heating hours)
-  const hcBins = {};
-  for (let i = 0; i < s.t_out_c.length; i++) {
-    if ((s.heat_need_kw[i] || 0) <= 0) continue; // skip non-heating hours (TUV only, summer)
-    const bin = Math.round(s.t_out_c[i] * 2) / 2; // 0.5°C resolution
-    if (!hcBins[bin]) hcBins[bin] = [];
-    hcBins[bin].push(s.t_water_c[i]);
+  // Heating curve: theoretical design curve from parameters (not simulated data)
+  const hcSlope     = parseFloat(document.getElementById("hw_slope")?.value     || -1.25);
+  const hcIntercept = parseFloat(document.getElementById("hw_intercept")?.value || 42.5);
+  const hcMin       = parseFloat(document.getElementById("hw_min_c")?.value     || 45);
+  const hcTLimit    = parseFloat(document.getElementById("hw_t_limit")?.value   || 14);
+  const hcTDesign   = parseFloat(document.getElementById("hw_t_design")?.value  || -15);
+  const hcPts = [];
+  for (let t = Math.floor(hcTDesign) - 2; t <= hcTLimit; t += 0.5) {
+    hcPts.push({ x: t, y: Math.max(hcMin, hcSlope * t + hcIntercept) });
   }
-  const hcPts = Object.keys(hcBins)
-    .map(k => parseFloat(k))
-    .sort((a, b) => a - b)
-    .map(k => ({ x: k, y: hcBins[k].reduce((a, b) => a + b, 0) / hcBins[k].length }));
   destroyChart("chHeatingCurve");
   charts["chHeatingCurve"] = new Chart(document.getElementById("chHeatingCurve"), {
     type: "line",
-    data: { datasets: [{ label: "T voda (°C)", data: hcPts, pointRadius: 3, borderWidth: 2, tension: 0.3 }] },
+    data: { datasets: [{ label: "T voda (°C)", data: hcPts, pointRadius: 0, borderWidth: 2, tension: 0 }] },
     options: {
       responsive: true, maintainAspectRatio: false,
       parsing: { xAxisKey: "x", yAxisKey: "y" },
