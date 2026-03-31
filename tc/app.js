@@ -705,38 +705,53 @@ function simulateBuffer(s, p) {
     const wasOn  = on;
 
     if (demand === 0) {
-      // No heating needed — always off, tank holds temperature
       on = false;
-    } else {
-      // Proactive turn-on: trigger if tank would drop below tMin this hour without HP
-      const T_proj = T - demand / capKwhPerK;
-      if (!on && (T <= tMin || T_proj < tMin)) on = true;
-
-      // Turn off only when tank is full AND it can supply demand next hour without HP
-      if (on && T >= tMax && T_proj >= tMin) on = false;
+      tank_t[i] = T;
+      continue;
     }
 
-    if (on && !wasOn) starts++;
+    // Strict hysteresis: on at tMin, off at tMax
+    if (!on && T <= tMin) on = true;
+    if ( on && T >= tMax) on = false;
 
     let Qhp = 0;
+    let T_new;
+
     if (on) {
-      // Cap HP output: don't overshoot tMax
+      // HP runs at up to pNom; cap so tank doesn't overshoot tMax
       const maxQhp = demand + Math.max(0, (tMax - T) * capKwhPerK);
-      Qhp      = Math.min(pNom, Math.max(0, maxQhp));
-      hp_kw[i] = Qhp;
-      hp_el[i] = Qhp / cop;
+      Qhp  = Math.min(pNom, maxQhp);
+      T_new = T + (Qhp - demand) / capKwhPerK;
+    } else {
+      // HP off: tank supplies demand
+      T_new = T - demand / capKwhPerK;
+
+      if (T_new < tMin) {
+        // Tank drains to tMin mid-hour → HP starts for the remaining fraction
+        // t1 = fraction HP is off (tank drains T → tMin), t2 = fraction HP is on
+        const t1 = Math.max(0, Math.min(1, (T - tMin) * capKwhPerK / demand));
+        const t2 = 1 - t1;
+        on = true;
+        // HP output during t2 (capped so T doesn't exceed tMax starting from tMin)
+        const maxQhp_t2 = demand * t2 + Math.max(0, (tMax - tMin) * capKwhPerK);
+        Qhp   = Math.min(pNom * t2, maxQhp_t2);
+        T_new = tMin + Math.max(0, (Qhp - demand * t2) / capKwhPerK);
+        T_new = Math.min(tMax, T_new);
+      }
     }
 
-    // Tank energy balance
-    T += (Qhp - demand) / capKwhPerK;
+    // Count starts after all state changes
+    if (on && !wasOn) starts++;
 
-    // Bivalence: demand exceeded HP capacity
+    // Bivalence: HP can't cover demand (pNom < demand sustained)
     const floor = tMin - 5;
-    if (T < floor) {
-      biv_kw[i] = (floor - T) * capKwhPerK;
-      T = floor;
+    if (T_new < floor) {
+      biv_kw[i] = (floor - T_new) * capKwhPerK;
+      T_new = floor;
     }
-    T = Math.max(tMin - 10, Math.min(tMax + 10, T));
+    T = Math.max(tMin - 10, Math.min(tMax + 10, T_new));
+    hp_kw[i] = Qhp;
+    hp_el[i] = Qhp / cop;
     tank_t[i] = T;
   }
 
