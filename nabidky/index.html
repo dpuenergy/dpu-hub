@@ -964,7 +964,7 @@ function plainToHtml(text) {
 }
 
 // ── Build souhrn HTML ──────────────────────────────────────────────────────
-// Inline-block span layout, fixed px widths: 78+382+74+94+50+84 = 762px
+// Inline-block span layout, fixed px widths: 78+382+58+94+50+100 = 762px
 function buildSourhnHtml(rows) {
   let grandBez = 0, grandDph = 0, grandS = 0;
   const validRows = rows.filter(r => r.name || r.price);
@@ -987,10 +987,10 @@ function buildSourhnHtml(rows) {
   <div style="border-bottom:1px solid #b7b7b7;padding:8px 0;white-space:nowrap;">
     <span style="display:inline-block;width:78px;color:#6B6C6E;">Objekt ${i + 1}</span>
     <span style="display:inline-block;width:382px;color:#000;">${escHtml(r.name || '—')}</span>
-    <span style="display:inline-block;width:74px;text-align:right;color:#000;">&nbsp;</span>
+    <span style="display:inline-block;width:58px;text-align:right;color:#000;">&nbsp;</span>
     <span style="display:inline-block;width:94px;text-align:right;color:#000;">${fmtNbsp(bez)}&nbsp;<span style="color:#6B6C6E;">Kč</span></span>
     <span style="display:inline-block;width:50px;text-align:right;color:#000;">${dphRate}%</span>
-    <span style="display:inline-block;width:84px;text-align:right;color:#000;">${fmtNbsp(sDph)}&nbsp;<span style="color:#6B6C6E;">Kč</span></span>
+    <span style="display:inline-block;width:100px;text-align:right;color:#000;">${fmtNbsp(sDph)}&nbsp;<span style="color:#6B6C6E;">Kč</span></span>
   </div>`;
   });
 
@@ -1006,10 +1006,10 @@ function buildSourhnHtml(rows) {
   <div style="border-bottom:1px solid #a9a9a9;padding:6px 0 5px 0;font-size:11px;line-height:14px;color:#6B6C6E;white-space:nowrap;">
     <span style="display:inline-block;width:78px;">&nbsp;</span>
     <span style="display:inline-block;width:382px;">&nbsp;</span>
-    <span style="display:inline-block;width:74px;">&nbsp;</span>
+    <span style="display:inline-block;width:58px;">&nbsp;</span>
     <span style="display:inline-block;width:94px;text-align:right;">Cena bez DPH</span>
     <span style="display:inline-block;width:50px;text-align:right;">DPH</span>
-    <span style="display:inline-block;width:84px;text-align:right;">Celkem vč. DPH</span>
+    <span style="display:inline-block;width:100px;text-align:right;">Celkem vč. DPH</span>
   </div>
 ${rowsHtml}
   <div style="height:12px;line-height:12px;">&nbsp;</div>
