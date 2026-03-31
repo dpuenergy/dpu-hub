@@ -1118,7 +1118,7 @@ function generate() {
   state.html.pred = predHtmlStr;
 
   const { html: sournHtmlStr, grandBez, grandS } = buildSourhnHtml(state.rows);
-  renderSourhnPreview(state.rows, grandBez, grandS);
+  document.getElementById('sournPreview').innerHTML = sournHtmlStr;
   document.getElementById('sournHtml').textContent = sournHtmlStr;
   state.html.souhrn = sournHtmlStr;
 
