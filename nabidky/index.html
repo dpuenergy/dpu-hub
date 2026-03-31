@@ -16,7 +16,7 @@
     --red: #c0392b;
     --green: #27ae60;
     --white: #ffffff;
-    --sidebar-w: 440px;
+    --sidebar-w: 540px;
   }
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -375,6 +375,26 @@
   ::-webkit-scrollbar-thumb { background: #ccc; border-radius: 3px; }
   ::-webkit-scrollbar-thumb:hover { background: #aaa; }
 
+  /* ── Contact rows ── */
+  .contact-row {
+    display: flex; align-items: flex-start; gap: 8px;
+    padding: 7px 9px; border: 1px solid var(--gray-border);
+    border-radius: 6px; cursor: pointer; background: #fff; transition: background .15s;
+  }
+  .contact-row:hover { background: var(--purple-light); }
+  .contact-row input[type=checkbox] { margin-top: 3px; flex-shrink: 0; accent-color: var(--purple); }
+  .contact-info { font-size: 12px; line-height: 1.5; color: #333; }
+  .contact-info strong { color: #111; }
+  .contact-info span { color: var(--gray); font-size: 11px; }
+  /* ── Format toolbar button ── */
+  .btn-fmt {
+    background: none; border: 1px solid var(--purple-border);
+    border-radius: 4px; padding: 3px 9px; font-size: 11px;
+    cursor: pointer; color: var(--purple); font-weight: 600;
+    font-family: Arial, Helvetica, sans-serif;
+  }
+  .btn-fmt:hover { background: var(--purple-light); }
+
   /* ── Cenový souhrn styles (in output) ── */
   .souhrn-row {
     display: flex; align-items: baseline; gap: 0;
@@ -477,7 +497,10 @@
           </div>
           <div class="field">
             <label>Rozsah / popis prací</label>
-            <textarea id="rozsah" rows="2" placeholder="Stručný popis co je předmětem nabídky..." oninput="generate()"></textarea>
+            <div style="display:flex;gap:4px;margin-bottom:4px;">
+              <button type="button" class="btn-fmt" onclick="insertBullet('rozsah')">• Odrážka</button>
+            </div>
+            <textarea id="rozsah" rows="5" placeholder="Stručný popis co je předmětem nabídky&#10;• položka 1&#10;• položka 2" oninput="generate()"></textarea>
           </div>
         </div>
       </div>
@@ -538,10 +561,29 @@
         <button class="btn-add-row" onclick="addRow()">+ Přidat řádek</button>
       </div>
 
+      <!-- Kontakty -->
+      <div>
+        <div class="section-title">Kontaktní osoby</div>
+        <div style="display:flex;flex-direction:column;gap:6px;">
+          <label class="contact-row">
+            <input type="checkbox" id="contact0" onchange="generate()">
+            <div class="contact-info"><strong>Václav Mareš</strong> — Obchodní ředitel<br><span>+420 770 312 377 · mares@dpuenergy.cz</span></div>
+          </label>
+          <label class="contact-row">
+            <input type="checkbox" id="contact1" onchange="generate()">
+            <div class="contact-info"><strong>Ing. Jakub Hřídel</strong> — Jednatel a technický ředitel<br><span>+420 702 231 584 · hridel@dpuenergy.cz</span></div>
+          </label>
+          <label class="contact-row">
+            <input type="checkbox" id="contact2" onchange="generate()">
+            <div class="contact-info"><strong>Ing. Petr Stejskal</strong> — Jednatel<br><span>+420 774 111 818 · stejskal@dpuenergy.cz</span></div>
+          </label>
+        </div>
+      </div>
+
       <!-- Fakturace -->
       <div>
         <div class="section-title">Podmínky</div>
-        <div class="row3">
+        <div class="row2">
           <div class="field">
             <label>Fakturace</label>
             <input type="text" id="fakturace" placeholder="např. po etapách" oninput="generate()">
@@ -550,10 +592,7 @@
             <label>Splatnost</label>
             <input type="text" id="splatnost" placeholder="např. 14 dní" oninput="generate()">
           </div>
-          <div class="field">
-            <label>Přijetí nabídky</label>
-            <input type="text" id="prijeti" placeholder="např. do 30 dnů" oninput="generate()">
-          </div>
+
         </div>
       </div>
 
@@ -749,6 +788,54 @@ async function checkApiStatus() {
     dot.className = 'api-dot error';
     label.textContent = 'AI nedostupné';
   }
+}
+
+// ── Contacts data ─────────────────────────────────────────────────────────
+const CONTACTS = [
+  { name: 'Václav Mareš',        title: 'Obchodní ředitel',             tel: '+420 770 312 377', email: 'mares@dpuenergy.cz' },
+  { name: 'Ing. Jakub Hřídel',   title: 'Jednatel a technický ředitel', tel: '+420 702 231 584', email: 'hridel@dpuenergy.cz' },
+  { name: 'Ing. Petr Stejskal',  title: 'Jednatel',                     tel: '+420 774 111 818', email: 'stejskal@dpuenergy.cz' },
+];
+
+function getSelectedContacts() {
+  return CONTACTS.filter((_, i) => {
+    const el = document.getElementById('contact' + i);
+    return el && el.checked;
+  });
+}
+
+function buildContactsHtml(contacts) {
+  if (!contacts.length) return '';
+  const blocks = contacts.map(p =>
+    '<div style="display:inline-block;vertical-align:top;min-width:220px;margin-right:32px;margin-bottom:8px;">' +
+    '<p style="margin:0 0 2px 0;font-weight:700;">' + escHtml(p.name) + '</p>' +
+    '<p style="margin:0 0 2px 0;color:#444;">' + escHtml(p.title) + '</p>' +
+    '<p style="margin:0 0 2px 0;">Tel.: ' + escHtml(p.tel) + '</p>' +
+    '<p style="margin:0;">E-mail: <a href="mailto:' + escHtml(p.email) + '" style="color:#2D2558;">' + escHtml(p.email) + '</a></p>' +
+    '</div>'
+  ).join('');
+  return '<div style="font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#222;line-height:1.6;margin-top:16px;">' + blocks + '</div>';
+}
+
+// ── Bullet insert helper ───────────────────────────────────────────────────
+function insertBullet(id) {
+  const ta = document.getElementById(id);
+  const start = ta.selectionStart;
+  const val = ta.value;
+  const lineStart = val.lastIndexOf('\n', start - 1) + 1;
+  const lineEndIdx = val.indexOf('\n', start);
+  const end = lineEndIdx === -1 ? val.length : lineEndIdx;
+  const line = val.slice(lineStart, end);
+  if (line.trimStart().startsWith('• ')) {
+    const newLine = line.replace(/^(\s*)• /, '$1');
+    ta.value = val.slice(0, lineStart) + newLine + val.slice(end);
+    ta.selectionStart = ta.selectionEnd = Math.max(lineStart, start - 2);
+  } else {
+    ta.value = val.slice(0, lineStart) + '• ' + line + val.slice(end);
+    ta.selectionStart = ta.selectionEnd = start + 2;
+  }
+  ta.focus();
+  generate();
 }
 
 // ── Toggle sections ────────────────────────────────────────────────────────
@@ -968,9 +1055,6 @@ function buildPredTemplate() {
     lines.push(`Předpokládaná výše dotace: ${dotace}.`);
   }
 
-  lines.push('');
-  lines.push('Jsme Váš partner pro celý proces — od energetické studie po výběrové řízení a administraci dotace. 97 % dotačních žádostí, které jsme podali, bylo schváleno.');
-
   return lines.join('\n');
 }
 
@@ -978,7 +1062,6 @@ function buildPredTemplate() {
 function buildZaTemplate() {
   const fakturace = document.getElementById('fakturace').value.trim();
   const splatnost = document.getElementById('splatnost').value.trim();
-  const prijeti = document.getElementById('prijeti').value.trim();
   const dalsi = document.getElementById('dalsiToggle').checked
     ? document.getElementById('dalsiText').value.trim() : '';
 
@@ -987,21 +1070,21 @@ function buildZaTemplate() {
   const podmiky = [];
   if (fakturace) podmiky.push(`• Fakturace: ${fakturace}`);
   if (splatnost) podmiky.push(`• Splatnost: ${splatnost}`);
-  if (prijeti) podmiky.push(`• Platnost nabídky: ${prijeti}`);
+  podmiky.push('• Přijetí nabídky: potvrzením e-mailem nebo zasláním objednávky');
 
-  if (podmiky.length > 0) {
-    lines.push('Podmínky spolupráce:');
-    lines.push('');
-    lines.push(podmiky.join('\n'));
-    lines.push('');
-  }
+  lines.push('Podmínky spolupráce:');
+  lines.push('');
+  lines.push(podmiky.join('\n'));
+  lines.push('');
+  lines.push('Potvrzenou objednávku zašlete datovou schránkou (ID:\u00a06d3vaqc) nebo e-mailem na info@dpuenergy.cz.');
 
   if (dalsi) {
-    lines.push(dalsi);
     lines.push('');
+    lines.push(dalsi);
   }
 
-  lines.push('V případě dotazů jsme Vám k dispozici. Těšíme se na spolupráci.');
+  lines.push('');
+  lines.push('V případě dotazů jsme Vám k dispozici.');
   lines.push('');
   lines.push('S pozdravem,');
   lines.push('DPU ENERGY s.r.o.');
@@ -1015,7 +1098,8 @@ function buildPredHtml(text) {
 }
 
 function buildZaHtml(text) {
-  return `<div style="font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#222;line-height:1.7;max-width:700px;">\n${plainToHtml(text)}\n</div>`;
+  const cHtml = buildContactsHtml(getSelectedContacts());
+  return `<div style="font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#222;line-height:1.7;max-width:700px;">\n${plainToHtml(text)}${cHtml}\n</div>`;
 }
 
 // ── Generate all blocks ────────────────────────────────────────────────────
@@ -1033,7 +1117,9 @@ function generate() {
 
   const zaText = (state.use_ai_za && state.ai_za) ? state.ai_za : buildZaTemplate();
   const zaHtmlStr = buildZaHtml(zaText);
-  document.getElementById('zaPreview').textContent = zaText;
+  const _sc = getSelectedContacts();
+  const _cp = _sc.length ? '\n\n' + _sc.map(p => p.name + '\n' + p.title + '\n' + p.tel + ' | ' + p.email).join('\n\n') : '';
+  document.getElementById('zaPreview').textContent = zaText + _cp;
   document.getElementById('zaHtml').textContent = zaHtmlStr;
   state.html.za = zaHtmlStr;
 }
