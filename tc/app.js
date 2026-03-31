@@ -1172,16 +1172,20 @@ function buildCharts(result) {
     const days = buf.dailyTankT.length;
     const dayLabels = buf.dailyTankT.map((_, d) => `Den ${d + 1}`);
 
-    // TUV HP hours per day: hours outside heating season where TUV demand > 0
-    // (same HP, different circuit — not double-counted with buffer UT hours)
+    // TUV HP hours per day (outside heating season): estimated from energy balance.
+    // Backend distributes TUV uniformly (tuv_kw > 0 every hour) — not actual run hours.
+    // Real run time = daily TUV energy / HP nominal power.
     const heatMaskBuf = buildHeatSeasonMask(s.t_out_c.length,
       document.getElementById("heat_season_start")?.value,
       document.getElementById("heat_season_end")?.value);
+    const pNom = inputs.hp_power_kw || 1;
     const dailyHpHrsTUV = new Array(days).fill(0);
-    for (let i = 0; i < s.t_out_c.length; i++) {
-      if (!heatMaskBuf[i] && (s.tuv_kw[i] || 0) > 0) {
-        dailyHpHrsTUV[Math.floor(i / 24)] += 1;
-      }
+    for (let d = 0; d < days; d++) {
+      const s0 = d * 24, s1 = Math.min(s0 + 24, s.t_out_c.length);
+      if (heatMaskBuf[s0]) continue; // heating season — skip, covered by buffer bars
+      let tuvKwh = 0;
+      for (let i = s0; i < s1; i++) tuvKwh += (s.tuv_kw[i] || 0);
+      dailyHpHrsTUV[d] = Math.min(24, tuvKwh / pNom);
     }
 
     charts["chBufSoc"] = new Chart(document.getElementById("chBufSoc"), {
