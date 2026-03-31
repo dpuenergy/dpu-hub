@@ -388,6 +388,7 @@
             <div><label>Max. teplota (°C)</label><input id="tuv_tank_t_max" type="number" value="65" step="1" min="55" max="90" /></div>
           </div>
 
+          <div id="cool_tank_section" style="display:none;">
           <div class="section-title" style="margin-top:12px;">Zásobník chlazené vody</div>
           <div class="row2">
             <div>
@@ -412,6 +413,21 @@
               </div>
             </div>
           </div>
+          </div><!-- /cool_tank_section -->
+
+          <div class="section-title" style="margin-top:12px;">Topná sezóna</div>
+          <div class="row2">
+            <div>
+              <label>Začátek</label>
+              <input id="heat_season_start" type="text" value="21.9." placeholder="21.9." style="width:90px;" />
+              <div class="hint">Výchozí: 21. září. Formát: 21.9. nebo 09-21</div>
+            </div>
+            <div>
+              <label>Konec</label>
+              <input id="heat_season_end" type="text" value="18.5." placeholder="18.5." style="width:90px;" />
+              <div class="hint">Výchozí: 18. května. Formát: 18.5. nebo 05-18</div>
+            </div>
+          </div>
 
           <details>
             <summary>Parametry modelu TČ a topné soustavy ▸</summary>
@@ -433,23 +449,18 @@
                   <input id="hp_cycling_loss_pct" type="number" value="5" step="1" />
                 </div>
               </div>
-              <div class="row3">
+              <div class="row2">
                 <div><label id="cop_label">COP (A7/W45)</label><input id="cop_nominal" type="number" step="0.1" value="3.2" /></div>
                 <div><label>Vnitřní teplota (°C)</label><input id="t_base_c" type="number" step="0.5" value="20" /></div>
-                <div><label>Zahájení vytápění (°C)</label><input id="t_heat_on_c" type="number" step="0.5" value="14" /></div>
               </div>
-              <div class="row2">
-                <div>
-                  <label>Topná sezóna — začátek</label>
-                  <input id="heat_season_start" type="text" value="09-21" placeholder="MM-DD" style="width:90px;" />
-                  <div class="hint">Výchozí: 21. září (09-21)</div>
+              <details style="margin-top:6px;">
+                <summary style="font-size:11px; color:var(--muted);">Pokročilé — tepelná bilance ▸</summary>
+                <div style="margin-top:6px;">
+                  <label>Zahájení vytápění — T venku (°C)</label>
+                  <input id="t_heat_on_c" type="number" step="0.5" value="14" />
+                  <div class="hint">Prahová teplota pro výpočet tepelné poptávky v backendu. Obvykle 12–15 °C.</div>
                 </div>
-                <div>
-                  <label>Topná sezóna — konec</label>
-                  <input id="heat_season_end" type="text" value="05-18" placeholder="MM-DD" style="width:90px;" />
-                  <div class="hint">Výchozí: 18. května (05-18)</div>
-                </div>
-              </div>
+              </details>
               <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
                 <div style="font-size:11px; font-weight:600; color:var(--muted);">Topná křivka</div>
                 <select id="hw_preset" style="width:auto; font-size:11px; padding:3px 6px; border-radius:6px;" onchange="applyHwPreset()">

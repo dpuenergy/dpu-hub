@@ -37,6 +37,9 @@ function onCoolingModeChange() {
   const mode = document.getElementById("cooling_mode").value;
   document.getElementById("cooling_gj_row").style.display  = mode === "gj"   ? "" : "none";
   document.getElementById("cooling_auto_row").style.display = mode === "auto" ? "" : "none";
+  const coolSec = document.getElementById("cool_tank_section");
+  const coolingEnabled = document.getElementById("cooling_enabled")?.checked;
+  if (coolSec) coolSec.style.display = coolingEnabled ? "" : "none";
 }
 
 // ── API helpers ───────────────────────────────────────────────────────────────
@@ -313,8 +316,10 @@ function loadCustomDemand(event) {
 
 function toggleCooling() {
   const enabled = document.getElementById("cooling_enabled")?.checked;
-  const params  = document.getElementById("cooling_params");
-  if (params) params.style.display = enabled ? "" : "none";
+  const params   = document.getElementById("cooling_params");
+  const coolSec  = document.getElementById("cool_tank_section");
+  if (params)  params.style.display  = enabled ? "" : "none";
+  if (coolSec) coolSec.style.display = enabled ? "" : "none";
 }
 
 // ── NPV / IRR ─────────────────────────────────────────────────────────────────
@@ -685,7 +690,17 @@ async function fetchChmiData() {
 // Returns a boolean array[8760]: true = hour is within heating season.
 // start/end are "MM-DD" strings (e.g. "09-21", "05-18").
 // Season can wrap around year-end (e.g. Sep–May crosses Jan 1).
-function buildHeatSeasonMask(n, startMmDd, endMmDd) {
+function normalizeSeasonDate(s) {
+  // Accepts "21.9.", "21.9", "21.09.", "09-21" → always returns "MM-DD"
+  const v = (s || "").trim().replace(/\s+/g, "");
+  const dot = v.match(/^(\d{1,2})\.(\d{1,2})\.?$/);
+  if (dot) return dot[2].padStart(2, "0") + "-" + dot[1].padStart(2, "0");
+  return v; // assume already MM-DD
+}
+
+function buildHeatSeasonMask(n, startRaw, endRaw) {
+  const startMmDd = normalizeSeasonDate(startRaw);
+  const endMmDd   = normalizeSeasonDate(endRaw);
   // Day-of-year for MM-DD (non-leap, 365 days)
   const MONTH_DAYS = [31,28,31,30,31,30,31,31,30,31,30,31];
   function dayOfYear(mmDd) {
