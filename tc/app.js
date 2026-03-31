@@ -983,32 +983,47 @@ function buildCharts(result) {
 
   makeLineChart("chTout", labels, s.t_out_c, "T venku (°C)");
 
-  // Monthly energy breakdown — stacked bar (HP + bivalence) + demand line
+  // Monthly energy breakdown — stacked: TUV base + UT heating + bivalence, demand line on top
   destroyChart("chPower");
   {
     const MONTHS = ["Led","Úno","Bře","Dub","Kvě","Čvn","Čvc","Srp","Zář","Říj","Lis","Pro"];
     const mDemand = new Array(12).fill(0);
-    const mHp     = new Array(12).fill(0);
+    const mHpUT   = new Array(12).fill(0);  // space heating covered by HP
+    const mHpTUV  = new Array(12).fill(0);  // DHW covered by HP (year-round base)
     const mBiv    = new Array(12).fill(0);
     const n = s.heat_need_kw.length;
 
+    // Uniform TUV hourly baseload derived from annual TUV input
+    const tuvKwhH = inputs.tuv_gj > 0 ? (inputs.tuv_gj * 277.78 / n) : 0;
+
     for (let i = 0; i < n; i++) {
-      const m = Math.min(11, Math.floor((i / n) * 12));
-      mDemand[m] += (s.heat_need_kw[i] || 0) / 1000;
-      mHp[m]     += (s.hp_heat_kw[i]   || 0) / 1000;
-      mBiv[m]    += (s.bivalence_kw[i] || 0) / 1000;
+      const m       = Math.min(11, Math.floor((i / n) * 12));
+      const demand  = s.heat_need_kw[i] || 0;
+      const hpTotal = s.hp_heat_kw[i]   || 0;
+      const biv     = s.bivalence_kw[i] || 0;
+
+      // Split HP output: first fill TUV, rest is UT
+      const hpTuv = Math.min(hpTotal, tuvKwhH);
+      const hpUT  = hpTotal - hpTuv;
+
+      mDemand[m] += demand  / 1000;
+      mHpTUV[m]  += hpTuv  / 1000;
+      mHpUT[m]   += hpUT   / 1000;
+      mBiv[m]    += biv    / 1000;
     }
 
     charts["chPower"] = new Chart(document.getElementById("chPower"), {
       data: {
         labels: MONTHS,
         datasets: [
-          { type: "bar",  label: "Výkon TČ (MWh)",    data: mHp,
-            backgroundColor: "rgba(46,140,255,.7)",  stack: "s" },
-          { type: "bar",  label: "Bivalence (MWh)",   data: mBiv,
+          { type: "bar",  label: "TUV — TČ (MWh)",      data: mHpTUV,
+            backgroundColor: "rgba(46,140,255,.35)", stack: "s" },
+          { type: "bar",  label: "Vytápění UT — TČ (MWh)", data: mHpUT,
+            backgroundColor: "rgba(46,140,255,.8)",  stack: "s" },
+          { type: "bar",  label: "Bivalence (MWh)",     data: mBiv,
             backgroundColor: "rgba(220,50,30,.7)",   stack: "s" },
-          { type: "line", label: "Potřeba tepla (MWh)", data: mDemand,
-            borderColor: "rgba(13,27,62,.7)", backgroundColor: "transparent",
+          { type: "line", label: "Potřeba tepla celkem (MWh)", data: mDemand,
+            borderColor: "rgba(13,27,62,.8)", backgroundColor: "transparent",
             borderWidth: 2, pointRadius: 3, fill: false },
         ],
       },
