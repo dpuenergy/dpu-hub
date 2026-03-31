@@ -987,26 +987,25 @@ function buildCharts(result) {
   destroyChart("chPower");
   {
     const MONTHS = ["Led","Úno","Bře","Dub","Kvě","Čvn","Čvc","Srp","Zář","Říj","Lis","Pro"];
-    const mDemand = new Array(12).fill(0);
-    const mHp     = new Array(12).fill(0);
+    const mUT     = new Array(12).fill(0);
+    const mTUV    = new Array(12).fill(0);
     const mBiv    = new Array(12).fill(0);
     const n = s.heat_need_kw.length;
 
     for (let i = 0; i < n; i++) {
       const m = Math.min(11, Math.floor((i / n) * 12));
-      mDemand[m] += (s.heat_need_kw[i] || 0) / 1000;
-      mHp[m]     += (s.hp_heat_kw[i]   || 0) / 1000;
-      mBiv[m]    += (s.bivalence_kw[i] || 0) / 1000;
+      mUT[m]  += (s.ut_kw[i]        || 0) / 1000;
+      mTUV[m] += (s.tuv_kw[i]       || 0) / 1000;
+      mBiv[m] += (s.bivalence_kw[i] || 0) / 1000;
     }
 
     const datasets = [
-      { type: "bar",  label: "Výkon TČ (MWh)", data: mHp,
-        backgroundColor: "rgba(46,140,255,.7)", stack: "s" },
+      { type: "bar",  label: "TUV — TČ (MWh)", data: mTUV,
+        backgroundColor: "rgba(46,140,255,.35)", stack: "s" },
+      { type: "bar",  label: "Vytápění UT — TČ (MWh)", data: mUT,
+        backgroundColor: "rgba(46,140,255,.85)", stack: "s" },
       { type: "bar",  label: "Bivalence (MWh)", data: mBiv,
-        backgroundColor: "rgba(220,50,30,.7)",  stack: "s" },
-      { type: "line", label: "Potřeba tepla celkem (MWh)", data: mDemand,
-        borderColor: "rgba(13,27,62,.8)", backgroundColor: "transparent",
-        borderWidth: 2, pointRadius: 3, fill: false },
+        backgroundColor: "rgba(220,50,30,.7)",   stack: "s" },
     ];
 
     charts["chPower"] = new Chart(document.getElementById("chPower"), {
