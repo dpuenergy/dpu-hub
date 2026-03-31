@@ -1255,9 +1255,10 @@ function buildCharts(result) {
         noteEl.style.background = "#fffbeb";
         noteEl.style.color      = "#92400e";
         noteEl.innerHTML =
-          `⚠ Taktovací nádrž ${volRounded} l je nakonfigurována, ale je příliš malá — `
-          + `<strong>${bivMwh.toFixed(1)} MWh/rok</strong> zůstává nepokryto (bivalence). `
-          + `Zvaž větší objem nebo bivalentní zdroj pro zbývající špičky.`;
+          `⚠ Taktovací nádrž ${volRounded} l nestačí pokrýt všechny hodiny pod minimem TČ — `
+          + `<strong>${bivMwh.toFixed(1)} MWh/rok</strong> zůstává nepokryto. `
+          + `Doporučení: mírně navýšit výkon TČ (větší TČ = vyšší minimum, ale pokryje více hodin na plný výkon). `
+          + `Alternativně: bivalentní zdroj pro zbývající špičky.`;
       } else {
         // Buffer adequate — green confirmation
         noteEl.style.background = "#f0fdf4";
