@@ -14,3 +14,6 @@ jobs:
 
       - name: Ping dpuenergy-podklady
         run: curl -s -o /dev/null -w "%{http_code}" https://dpuenergy-podklady.streamlit.app/
+
+      - name: Ping dpu-kalkulator
+        run: curl -s -o /dev/null -w "%{http_code}" https://dpu-kalkulator.streamlit.app/
