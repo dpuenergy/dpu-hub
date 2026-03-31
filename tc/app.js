@@ -406,10 +406,14 @@ function calcAccumulation() {
 
   // V [l] = P_nom [kW] × t_min [min] / (0.06978 × ΔT)
   // derived from: P*t_min/60 [kWh] = V * 0.001163 [kWh/(l·K)] * ΔT
-  const vol     = powerKw * tMinMin / (0.06978 * dt);
-  const rounded = Math.ceil(vol / 50) * 50;
+  const vol      = powerKw * tMinMin / (0.06978 * dt);
+  const rounded  = Math.ceil(vol / 50) * 50;
+  const ruleMin  = Math.ceil(powerKw * 1.5 / 50) * 50;   // industry rule 1.5 l/kW
+  const ruleMax  = Math.ceil(powerKw * 2.0 / 50) * 50;   // industry rule 2.0 l/kW
   if (hiddenVol) hiddenVol.value = Math.round(vol);
-  el.innerHTML  = `Objem nádrže: ${Math.round(vol).toLocaleString("cs-CZ")} l → typická řada: <strong>${rounded} l</strong>`;
+  el.innerHTML =
+    `Výpočet (min. doba chodu): <strong>${rounded} l</strong>`
+    + `<br><span style="color:#555">Pravidlo 1,5–2 l/kW (invertor, hydr. oddělení): ${ruleMin}–${ruleMax} l</span>`;
 }
 
 // ── Heating curve ─────────────────────────────────────────────────────────────
