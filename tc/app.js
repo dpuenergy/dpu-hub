@@ -484,6 +484,10 @@ function onClimateSourceChange() {
   document.getElementById("panel_openmeteo").style.display = src === "openmeteo" ? "" : "none";
   document.getElementById("panel_pvgis").style.display     = src === "pvgis"     ? "" : "none";
   document.getElementById("panel_chmi").style.display      = src === "chmi"      ? "" : "none";
+  if (src === "chmi") {
+    const sel = document.getElementById("chmi_station");
+    if (sel && sel.options.length <= 1) loadChmiStations();
+  }
 }
 
 function populateYearSelect() {
