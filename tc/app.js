@@ -1404,7 +1404,7 @@ function buildCharts(result) {
 
     // KPI summary
     const bs = buf.summary;
-    const fmtN = (v, d=1) => v != null ? v.toFixed(d) : "—";
+    const fmtN = (v, d=1) => (v != null && isFinite(v) && v > 0) ? v.toFixed(d) : "—";
     const avgCycleH = bs.starts > 0 ? (bs.hrsOn / bs.starts).toFixed(1) : "—";
     // Space-heating hours only — use ut_kw if available
     const utSeries  = Array.isArray(s.ut_kw) ? s.ut_kw : s.heat_need_kw;
